@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: LGPL-2.1-or-later -->
+<Branding version="1.0">
+  <Application>OpenCAD</Application>
+  <WindowTitle>OpenCAD</WindowTitle>
+  <MaintainerUrl>https://github.com/savagemanage/openCAD</MaintainerUrl>
+</Branding>
