@@ -193,10 +193,39 @@ if [[ "${sign_available}" == "1" ]]; then
         "${sign_dir}"/bin/*.dll
         "${sign_dir}"/bin/*.pyd
     )
-    total=${#files[@]}
-    count=0
-    echo "Signing ${total} files"
+
+    # Skip anything that already carries a valid signature.
+    #
+    # `bin/*.dll` sweeps the whole runtime, which includes the MSVC
+    # redistributables this script copies in itself (vcruntime140.dll,
+    # msvcp140.dll, concrt140.dll and friends, see the copy loop above) --
+    # Microsoft-signed before we ever see them. Overwriting Microsoft's signature
+    # with ours gains nothing: the file is already trusted, and our signature says
+    # less about it than Microsoft's does. It also costs money, because cloud
+    # signing services bill per signature.
+    #
+    # `signtool verify -pa` succeeds only when the signature chains to a trusted
+    # root, so an unsigned library -- which most conda-built DLLs are -- still
+    # gets signed. This removes RE-signing, it does not leave anything unsigned
+    # that was signed before.
+    to_sign=()
+    skipped=0
     for f in "${files[@]}"; do
+        if signtool verify -pa "${f}" >/dev/null 2>&1; then
+            skipped=$((skipped + 1))
+        else
+            to_sign+=("${f}")
+        fi
+    done
+
+    total=${#to_sign[@]}
+    count=0
+    echo "Signing ${total} files (skipped ${skipped} already validly signed)"
+    if [[ ${total} -eq 0 ]]; then
+        echo "Nothing left to sign -- the globs are no longer finding build output" >&2
+        exit 1
+    fi
+    for f in "${to_sign[@]}"; do
         count=$((count + 1))
         echo "Signing [${count}/${total}]: ${f}"
         if ! sign_file "${f}"; then

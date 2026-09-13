@@ -97,10 +97,36 @@ if [[ "${WINDOWS_SIGN_RELEASE:-0}" == "1" ]]; then
       "$SIGN_DIR"/bin/*.pyd
     )
 
-    count=0
-    total=${#FILES[@]}
-    echo "Signing $total files"
+    # Skip anything that already carries a valid signature.
+    #
+    # `bin/*.dll` sweeps the whole conda runtime -- Qt, VTK, OCCT, Python and
+    # everything they pull in. Most of that is unsigned and does get signed here,
+    # but the set also contains binaries that arrive already signed by their
+    # vendor, and overwriting a vendor signature with ours gains nothing: the file
+    # is already trusted, and our signature says less about it. It also costs
+    # money, because cloud signing services bill per signature.
+    #
+    # `signtool verify -pa` succeeds only when the signature chains to a trusted
+    # root, so an unsigned library still gets signed. This removes RE-signing; it
+    # does not leave anything unsigned that was signed before.
+    TO_SIGN=()
+    skipped=0
     for f in "${FILES[@]}"; do
+      if signtool verify -pa "$f" >/dev/null 2>&1; then
+        skipped=$((skipped + 1))
+      else
+        TO_SIGN+=("$f")
+      fi
+    done
+
+    count=0
+    total=${#TO_SIGN[@]}
+    echo "Signing $total files (skipped $skipped already validly signed)"
+    if [[ $total -eq 0 ]]; then
+      echo "Nothing left to sign -- the globs are no longer finding build output" >&2
+      exit 1
+    fi
+    for f in "${TO_SIGN[@]}"; do
       ((count+=1))
       echo "Signing [$count/$total]: $f"
       sign code artifact-signing \
