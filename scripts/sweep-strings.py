@@ -31,9 +31,13 @@ from xml.etree import ElementTree
 # Whole word only. "FreeCADGui", "FreeCADCmd" and similar are module and executable names.
 NAME = re.compile(r"\bFreeCAD\b(?!Gui|Cmd|Base|App|Guy)")
 
-# A tr(" ... ") argument. Qt also has QT_TR_NOOP and tr() with a disambiguation second argument; the
-# first string is the visible one either way, which is what this captures.
-TR = re.compile(r'(tr\(\s*")((?:[^"\\]|\\.)*)(")')
+# Qt's translatable-string macros. The first string argument is the visible one in every form.
+#
+# QT_TR_NOOP was missing, and it held eight strings. Six of those turned out to name the FreeCAD
+# PROJECT's own resources rather than this application -- its forum, website, developers handbook and
+# donation page -- so they are held back in KEEP below. Renaming them would point our name at somebody
+# else's resources, which is the same reason URLs are protected.
+TR = re.compile(r'((?:tr|QT_TR_NOOP)\(\s*")((?:[^"\\]|\\.)*)(")')
 
 URL = re.compile(r"https?://\S*")
 
@@ -46,6 +50,14 @@ KEEP = (
     "FreeCAD wiki",
     "FreeCAD documentation",
     "FreeCAD community",
+    # The upstream PROJECT's own resources. A menu entry pointing at these is telling the truth about
+    # where it goes, so rebranding the label would make it lie -- "Redrob CAD &Forum" would open
+    # FreeCAD's forum under our name.
+    "FreeCAD &Forum",
+    "FreeCAD W&ebsite",
+    "FreeCAD website",
+    "FreeCAD developers handbook",
+    "FreeCAD donation",
 )
 
 
