@@ -145,4 +145,29 @@ if ! grep -q "windows-sign-filter.test.sh" .github/workflows/verify-patches.yml;
 fi
 echo "signing filter test present and wired into CI"
 
+# --- no user-visible string names FreeCAD, and there is only ONE product name -------
+python3 scripts/sweep-strings.py build/freecad --check
+
+# The repository used to carry two names: branding.xml said OpenCAD while the window title, set
+# separately in src/Gui, said Redrob CAD -- so the app presented a different name depending on where
+# you looked. And MaintainerUrl pointed at a third party's repository. One name, asserted here.
+declared=$(python3 -c "
+from xml.etree import ElementTree
+root = ElementTree.parse('overlay/src/Main/branding.xml').getroot()
+print((root.find('Application').text or '').strip())
+")
+if [ "$declared" != "Redrob CAD" ]; then
+  echo "error: branding.xml declares '$declared', expected 'Redrob CAD'" >&2
+  exit 1
+fi
+if ! grep -q "$declared" "$target/src/Gui/StartupProcess.cpp"; then
+  echo "error: the window title does not match branding.xml ('$declared')" >&2
+  exit 1
+fi
+if ! grep -q "redrob-labs/redrob-cad" overlay/src/Main/branding.xml; then
+  echo "error: MaintainerUrl does not point at this repository" >&2
+  exit 1
+fi
+echo "one product name throughout: $declared"
+
 echo "=== customization verified ==="
