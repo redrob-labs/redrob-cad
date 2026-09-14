@@ -1,126 +1,87 @@
-# OpenCAD
+# OpenCAD — patch-based customization of FreeCAD
 
-OpenCAD is a lightweight, native-Qt modernization of FreeCAD with a built-in [RedRob Code](https://console.redrob.ai/code) agent workbench. It deliberately preserves the complete FreeCAD C++/Python runtime, workbench ecosystem, file compatibility, and interactive 3D stack instead of replacing mature CAD behavior with an incomplete rewrite.
+This repository holds **only our changes**. Upstream FreeCAD is fetched at build time, never
+vendored, so `git log` here shows OpenCAD work rather than being buried under upstream history.
 
-- Read the [architecture and RedRob integration](docs/OpenCAD-architecture.md).
-- Review the [side-by-side FreeCAD ↔ OpenCAD feature parity audit](docs/feature-parity.md).
-- The new OpenCAD appearance uses native Qt/QSS—no Electron, Chromium, or web runtime.
-- Install and authenticate RedRob separately, then select the **OpenCAD AI** workbench.
+```
+upstream.json     the pinned upstream repo + commit -- the only place a baseline appears
+overlay/          files that exist only in this product (copied in, never patched)
+patches/          our modifications to upstream files, one patch per logical change
+scripts/          fetch, apply, and THE GATE
+```
 
-> OpenCAD is based on FreeCAD and retains its LGPL-2.1-or-later license, notices, source history, and contributor attribution. The FreeCAD project information below remains applicable to the inherited CAD platform.
+Build:
 
----
+```
+./scripts/verify-patches.sh     # fetch upstream, apply everything, assert the result
+```
 
-<a href="https://freecad.org"><img src="/src/Gui/Icons/freecad.svg" height="100px" width="100px"></a>
+That leaves a complete, customized FreeCAD tree in `build/freecad`, which is then built with
+FreeCAD's own CMake + pixi toolchain.
 
-### Your own 3D Parametric Modeler
+## Why this shape
 
-[Website](https://www.freecad.org) •
-[Documentation](https://wiki.freecad.org) •
-[Forum](https://forum.freecad.org/) •
-[Bug tracker](https://github.com/FreeCAD/FreeCAD/issues) •
-[Git repository](https://github.com/FreeCAD/FreeCAD) •
-[Blog](https://blog.freecad.org)
+The previous shape was a **single squashed import commit** — 13,265 tracked files, no upstream
+remote, no tags, and no merge base with FreeCAD. Nothing recorded which upstream commit it came
+from, so upstream releases could never be pulled: the fork could only diverge.
 
+Recovering that baseline was the first task, and it was done by measurement rather than by
+guessing. Diffing the snapshot against current upstream `main` showed **1,430 differing files**,
+which looks like a heavily modified fork. It is not: of 120 randomly sampled differing files,
+**every single one** had its snapshot content present verbatim somewhere in upstream's history.
+The divergence was upstream moving on, not us editing. Scoring the snapshot against all 1,143
+first-parent commits on `main` put the minimum at `d1424838c2` (2026-09-07) — **59 files** — and
+all 59 are now accounted for:
 
-[![Release](https://img.shields.io/github/release/freecad/freecad.svg)](https://github.com/freecad/freecad/releases/latest) [![Crowdin](https://d322cqt584bo4o.cloudfront.net/freecad/localized.svg)](https://crowdin.com/project/freecad)
+| Kind | Count | Where it lives now |
+|---|---|---|
+| Files only we have | 10 | `overlay/` |
+| Upstream files we modify | 10 | `patches/` (5 patches, grouped by intent) |
+| Upstream files we delete | 39 | `scripts/upstream-ci-files.txt` |
 
-<img src="/.github/images/partdesign.png" width="800"/>
+So the customization is 20 files against a 13,000-file upstream. Storing the other ~13,200 was
+what made upstream unpullable.
 
-Overview
---------
+## The 39 deletions were upstream's entire CI
 
-* **Freedom to build what you want**  FreeCAD is an open-source parametric 3D 
-modeler made primarily to design real-life objects of any size. 
-Parametric modeling allows you to easily modify your design by going back into 
-your model history to change its parameters. 
+The import commit deleted **all of FreeCAD's own pipeline** — `CI_primary.yml`, the Linux, macOS
+and Windows build actions, CodeQL, the release builds, the LibPack jobs. That is why this
+repository had no CI: not an omission, a deletion, with no record that upstream's had ever
+existed.
 
-* **Create 3D from 2D and back** FreeCAD lets you sketch geometry-constrained
- 2D shapes and use them as a base to build other objects.
- It contains many components to adjust dimensions or extract design details from 
- 3D models to create high quality production-ready drawings.
+It is still removed, because upstream's pipeline is built for upstream's infrastructure — its
+LibPack hosting, its caches, its repository secrets — and running all 39 unchanged on a fork
+produces a wall of red nobody reads. The difference is that it is now a **reviewable list** in
+`scripts/upstream-ci-files.txt` rather than an invisible deletion, and re-enabling one workflow is
+a one-line diff.
 
-* **Designed for your needs** FreeCAD is designed to fit a wide range of uses
-including product design, mechanical engineering and architecture,
-whether you are a hobbyist, programmer, experienced CAD user, student or teacher.
+Meanwhile this repository now has CI of its own, which it did not before. It runs the gate, and it
+runs `package/windows-sign-filter.test.sh` — a test this repository added in PR #1 and then had no
+way to execute.
 
-* **Cross platform** FreeCAD runs on Windows, macOS and Linux operating systems.
+## Versioning
 
-* **Underlying technology**
-    * **OpenCASCADE** A powerful geometry kernel, the most important component of FreeCAD
-    * **Coin3D library** Open Inventor-compliant 3D scene representation model
-    * **Python** FreeCAD offers a broad Python API
-    * **Qt** Graphical user interface built with Qt
+`version.json` is upstream's, unmodified. FreeCAD adopted CalVer (`YY.N`) in FEP-0003, so
+`26.3.0-dev` is upstream's own numbering for the third 2026 cycle — not a fork renumbering. The
+gate asserts the shipped version matches `upstream.json`, so the pin and the build cannot drift
+apart silently.
 
+The `26.3` branch is scheduled for 2026-09-30. When it exists, prefer pinning that tag over a
+`main`-branch commit.
 
-Installing
-----------
+## Bumping upstream
 
-Precompiled packages for stable releases are available for Windows, macOS and Linux on the
-[latest releases page](https://github.com/FreeCAD/FreeCAD/releases/latest).
+1. Edit `commit` (and `version`) in `upstream.json`.
+2. Run `./scripts/verify-patches.sh`.
+3. A patch that no longer applies fails with the conflicting hunk named. Regenerate it against the
+   new upstream and commit both together.
 
-On most Linux distributions, FreeCAD is also directly installable from the 
-software center application.
+The gate discards and refetches the checkout before applying anything. Verifying against a tree
+that is already half-patched proves nothing — a stale patch would report success because its
+changes were already there. The sibling `redrob-browser` repository carries 258 Firefox patches
+with no gate; one went stale and its CI trigger named a branch that does not exist, so nothing ran
+and nobody found out.
 
-For weekly development releases visit the [releases page](https://github.com/FreeCAD/FreeCAD/releases/).
+## The previous tree
 
-Other options are described on the [wiki Download page](https://wiki.freecad.org/Download).
-
-Compiling
----------
-
-See the [Developers Handbook – Getting Started](https://freecad.github.io/DevelopersHandbook/gettingstarted/)
-for build instructions.
-
-
-Reporting Issues
----------
-
-To report an issue please:
-
-- Consider posting to the [Forum](https://forum.freecad.org), [Discord](https://discord.com/invite/w2cTKGzccC) channel, or [Reddit](https://www.reddit.com/r/FreeCAD) to verify the issue; 
-- Search the existing [issues](https://github.com/FreeCAD/FreeCAD/issues) for potential duplicates; 
-- Use the most updated stable or [development versions](https://github.com/FreeCAD/FreeCAD/releases/) of FreeCAD; 
-- Post version info from `Help > About FreeCAD > Copy to clipboard`; 
-- Restart FreeCAD in safe mode `Help > Restart in safe mode` and try to reproduce the issue again. If the issue is resolved it can be fixed by deleting the FreeCAD config files.
-- Start recording a macro `Macro > Macro recording...` and repeat all steps. Stop recording after the issue occurs and upload the saved macro or copy the macro code in the issue; 
-- Post a Step-By-Step explanation on how to recreate the issue; 
-- Upload an example file (FCStd as ZIP file) to demonstrate the problem; 
-
-For more details see:
-
-- [Bug Tracker](https://github.com/FreeCAD/FreeCAD/issues)
-- [Reporting Issues and Requesting Features](https://github.com/FreeCAD/FreeCAD/issues/new/choose)
-- [Contributing](https://github.com/FreeCAD/FreeCAD/blob/main/CONTRIBUTING.md)
-- [Help Forum](https://forum.freecad.org/viewforum.php?f=3)
-
-> [!NOTE]
-The [FPA](https://fpa.freecad.org) offers developers the opportunity
-to apply for a grant to work on projects of their choosing. Check
-[jobs and funding](https://blog.freecad.org/jobs/) to know more.
-
-
-Usage & Getting Help
---------------------
-
-The FreeCAD wiki contains documentation on 
-general FreeCAD usage, Python scripting, and development.
-View these pages for more information:
-
-- [Getting started](https://wiki.freecad.org/Getting_started)
-- [Features list](https://wiki.freecad.org/Feature_list)
-- [Frequent questions](https://wiki.freecad.org/FAQ/en)
-- [Workbenches](https://wiki.freecad.org/Workbenches)
-- [Scripting](https://wiki.freecad.org/Power_users_hub)
-- [Developers Handbook](https://freecad.github.io/DevelopersHandbook/)
-
-The [FreeCAD forum](https://forum.freecad.org) is a great place
-to find help and solve specific problems when learning to use FreeCAD.
-
----
-
-<p>This project receives generous infrastructure support from
-  <a href="https://www.digitalocean.com/">
-    <img src="https://opensource.nyc3.cdn.digitaloceanspaces.com/attribution/assets/SVG/DO_Logo_horizontal_blue.svg" width="91px">
-  </a> and <a href="https://www.kipro-pcb.com/">KiCad Services Corp.</a>
-</p>
+Preserved on `archive/opencad-snapshot`. Nothing was force-pushed and no history was discarded.

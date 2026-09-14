@@ -1,0 +1,17 @@
+diff --git a/src/Mod/CMakeLists.txt b/src/Mod/CMakeLists.txt
+index 032e19800ff17ba091d4b904a42432d6eada2d66..0ad21fc3bc952ff5bd3fd67f7fc4c756bff07307 100644
+--- a/src/Mod/CMakeLists.txt
++++ b/src/Mod/CMakeLists.txt
+@@ -54,6 +54,12 @@ if(BUILD_OPENSCAD)
+   add_subdirectory(OpenSCAD)
+ endif(BUILD_OPENSCAD)
+ 
++# OpenCAD's RedRob integration is a pure-Python GUI workbench. Keep it out of
++# headless builds while making it available alongside every existing workbench.
++if(BUILD_GUI)
++  add_subdirectory(OpenCADAI)
++endif(BUILD_GUI)
++
+ if(BUILD_PART)
+   add_subdirectory(Part)
+ endif(BUILD_PART)

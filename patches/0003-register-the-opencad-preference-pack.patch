@@ -1,0 +1,44 @@
+diff --git a/src/Gui/PreferencePacks/CMakeLists.txt b/src/Gui/PreferencePacks/CMakeLists.txt
+index feceedaf352d459547863a29126e6d08c6bd3746..eac4a5c4c1a200a505864852bb50f9af7bbf0f94 100644
+--- a/src/Gui/PreferencePacks/CMakeLists.txt
++++ b/src/Gui/PreferencePacks/CMakeLists.txt
+@@ -7,6 +7,7 @@ SET(PreferencePacks_Directories
+         "Dark behave"
+         "FreeCAD Light"
+         "FreeCAD Dark"
++        "OpenCAD"
+ )
+ 
+ ADD_CUSTOM_TARGET(PreferencePacks_data ALL
+diff --git a/src/Gui/PreferencePacks/package.xml b/src/Gui/PreferencePacks/package.xml
+index 3ecbc6b8073b6568ab572823113bb503c0ac232b..e40516b071bc90ec711a5183cc252cbd8b8d94d0 100644
+--- a/src/Gui/PreferencePacks/package.xml
++++ b/src/Gui/PreferencePacks/package.xml
+@@ -35,5 +35,15 @@
+       <tag>background</tag>
+       <tag>dark</tag>
+     </preferencepack>
++    <preferencepack>
++      <name>OpenCAD</name>
++      <type>Theme</type>
++      <description>OpenCAD's compact modern interface with a low-overhead native Qt presentation.</description>
++      <version>1.0.0</version>
++      <tag>built-in</tag>
++      <tag>modern</tag>
++      <tag>dark</tag>
++      <tag>compact</tag>
++    </preferencepack>
+   </content>
+ </package>
+diff --git a/src/Gui/Stylesheets/CMakeLists.txt b/src/Gui/Stylesheets/CMakeLists.txt
+index 717aef4da82b2b2eb6875183093d3e18a8a68db8..8e362230494c9432b75a44eccc88ad8a5979cf16 100644
+--- a/src/Gui/Stylesheets/CMakeLists.txt
++++ b/src/Gui/Stylesheets/CMakeLists.txt
+@@ -7,6 +7,7 @@ SET(Stylesheets_Files
+ SET(Parameters_Files
+     "parameters/FreeCAD Dark.yaml"
+     "parameters/FreeCAD Light.yaml"
++    "parameters/OpenCAD.yaml"
+ )
+ 
+ SET(Overlay_Stylesheets_Files

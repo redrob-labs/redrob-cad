@@ -1,0 +1,25 @@
+{
+	"//": [
+		"The upstream FreeCAD this repository customizes. Fetched at build time, never vendored.",
+		"",
+		"`commit` is the ONLY place a baseline appears -- scripts and CI read it from here so a",
+		"bump is a one-line, reviewable change.",
+		"",
+		"How this commit was chosen: the previous shape of this repository was a single squashed",
+		"import with no upstream remote and no merge base, so the baseline had been lost. It was",
+		"recovered by measurement rather than guessed. Every one of 120 randomly sampled files",
+		"that differed from upstream main had its snapshot content present verbatim somewhere in",
+		"upstream's history, which established that the divergence was upstream moving on rather",
+		"than this fork editing 1,430 files. Diffing the snapshot against all 1,143 first-parent",
+		"commits on main then put the minimum at d1424838c2 -- 59 files -- and every one of those",
+		"59 is accounted for in patches/, overlay/ or scripts/upstream-ci-files.txt.",
+		"",
+		"FreeCAD adopted CalVer (YY.N) in FEP-0003, so version.json reading 26.3.0-dev is",
+		"upstream's own numbering for the third 2026 release cycle, not a fork renumbering. The",
+		"26.3 branch is scheduled for 2026-09-30; when it exists, prefer pinning that tag over a",
+		"main-branch commit."
+	],
+	"repo": "https://github.com/FreeCAD/FreeCAD.git",
+	"commit": "d1424838c2cf9858f7b35cf6b774cfa07f7ba515",
+	"version": "26.3.0-dev"
+}
