@@ -1,0 +1,37 @@
+diff --git a/src/Gui/StartupProcess.cpp b/src/Gui/StartupProcess.cpp
+index c2b8ef99841cdbc2405767dd8227d4f821286d93..33113e34b6d53b020a34ff55847468dee2e967c5 100644
+--- a/src/Gui/StartupProcess.cpp
++++ b/src/Gui/StartupProcess.cpp
+@@ -539,6 +539,15 @@ void StartupPostProcess::setStyleSheet()
+             style = it->second;
+         }
+     }
++    if (style.empty()) {
++        // New OpenCAD profiles start with the lightweight native Qt theme. Persist both values
++        // before observers run; otherwise the delayed theme refresh would reapply an empty style.
++        style = "FreeCAD.qss";
++        hGrp->SetASCII("StyleSheet", style.c_str());
++        if (hGrp->GetASCII("Theme").empty()) {
++            hGrp->SetASCII("Theme", "OpenCAD");
++        }
++    }
+ 
+     // In 1.1 we migrated to a common parametrized stylesheet.
+     // if we detect an old style, we need to reapply the theme pack.
+diff --git a/src/Main/CMakeLists.txt b/src/Main/CMakeLists.txt
+index a13ad312f93931fc9771d2e074671d4af8937887..a35419c391501316348d4275285fc32f8a6e50f0 100644
+--- a/src/Main/CMakeLists.txt
++++ b/src/Main/CMakeLists.txt
+@@ -4,6 +4,12 @@ configure_file(freecad.rc.cmake ${CMAKE_CURRENT_BINARY_DIR}/freecad.rc)
+ configure_file(freecadCmd.rc.cmake ${CMAKE_CURRENT_BINARY_DIR}/freecadCmd.rc)
+ file(COPY icon.ico DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+ 
++# Keep the executable/profile identity FreeCAD-compatible while applying OpenCAD's
++# visible product identity through the runtime's supported branding contract.
++file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
++configure_file(branding.xml "${CMAKE_BINARY_DIR}/bin/branding.xml" COPYONLY)
++install(FILES branding.xml DESTINATION ${CMAKE_INSTALL_BINDIR})
++
+ ######################## FreeCADMain ########################
+ if(BUILD_GUI)
+ 
