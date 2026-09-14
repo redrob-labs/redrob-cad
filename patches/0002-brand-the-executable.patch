@@ -1,7 +1,30 @@
+diff --git a/src/Gui/Application.cpp b/src/Gui/Application.cpp
+index 0f8f1a836ee40dc6f543b7c67b0e143423dc926a..3edb6eff341a663dba80ed2015917a6244c63de3 100644
+--- a/src/Gui/Application.cpp
++++ b/src/Gui/Application.cpp
+@@ -2524,6 +2524,7 @@ void setAppNameAndIcon()
+     else {
+         QApplication::setApplicationName(QString::fromStdString(App::Application::getExecutableName()));
+     }
++    QApplication::setApplicationDisplayName(QStringLiteral("Redrob CAD"));
+     auto vendor = cfg.find("ExeVendor");
+     if (vendor != cfg.end()) {
+         QApplication::setOrganizationName(QString::fromUtf8(vendor->second.c_str()));
 diff --git a/src/Gui/StartupProcess.cpp b/src/Gui/StartupProcess.cpp
-index c2b8ef99841cdbc2405767dd8227d4f821286d93..33113e34b6d53b020a34ff55847468dee2e967c5 100644
+index c2b8ef99841cdbc2405767dd8227d4f821286d93..5101a62c505ce66d0f5ca46b0780fd8349a68f36 100644
 --- a/src/Gui/StartupProcess.cpp
 +++ b/src/Gui/StartupProcess.cpp
+@@ -242,8 +242,8 @@ void StartupPostProcess::execute()
+ 
+ void StartupPostProcess::setWindowTitle()
+ {
+-    // empty window title QString sets default title (app + version)
+-    mainWindow->setWindowTitle(QString());
++    // Keep compatibility identifiers intact while presenting the product name.
++    mainWindow->setWindowTitle(QStringLiteral("Redrob CAD"));
+ }
+ 
+ void StartupPostProcess::setProcessMessages()
 @@ -539,6 +539,15 @@ void StartupPostProcess::setStyleSheet()
              style = it->second;
          }
