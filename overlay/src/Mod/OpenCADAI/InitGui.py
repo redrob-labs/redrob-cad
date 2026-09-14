@@ -1,41 +1,19 @@
 # SPDX-License-Identifier: LGPL-2.1-or-later
-"""Register the OpenCAD AI workbench backed by RedRob Code."""
+"""Register the Redrob CAD AI workbench."""
+
+from pathlib import Path
 
 import FreeCADGui as Gui
 
-_ICON = """
-/* XPM */
-static const char * opencad_ai_xpm[] = {
-"16 16 4 1",
-"  c None",
-". c #5EEAD4",
-"+ c #10151D",
-"@ c #E8EEF7",
-"      ....      ",
-"    ........    ",
-"   ..++++++..   ",
-"  ..++@@@@++..  ",
-" ..++@++++@++.. ",
-" ..+@++..++@+.. ",
-"..++@+.  .+@++..",
-"..++@+.  .+@++..",
-"..++@+.  .+@++..",
-"..++@+.  .+@++..",
-" ..+@++..++@+.. ",
-" ..++@++++@++.. ",
-"  ..++@@@@++..  ",
-"   ..++++++..   ",
-"    ........    ",
-"      ....      "};
-"""
+_ICON = str(Path(__file__).with_name("Resources") / "icons" / "redrob-cad.png")
 
 
 class ShowAgentCommand:
     def GetResources(self):
         return {
             "Pixmap": _ICON,
-            "MenuText": "RedRob AI Agent",
-            "ToolTip": "Open the RedRob Code agent for the active CAD document",
+            "MenuText": "Redrob CAD AI",
+            "ToolTip": "Open the Redrob AI agent for the active CAD document",
             "Accel": "A, I",
         }
 
@@ -52,8 +30,8 @@ class StopAgentCommand:
     def GetResources(self):
         return {
             "Pixmap": _ICON,
-            "MenuText": "Stop RedRob Agent",
-            "ToolTip": "Interrupt the active RedRob Code request",
+            "MenuText": "Stop Redrob AI",
+            "ToolTip": "Interrupt the active Redrob AI request",
         }
 
     def Activated(self):
@@ -66,16 +44,18 @@ class StopAgentCommand:
 
 
 class OpenCADAIWorkbench(Gui.Workbench):
-    MenuText = "OpenCAD AI"
-    ToolTip = "RedRob-powered CAD planning and Python automation"
-    Icon = _ICON
+    MenuText = "Redrob CAD AI"
+    ToolTip = "Redrob-powered CAD planning and Python automation"
+    # FreeCAD may execute InitGui.py with distinct globals and locals. Resolve
+    # the module-local resource path after the class body instead.
+    Icon = ""
 
     def Initialize(self):
         Gui.addCommand("OpenCAD_AI_Show", ShowAgentCommand())
         Gui.addCommand("OpenCAD_AI_Stop", StopAgentCommand())
         commands = ["OpenCAD_AI_Show", "OpenCAD_AI_Stop"]
-        self.appendToolbar("OpenCAD AI", commands)
-        self.appendMenu("OpenCAD AI", commands)
+        self.appendToolbar("Redrob CAD AI", commands)
+        self.appendMenu("Redrob CAD AI", commands)
 
     def Activated(self):
         import RedRobAgent
@@ -86,4 +66,5 @@ class OpenCADAIWorkbench(Gui.Workbench):
         return "Gui::PythonWorkbench"
 
 
+OpenCADAIWorkbench.Icon = _ICON
 Gui.addWorkbench(OpenCADAIWorkbench())

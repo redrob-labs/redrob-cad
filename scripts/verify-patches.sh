@@ -51,6 +51,31 @@ if ! grep -qi "opencad\|redrob" "$target/src/Main/branding.xml"; then
   echo "error: branding.xml carries neither OpenCAD nor Redrob" >&2
   exit 1
 fi
+# branding.xml alone does not set what the user sees on the window. Qt reads the display name from
+# the application object, and FreeCAD sets the main window title separately -- so both have to be
+# ours or the app presents itself as FreeCAD in the title bar and the task switcher.
+if ! grep -q "setApplicationDisplayName" "$target/src/Gui/Application.cpp"; then
+  echo "error: src/Gui/Application.cpp does not set an application display name" >&2
+  exit 1
+fi
+if ! grep -q "Redrob CAD" "$target/src/Gui/StartupProcess.cpp"; then
+  echo "error: the main window title is not branded" >&2
+  exit 1
+fi
+echo "window title and display name branded"
+
+# --- 2b. the workbench ships its icon --------------------------------------------
+# The CMake target has to install it, not merely list it: a workbench whose icon is absent at run
+# time falls back to a generic placeholder, which looks like a broken install.
+if [ ! -f "$target/src/Mod/OpenCADAI/Resources/icons/redrob-cad.png" ]; then
+  echo "error: the OpenCADAI workbench icon is missing from the checkout" >&2
+  exit 1
+fi
+if ! grep -q "OpenCADAI_RESOURCES" "$target/src/Mod/OpenCADAI/CMakeLists.txt"; then
+  echo "error: the workbench icon is present but CMake does not install it" >&2
+  exit 1
+fi
+echo "workbench icon present and installed"
 echo "branding applied: $(grep -oiE '<(Application|WindowTitle)>[^<]*' "$target/src/Main/branding.xml" | head -1 | cut -d'>' -f2)"
 
 # --- 3. the preference pack and stylesheet are installed --------------------------
