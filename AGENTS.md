@@ -22,6 +22,15 @@ A hotfix branches from `main`, merges into `main`, releases, and then `main` is 
 `redrob-code` spent a month with a lockfile its own default branch could not install from because
 that merge back was missed.
 
+Working branches are `<type>/<short-slug>`. The types are `feat`, `fix`, `docs`, `chore`, `test`,
+`refactor`, `perf`, `hotfix`, `release`, and `sync`. Nothing on `develop` declared a set before this
+paragraph, so this one was chosen rather than inherited: it is a superset of the seven types in the
+`CONTRIBUTING.md` that exists only on pull request #7, plus names for the three long-lived motions
+the model above already describes. `.github/workflows/gitflow.yml` enforces it on every pull request,
+because a rule nothing checks is a preference: this repository already carries four `kiro/` branches
+that no document defines. The same workflow checks after every push to `main` that `main` is
+contained in `develop`, which is the back-merge described above.
+
 Both branches are protected identically, read from the branch protection API: pull requests only,
 force pushes blocked, deletions blocked, 0 required approving reviews, admin enforcement off. The
 one required status check on both is `Patches apply to pinned upstream`.
@@ -30,8 +39,8 @@ one required status check on both is `Patches apply to pinned upstream`.
 that required check does report on a pull request targeting `develop`. This is worth stating because
 the sibling repository `redrob-design` had the opposite: its required check ran only on
 `workflow_dispatch` and a nightly schedule, so every pull request sat blocked on a check that could
-never report. There is only one workflow here, so no other workflow can be silently filtered away
-from `develop`.
+never report. `gitflow.yml` uses a bare `pull_request:` trigger for the same reason, so neither
+workflow can be silently filtered away from `develop`.
 
 The same workflow's `push:` trigger names only `main`. Pushes to `develop` therefore run nothing,
 and a merged pull request produces no post-merge run on the default branch. That is a gap, not a
@@ -177,11 +186,12 @@ only as a quick smoke test after editing a script. There is no configured linter
 
 ## Workflows
 
-One workflow exists: `.github/workflows/verify-patches.yml`.
+Two workflows exist: `.github/workflows/verify-patches.yml` and `.github/workflows/gitflow.yml`.
 
 | Workflow | Triggers | Runs on a pull request |
 |---|---|---|
 | `verify patches` | `pull_request` (no branch filter), `push` to `main`, `workflow_dispatch` | yes, on every pull request regardless of base |
+| `gitflow` | `pull_request` (no branch filter), `push` to `main`, `workflow_dispatch` | yes, the branch name job only; the back-merge job runs on the other two triggers |
 
 Its single job is named `Patches apply to pinned upstream`, which is the required status check on
 both protected branches. It runs on `ubuntu-latest`, has `contents: read` permission only, pins
