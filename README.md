@@ -1,7 +1,8 @@
-# OpenCAD — patch-based customization of FreeCAD
+# Redrob CAD: patch-based customization of FreeCAD
 
+Redrob CAD is a parametric 3D modeller with an AI agent sidecar, an LGPL-2.1-or-later fork of FreeCAD.
 This repository holds **only our changes**. Upstream FreeCAD is fetched at build time, never
-vendored, so `git log` here shows OpenCAD work rather than being buried under upstream history.
+vendored, so `git log` here shows Redrob CAD work rather than being buried under upstream history.
 
 ```
 upstream.json     the pinned upstream repo + commit -- the only place a baseline appears
@@ -21,7 +22,7 @@ FreeCAD's own CMake + pixi toolchain.
 
 ## Why this shape
 
-The previous shape was a **single squashed import commit** — 13,265 tracked files, no upstream
+The previous shape was a **single squashed import commit**: 13,265 tracked files, no upstream
 remote, no tags, and no merge base with FreeCAD. Nothing recorded which upstream commit it came
 from, so upstream releases could never be pulled: the fork could only diverge.
 
@@ -30,7 +31,7 @@ guessing. Diffing the snapshot against current upstream `main` showed **1,430 di
 which looks like a heavily modified fork. It is not: of 120 randomly sampled differing files,
 **every single one** had its snapshot content present verbatim somewhere in upstream's history.
 The divergence was upstream moving on, not us editing. Scoring the snapshot against all 1,143
-first-parent commits on `main` put the minimum at `d1424838c2` (2026-09-07) — **59 files** — and
+first-parent commits on `main` put the minimum at `d1424838c2` (2026-09-07) (**59 files**) and
 all 59 are now accounted for:
 
 | Kind | Count | Where it lives now |
@@ -44,25 +45,25 @@ what made upstream unpullable.
 
 ## The 39 deletions were upstream's entire CI
 
-The import commit deleted **all of FreeCAD's own pipeline** — `CI_primary.yml`, the Linux, macOS
+The import commit deleted **all of FreeCAD's own pipeline**: `CI_primary.yml`, the Linux, macOS
 and Windows build actions, CodeQL, the release builds, the LibPack jobs. That is why this
 repository had no CI: not an omission, a deletion, with no record that upstream's had ever
 existed.
 
-It is still removed, because upstream's pipeline is built for upstream's infrastructure — its
-LibPack hosting, its caches, its repository secrets — and running all 39 unchanged on a fork
+It is still removed, because upstream's pipeline is built for upstream's infrastructure (its
+LibPack hosting, its caches, its repository secrets) and running all 39 unchanged on a fork
 produces a wall of red nobody reads. The difference is that it is now a **reviewable list** in
 `scripts/upstream-ci-files.txt` rather than an invisible deletion, and re-enabling one workflow is
 a one-line diff.
 
 Meanwhile this repository now has CI of its own, which it did not before. It runs the gate, and it
-runs `package/windows-sign-filter.test.sh` — a test this repository added in PR #1 and then had no
+runs `package/windows-sign-filter.test.sh`: a test this repository added in PR #1 and then had no
 way to execute.
 
 ## Versioning
 
 `version.json` is upstream's, unmodified. FreeCAD adopted CalVer (`YY.N`) in FEP-0003, so
-`26.3.0-dev` is upstream's own numbering for the third 2026 cycle — not a fork renumbering. The
+`26.3.0-dev` is upstream's own numbering for the third 2026 cycle, not a fork renumbering. The
 gate asserts the shipped version matches `upstream.json`, so the pin and the build cannot drift
 apart silently.
 
@@ -77,7 +78,7 @@ The `26.3` branch is scheduled for 2026-09-30. When it exists, prefer pinning th
    new upstream and commit both together.
 
 The gate discards and refetches the checkout before applying anything. Verifying against a tree
-that is already half-patched proves nothing — a stale patch would report success because its
+that is already half-patched proves nothing: a stale patch would report success because its
 changes were already there. The sibling `redrob-browser` repository carries 258 Firefox patches
 with no gate; one went stale and its CI trigger named a branch that does not exist, so nothing ran
 and nobody found out.
