@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: LGPL-2.1-or-later
-"""Native Qt client for the local RedRob Code engine.
+"""Native Qt client for the local Redrob Code engine.
 
-RedRob Code owns authentication, model access, sessions, and agent execution. This
-module talks to its documented local service through ``redrob api`` so OpenCAD
+Redrob Code owns authentication, model access, sessions, and agent execution. This
+module talks to its documented local service through ``redrob api`` so Redrob CAD
 never stores workspace keys or reimplements the engine protocol.
 """
 
@@ -18,13 +18,25 @@ import FreeCAD as App
 import FreeCADGui as Gui
 from PySide import QtCore, QtWidgets
 
-_PARAM_PATH = "User parameter:BaseApp/Preferences/OpenCADAI"
-_DOCK_NAME = "OpenCADRedRobAgent"
+_PARAM_PATH = "User parameter:BaseApp/Preferences/RedrobCAD"
+# The group this module used under its previous name. Read once, so settings made there carry over.
+_LEGACY_GROUP = "OpenCADAI"  # legacy-name: profiles from before the rename
+_DOCK_NAME = "RedrobCADAgent"
 _panel = None
 
 
 def _parameters():
-    return App.ParamGet(_PARAM_PATH)
+    group = App.ParamGet(_PARAM_PATH)
+    if not group.GetBool("LegacySettingsRead", False):
+        preferences = App.ParamGet("User parameter:BaseApp/Preferences")
+        if _LEGACY_GROUP in preferences.GetGroups():
+            legacy = preferences.GetGroup(_LEGACY_GROUP)
+            for key in ("Executable", "Model", "WorkingDirectory"):
+                value = legacy.GetString(key, "")
+                if value and not group.GetString(key, ""):
+                    group.SetString(key, value)
+        group.SetBool("LegacySettingsRead", True)
+    return group
 
 
 def _working_directory():
@@ -89,7 +101,7 @@ def _decode_json(output):
                 return value
             except json.JSONDecodeError:
                 offset = output.find(marker, offset + 1)
-    raise ValueError("RedRob returned no JSON payload")
+    raise ValueError("Redrob Code returned no JSON payload")
 
 
 def _unwrap_data(value):
@@ -113,38 +125,38 @@ def _redrob_error(value):
 def _assistant_text(context):
     context = _unwrap_data(context)
     if not isinstance(context, list):
-        raise TypeError("RedRob returned a non-list session context")
+        raise TypeError("Redrob Code returned a non-list session context")
 
     replies = []
     assistant_seen = False
     for message in context:
         if not isinstance(message, dict):
-            raise TypeError("RedRob returned a malformed context message")
+            raise TypeError("Redrob Code returned a malformed context message")
         if message.get("type") != "assistant":
             continue
         assistant_seen = True
         content = message.get("content")
         if not isinstance(content, list):
-            raise TypeError("RedRob returned malformed assistant content")
+            raise TypeError("Redrob Code returned malformed assistant content")
         parts = []
         for part in content:
             if not isinstance(part, dict):
-                raise TypeError("RedRob returned a malformed assistant content part")
+                raise TypeError("Redrob Code returned a malformed assistant content part")
             if part.get("type") == "text":
                 text = part.get("text")
                 if not isinstance(text, str):
-                    raise ValueError("RedRob returned non-text assistant content")
+                    raise ValueError("Redrob Code returned non-text assistant content")
                 if text:
                     parts.append(text)
         if parts:
             replies.append("\n".join(parts))
     if not assistant_seen:
-        raise ValueError("RedRob context did not contain an assistant response")
+        raise ValueError("Redrob Code context did not contain an assistant response")
     return replies[-1] if replies else "The agent completed without a textual response."
 
 
-class RedRobPanel(QtWidgets.QWidget):
-    """Dockable RedRob conversation and reviewed CAD-script runner."""
+class RedrobPanel(QtWidgets.QWidget):
+    """Dockable Redrob Code conversation and reviewed CAD-script runner."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -164,12 +176,12 @@ class RedRobPanel(QtWidgets.QWidget):
         layout.setSpacing(8)
 
         title_row = QtWidgets.QHBoxLayout()
-        title = QtWidgets.QLabel("<b>RedRob Code</b>")
+        title = QtWidgets.QLabel("<b>Redrob Code</b>")
         title_row.addWidget(title)
         title_row.addStretch(1)
         self.agent = QtWidgets.QComboBox()
         self.agent.addItems(["plan", "build"])
-        self.agent.setToolTip("Plan denies edit tools; build follows RedRob permission policy.")
+        self.agent.setToolTip("Plan denies edit tools; build follows Redrob Code permission policy.")
         title_row.addWidget(self.agent)
         settings = QtWidgets.QToolButton()
         settings.setText("Settings")
@@ -180,7 +192,7 @@ class RedRobPanel(QtWidgets.QWidget):
         self.transcript = QtWidgets.QTextBrowser()
         self.transcript.setOpenExternalLinks(True)
         self.transcript.setPlaceholderText(
-            "Ask RedRob to inspect the active document, plan a model, or generate FreeCAD Python."
+            "Ask Redrob Code to inspect the active document, plan a model, or generate FreeCAD Python."
         )
         layout.addWidget(self.transcript, 1)
 
@@ -209,7 +221,7 @@ class RedRobPanel(QtWidgets.QWidget):
         layout.addLayout(options)
 
         self.status = QtWidgets.QLabel(
-            "Uses your local RedRob Code service; credentials remain managed by RedRob."
+            "Uses your local Redrob Code service; credentials remain managed by Redrob Code."
         )
         self.status.setWordWrap(True)
         layout.addWidget(self.status)
@@ -265,10 +277,10 @@ class RedRobPanel(QtWidgets.QWidget):
         if request_id != self._operation_id:
             return
         if error == QtCore.QProcess.FailedToStart:
-            self._set_busy(False, "RedRob executable was not found. Open Settings to configure it.")
+            self._set_busy(False, "Redrob Code executable was not found. Open Settings to configure it.")
             self._append(
-                "OpenCAD",
-                "Install RedRob Code from https://console.redrob.ai/code, then authenticate with "
+                "Redrob CAD",
+                "Install Redrob Code from https://console.redrob.ai/code, then authenticate with "
                 "`redrob providers login --provider redrob`.",
             )
 
@@ -296,21 +308,21 @@ class RedRobPanel(QtWidgets.QWidget):
             self._session_id = None
         self.prompt.clear()
         self._append("You", prompt)
-        self._set_busy(True, "Starting the local RedRob Code service…")
+        self._set_busy(True, "Starting the local Redrob Code service…")
         self._pending_prompt = prompt
         self._run(["service", "start"], self._after_service_start)
 
     def _after_service_start(self, exit_code, stdout, stderr):
         if exit_code != 0:
             self._fail(
-                "This RedRob Code build does not expose the required local API service",
+                "This Redrob Code build does not expose the required local API service",
                 stderr or stdout,
             )
             return
         if self._session_id:
             self._submit_prompt()
             return
-        self.status.setText("Creating a RedRob session…")
+        self.status.setText("Creating a Redrob Code session…")
         agent, model, directory = self._pending_binding
         payload = {
             "agent": agent,
@@ -322,7 +334,7 @@ class RedRobPanel(QtWidgets.QWidget):
 
     def _after_session_created(self, exit_code, stdout, stderr):
         if exit_code != 0:
-            self._fail("Could not create a RedRob session", stderr or stdout)
+            self._fail("Could not create a Redrob Code session", stderr or stdout)
             return
         try:
             session = _unwrap_data(_decode_json(stdout))
@@ -332,20 +344,20 @@ class RedRobPanel(QtWidgets.QWidget):
             self._session_id = session["id"]
             self._session_binding = self._pending_binding
         except (ValueError, KeyError, TypeError) as error:
-            self._fail("Could not read the RedRob session response", str(error) + "\n" + stdout)
+            self._fail("Could not read the Redrob Code session response", str(error) + "\n" + stdout)
             return
         self._submit_prompt()
 
     def _submit_prompt(self):
-        self.status.setText("RedRob is reasoning…")
+        self.status.setText("Redrob Code is reasoning…")
         text = self._pending_prompt
         if self.include_context.isChecked():
             text = (
-                "You are assisting inside OpenCAD, a FreeCAD-compatible CAD application. "
+                "You are assisting inside Redrob CAD, a FreeCAD-compatible CAD application. "
                 "Use the supplied document snapshot. For model-changing tasks, return one "
                 "complete FreeCAD Python script in a ```python fenced block; do not manage "
                 "document transactions and do not claim the script has run. The user reviews "
-                "and executes it in OpenCAD.\n\n"
+                "and executes it in Redrob CAD.\n\n"
                 "ACTIVE DOCUMENT SNAPSHOT\n"
                 + _document_context()
                 + "\n\nUSER REQUEST\n"
@@ -356,7 +368,7 @@ class RedRobPanel(QtWidgets.QWidget):
 
     def _after_prompt_admitted(self, exit_code, stdout, stderr):
         if exit_code != 0:
-            self._fail("RedRob rejected the prompt", stderr or stdout)
+            self._fail("Redrob Code rejected the prompt", stderr or stdout)
             return
         try:
             admission = _unwrap_data(_decode_json(stdout))
@@ -373,11 +385,11 @@ class RedRobPanel(QtWidgets.QWidget):
                 or not isinstance(admission.get("admittedSeq"), int)
                 or admission["admittedSeq"] < 0
             ):
-                raise ValueError("RedRob returned an invalid prompt-admission payload")
+                raise ValueError("Redrob Code returned an invalid prompt-admission payload")
         except (ValueError, TypeError) as error:
-            self._fail("RedRob rejected the prompt", str(error) + "\n" + stdout)
+            self._fail("Redrob Code rejected the prompt", str(error) + "\n" + stdout)
             return
-        self.status.setText("Waiting for RedRob to finish…")
+        self.status.setText("Waiting for Redrob Code to finish…")
         self._api(
             "POST",
             f"/api/session/{self._session_id}/wait",
@@ -387,7 +399,7 @@ class RedRobPanel(QtWidgets.QWidget):
 
     def _after_wait(self, exit_code, stdout, stderr):
         if exit_code != 0:
-            self._fail("RedRob did not complete the request", stderr or stdout)
+            self._fail("Redrob Code did not complete the request", stderr or stdout)
             return
         if stdout.strip():
             try:
@@ -396,7 +408,7 @@ class RedRobPanel(QtWidgets.QWidget):
                 if api_error:
                     raise ValueError(api_error)
             except (ValueError, TypeError) as error:
-                self._fail("RedRob did not complete the request", str(error) + "\n" + stdout)
+                self._fail("Redrob Code did not complete the request", str(error) + "\n" + stdout)
                 return
         self.status.setText("Loading the response…")
         self._api(
@@ -408,7 +420,7 @@ class RedRobPanel(QtWidgets.QWidget):
 
     def _after_context(self, exit_code, stdout, stderr):
         if exit_code != 0:
-            self._fail("Could not load the RedRob response", stderr or stdout)
+            self._fail("Could not load the Redrob Code response", stderr or stdout)
             return
         try:
             context = _decode_json(stdout)
@@ -417,15 +429,15 @@ class RedRobPanel(QtWidgets.QWidget):
                 raise ValueError(api_error)
             response = _assistant_text(context)
         except (ValueError, TypeError) as error:
-            self._fail("Could not parse the RedRob response", str(error) + "\n" + stdout)
+            self._fail("Could not parse the Redrob Code response", str(error) + "\n" + stdout)
             return
         self._last_response = response
-        self._append("RedRob", response)
+        self._append("Redrob Code", response)
         self.run_code_button.setEnabled(bool(self._extract_python()))
-        self._set_busy(False, "Ready — response generated by the RedRob Code engine.")
+        self._set_busy(False, "Ready — response generated by the Redrob Code engine.")
 
     def _fail(self, title, detail):
-        self._append("OpenCAD", title + ("\n" + detail.strip() if detail.strip() else ""))
+        self._append("Redrob CAD", title + ("\n" + detail.strip() if detail.strip() else ""))
         self._set_busy(False, title)
 
     def _process_running(self):
@@ -467,7 +479,7 @@ class RedRobPanel(QtWidgets.QWidget):
         choice = QtWidgets.QMessageBox.warning(
             self,
             "Run AI-generated Python?",
-            "This code can modify documents and files. Run it only after reviewing the RedRob "
+            "This code can modify documents and files. Run it only after reviewing the Redrob Code "
             "response. Continue?",
             QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
             QtWidgets.QMessageBox.No,
@@ -478,13 +490,13 @@ class RedRobPanel(QtWidgets.QWidget):
         document_name = document.Name if document else None
         transaction_open = False
         if document:
-            document.openTransaction("RedRob AI operation")
+            document.openTransaction("Redrob CAD AI operation")
             transaction_open = True
         try:
             # Deliberately execute only after the explicit confirmation above; this is the
             # established FreeCAD automation boundary, not data deserialization.
             exec(  # noqa: S102
-                compile(code, "<RedRob OpenCAD agent>", "exec"), {"App": App, "Gui": Gui}
+                compile(code, "<Redrob CAD agent>", "exec"), {"App": App, "Gui": Gui}
             )
             current_documents = App.listDocuments()
             if document_name and document_name in current_documents:
@@ -500,15 +512,15 @@ class RedRobPanel(QtWidgets.QWidget):
             if document_name and document_name in App.listDocuments():
                 App.getDocument(document_name).commitTransaction()
                 transaction_open = False
-            self._append("OpenCAD", "The reviewed Python script completed successfully.")
+            self._append("Redrob CAD", "The reviewed Python script completed successfully.")
         except Exception as error:  # noqa: BLE001 - generated scripts can raise any exception
             if transaction_open and document_name and document_name in App.listDocuments():
                 App.getDocument(document_name).abortTransaction()
-            self._append("OpenCAD", "Python execution failed and was not committed: " + str(error))
+            self._append("Redrob CAD", "Python execution failed and was not committed: " + str(error))
 
     def configure(self):
         dialog = QtWidgets.QDialog(self)
-        dialog.setWindowTitle("RedRob Code settings")
+        dialog.setWindowTitle("Redrob Code settings")
         form = QtWidgets.QFormLayout(dialog)
         executable = QtWidgets.QLineEdit(self._binary())
         model = QtWidgets.QLineEdit(_parameters().GetString("Model", "redrob/auto"))
@@ -518,7 +530,7 @@ class RedRobPanel(QtWidgets.QWidget):
         form.addRow("Model", model)
         form.addRow("Project directory", directory)
         note = QtWidgets.QLabel(
-            "Authentication stays in RedRob Code. Connect once in a terminal with:<br>"
+            "Authentication stays in Redrob Code. Connect once in a terminal with:<br>"
             "<code>redrob providers login --provider redrob</code>"
         )
         note.setWordWrap(True)
@@ -534,7 +546,7 @@ class RedRobPanel(QtWidgets.QWidget):
             _parameters().SetString("Executable", executable.text().strip() or "redrob")
             _parameters().SetString("Model", model.text().strip() or "redrob/auto")
             _parameters().SetString("WorkingDirectory", directory.text().strip())
-            self.status.setText("RedRob settings saved.")
+            self.status.setText("Redrob Code settings saved.")
 
 
 def show_panel():
@@ -542,10 +554,10 @@ def show_panel():
     main_window = Gui.getMainWindow()
     dock = main_window.findChild(QtWidgets.QDockWidget, _DOCK_NAME)
     if dock is None:
-        dock = QtWidgets.QDockWidget("RedRob AI Agent", main_window)
+        dock = QtWidgets.QDockWidget("Redrob CAD AI", main_window)
         dock.setObjectName(_DOCK_NAME)
         dock.setAllowedAreas(QtCore.Qt.LeftDockWidgetArea | QtCore.Qt.RightDockWidgetArea)
-        _panel = RedRobPanel(dock)
+        _panel = RedrobPanel(dock)
         dock.setWidget(_panel)
         main_window.addDockWidget(QtCore.Qt.RightDockWidgetArea, dock)
     else:

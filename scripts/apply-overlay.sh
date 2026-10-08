@@ -2,7 +2,7 @@
 #
 # Copies overlay/ into the fetched upstream.
 #
-# These are files that exist ONLY in this product -- the OpenCAD AI workbench, the branding, the
+# These are files that exist ONLY in this product -- the Redrob CAD AI workbench, the branding, the
 # preference pack. A patch that creates a whole new file is a less readable copy of that file and
 # conflicts on nothing, so they are stored as files and copied.
 #
