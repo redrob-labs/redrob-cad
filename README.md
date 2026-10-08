@@ -76,6 +76,24 @@ The `26.3` branch is scheduled for 2026-09-30. When it exists, prefer pinning th
 2. Run `./scripts/verify-patches.sh`.
 3. A patch that no longer applies fails with the conflicting hunk named. Regenerate it against the
    new upstream and commit both together.
+4. If upstream added or removed a string that names FreeCAD, the sweep fails with a diff against
+   `scripts/sweep-strings.expected.tsv`. Read every new row: rename it only if it names this
+   application, otherwise add the phrase to `KEEP` in `scripts/sweep-strings.py`. Then run
+   `python3 scripts/sweep-strings.py build/freecad --update-expected scripts/sweep-strings.expected.tsv`
+   on a freshly gated tree and commit the list.
+
+## The product name in strings
+
+`scripts/sweep-strings.py` writes the product name into user-visible strings at build time: Qt
+`tr()` strings in C++, Designer labels in `.ui` files, `translate()` strings in Python, and every
+`.ts` translation of a string it changed. The translations matter: Qt finds a translation by its
+source text, so a renamed string with an untouched `.ts` entry is English in every language. Until
+this was a build step, 98 Korean strings were.
+
+It leaves FreeCAD's name wherever the sentence is about FreeCAD: its forum, wiki and website, its
+contributors, its licence text, and the version history of files ("may not be readable by older
+versions of FreeCAD" stays true). The full list of what it rewrites is reviewed and committed in
+`scripts/sweep-strings.expected.tsv`.
 
 The gate discards and refetches the checkout before applying anything. Verifying against a tree
 that is already half-patched proves nothing: a stale patch would report success because its

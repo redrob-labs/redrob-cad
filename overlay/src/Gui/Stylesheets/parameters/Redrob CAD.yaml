@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: LGPL-2.1-or-later
-# OpenCAD's compact, high-contrast design tokens. The existing parameterized
+# Redrob CAD's compact, high-contrast design tokens. The existing parameterized
 # FreeCAD stylesheet consumes these values, preserving every native widget.
 3DViewBackgroundRefColor: "@BackgroundColor"
 ButtonBackgroundHooverColor: "@PrimaryColorLighten4"

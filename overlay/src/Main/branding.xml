@@ -3,8 +3,8 @@
 <!--
   FreeCAD reads this at startup and it decides the product identity the user sees.
 
-  It previously said OpenCAD, and pointed MaintainerUrl at github.com/savagemanage/openCAD, a
-  repository that is not ours. Meanwhile the window title, set separately in src/Gui, said
+  It previously carried an earlier working name, and pointed MaintainerUrl at a repository that is
+  not ours. Meanwhile the window title, set separately in src/Gui, said
   "Redrob CAD". So the application presented two different names depending on where you looked, and
   offered a third party's URL as its maintainer.
 

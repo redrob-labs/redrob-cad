@@ -1,10 +1,10 @@
-# FreeCAD ↔ OpenCAD feature parity
+# FreeCAD ↔ Redrob CAD feature parity
 
-**Audit basis:** the OpenCAD branch is based directly on the current FreeCAD `main` source snapshot. “Source retained” means the same implementation is present in OpenCAD, not that a replacement merely resembles it. Runtime availability and behavior still depend on the same optional libraries, operating-system integrations, build flags, external solvers, and successful execution of the relevant upstream tests.
+**Audit basis:** the Redrob CAD branch is based directly on the current FreeCAD `main` source snapshot. “Source retained” means the same implementation is present in Redrob CAD, not that a replacement merely resembles it. Runtime availability and behavior still depend on the same optional libraries, operating-system integrations, build flags, external solvers, and successful execution of the relevant upstream tests.
 
 ## Core and cross-cutting systems
 
-| Feature family | FreeCAD implementation | OpenCAD implementation | Status |
+| Feature family | FreeCAD implementation | Redrob CAD implementation | Status |
 |---|---|---|---|
 | Runtime foundation | `src/Base`: types, persistence, units, parameters, Python interpreter, logging, files, XML/ZIP, exceptions, threading | Same source; runtime verification pending | Source retained |
 | Parametric document model | `src/App`: documents, objects, dynamic/static properties, extensions, links, expressions | Same `FreeCADApp` implementation | Source retained |
@@ -13,20 +13,20 @@
 | Native project format | FCStd ZIP, `Document.xml`, `GuiDocument.xml`, auxiliary streams, thumbnail | Same readers/writers and schema | Source retained |
 | Python automation | `FreeCAD`, `FreeCADGui`, generated bindings, FeaturePython, ViewProviderPython, macros | Same module names and initialization paths | Source retained |
 | Add-ons | Legacy `Init.py`/`InitGui.py`, package-style `freecad.*`, `package.xml`, Addon Manager | Same discovery, precedence, metadata, and loading | Source retained |
-| Commands/workbenches | Native and Python command registry, menus, toolbars, shortcuts, macro recording | Same IDs and command manager; OpenCAD AI adds commands | Source retained + extended |
-| Preferences | XML parameter tree, preference pages/packs, per-workbench settings | Same storage/API; OpenCAD pack added | Source retained + modernized |
+| Commands/workbenches | Native and Python command registry, menus, toolbars, shortcuts, macro recording | Same IDs and command manager; Redrob CAD AI adds commands | Source retained + extended |
+| Preferences | XML parameter tree, preference pages/packs, per-workbench settings | Same storage/API; Redrob CAD pack added | Source retained + modernized |
 | Internationalization | Qt translations and workbench catalogs | Same translation resources | Source retained |
 | Accessibility/input | Keyboard shortcuts, touch, mouse navigation, 3Dconnexion where built | Same Qt and device integrations | Source retained |
 | 3D viewport | Coin3D, Quarter, OpenGL, view providers, selection, draggers, overlays | Same interactive viewport | Source retained |
 | Navigation | CAD, Blender, Revit, NX, SolidWorks, Maya, OpenCascade, OpenSCAD, TinkerCAD, touch/gesture styles | Same navigation implementations | Source retained |
 | Headless mode | `FreeCADCmd`, `import FreeCAD`, GUI-off builds | Same targets and App runtime | Source retained |
-| Desktop UI | Qt widgets, docks, task panels, property editor, MDI, dialogs | Same inherited UI with lightweight OpenCAD native theme and supported `branding.xml` presentation | Modernized; inherited source retained |
-| AI agent | None built into upstream core | RedRob Code workbench, context bridge, session UI, reviewed Python runner | New |
+| Desktop UI | Qt widgets, docks, task panels, property editor, MDI, dialogs | Same inherited UI with lightweight Redrob CAD native theme and supported `branding.xml` presentation | Modernized; inherited source retained |
+| AI agent | None built into upstream core | Redrob Code workbench, context bridge, session UI, reviewed Python runner | New |
 | Tests | Base/App/Gui/module GTest, Python tests, Qt/offscreen and visual tests | Complete upstream suites retained | Source retained; environment-dependent execution |
 
 ## Bundled modules and workbenches
 
-| Module/workbench | FreeCAD feature set | OpenCAD side-by-side result | Status |
+| Module/workbench | FreeCAD feature set | Redrob CAD side-by-side result | Status |
 |---|---|---|---|
 | AddonManager | Search, install, update, remove, compatibility and Python dependency management | Same module/submodule integration | Source retained when submodule is initialized |
 | Assembly | Components, joints, constraints, assembly solver and related task panels | Same C++/Python module and UI | Source retained |
@@ -52,18 +52,18 @@
 | Show | Shared scene/display helpers used by modules and scripts | Same support module | Source retained |
 | Sketcher | 2D geometry, dimensional/geometric constraints, solver and interactive edit mode | Same solver, commands, view providers and task UI | Source retained |
 | Spreadsheet | Cells, aliases, expressions, styling, import/export and table editor | Same module | Source retained |
-| Start | Start page, recent files and onboarding surface | Same module under OpenCAD branding | Source retained |
+| Start | Start page, recent files and onboarding surface | Same module under Redrob CAD branding | Source retained |
 | Surface | Surface filling, sections and curve/surface construction tools | Same workbench | Source retained |
 | TechDraw | Pages, views, projections, sections, dimensions, annotations, templates and export | Same module | Source retained |
 | Test | Python/GUI test harness and test workbench | Same test module | Source retained when enabled |
 | Tux | Persistent toolbars, navigation indicator and compatibility helpers | Same utility module | Source retained |
 | Web | Embedded web view/integration features | Same optional module | Source retained when built |
 | TemplatePyMod | Developer template, disabled upstream by default | Remains disabled by default | Exact upstream state |
-| OpenCADAI | Not present | RedRob-backed CAD assistant workbench | New |
+| RedrobCAD | Not present | Redrob Code-backed CAD assistant workbench | New |
 
 ## User-interface surfaces
 
-| Surface | FreeCAD | OpenCAD | Status |
+| Surface | FreeCAD | Redrob CAD | Status |
 |---|---|---|---|
 | Main menu and toolbars | Workbench-populated Qt actions | Same actions and customization under modern tokens | Source retained |
 | Combo/tree view | Model tree, task tabs, drag/drop, context menus | Same native view with increased spacing and contrast | Modernized |
@@ -72,13 +72,13 @@
 | Python console/editor | Console, tracing, macros, syntax highlighting | Same implementation | Source retained |
 | Report/selection/DAG views | Dockable diagnostic and navigation views | Same docks | Source retained |
 | MDI/document tabs | 3D, text, spreadsheet, TechDraw, web and split views | Same MDI contracts | Source retained |
-| Preferences/customization | Themes, shortcuts, toolbar and workbench management | Same dialogs plus OpenCAD built-in theme | Extended |
+| Preferences/customization | Themes, shortcuts, toolbar and workbench management | Same dialogs plus Redrob CAD built-in theme | Extended |
 | Render/selection | Display modes, clipping, preselection, subelements, screenshots | Same Coin scene and view-provider mapping | Source retained |
 | AI dock | N/A | Dockable chat, plan/build selector, context inclusion, interruption, settings and reviewed script execution | New |
 
 ## File and data interoperability
 
-| Family | FreeCAD | OpenCAD | Status |
+| Family | FreeCAD | Redrob CAD | Status |
 |---|---|---|---|
 | Native | FCStd and backup/recovery behavior | Same | Source retained |
 | B-rep/CAD | BREP, STEP/STP, IGES/IGS and zipped STEP where enabled | Same handlers | Source retained |
@@ -94,14 +94,14 @@ The exact file-filter list remains registration-driven (`addImportType`/`addExpo
 
 ## Parity conclusion
 
-OpenCAD does not intentionally remove or replace an inherited FreeCAD capability: the upstream implementation is retained at commit `d1424838c2cf9858f7b35cf6b774cfa07f7ba515`, with isolated branding, first-run theme, and AI additions listed in this repository's diff. That establishes source retention, not automatic proof of every runtime path. Binary/runtime parity for a package remains conditional on equivalent optional dependencies and successful upstream test execution.
+Redrob CAD does not intentionally remove or replace an inherited FreeCAD capability: the upstream implementation is retained at commit `d1424838c2cf9858f7b35cf6b774cfa07f7ba515`, with isolated branding, first-run theme, and AI additions listed in this repository's diff. That establishes source retention, not automatic proof of every runtime path. Binary/runtime parity for a package remains conditional on equivalent optional dependencies and successful upstream test execution.
 
 ## Validation record for this change
 
 - Target base and independent reference clone resolve to the same upstream commit.
-- All 31 module registrations, including the new OpenCAD AI module, were checked in `src/Mod/CMakeLists.txt`.
+- All 31 module registrations, including the new Redrob CAD AI module, were checked in `src/Mod/CMakeLists.txt`.
 - New Python files pass syntax compilation and Ruff; XML preference files and all 66 theme tokens parse structurally; `git diff --check` passes.
 - CMake configuration reached dependency discovery but could not complete in the sandbox because no Qt 5/6 development installation is available.
-- The full upstream C++/GUI/module suite and a live authenticated RedRob session were therefore **not executed in this environment**. They remain release gates, not completed evidence.
+- The full upstream C++/GUI/module suite and a live authenticated Redrob Code session were therefore **not executed in this environment**. They remain release gates, not completed evidence.
 
 This audit does not claim that optional external solvers/SDKs are bundled, that every add-on is compatible, or that retained tests have passed until a dependency-complete build runs them.
