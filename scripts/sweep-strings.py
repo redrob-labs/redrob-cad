@@ -242,10 +242,13 @@ class Sweep:
         if original.count("\r\n") != rewritten.count("\r\n"):
             raise SystemExit(f"error: line endings changed in {self.rel(path)}")
         if self.write:
-            path.write_text(rewritten, **WRITE_ENCODING)
+            with open(path, "w", **WRITE_ENCODING) as handle:
+                handle.write(rewritten)
 
     def read(self, path: Path) -> str:
-        return path.read_text(encoding="utf-8", errors="surrogateescape", newline="")
+        # open(), not Path.read_text(): its newline argument only exists from Python 3.13.
+        with open(path, encoding="utf-8", errors="surrogateescape", newline="") as handle:
+            return handle.read()
 
     def cpp(self, path: Path):
         text = self.read(path)
