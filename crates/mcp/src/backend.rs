@@ -21,11 +21,17 @@ pub struct Remote {
     addr: String,
     conn: Option<(BufReader<TcpStream>, TcpStream)>,
     next_id: u64,
+    /// Sent with every request when the app's control server asks for one.
+    token: Option<String>,
 }
+
+/// Environment variable carrying the control-server token (set by the app for its own agent).
+pub const CONTROL_TOKEN_ENV: &str = "REDROB_CAD_CONTROL_TOKEN";
 
 impl Remote {
     pub fn connect(addr: &str) -> std::io::Result<Self> {
-        let mut r = Self { addr: addr.to_string(), conn: None, next_id: 1 };
+        let token = std::env::var(CONTROL_TOKEN_ENV).ok().filter(|t| !t.is_empty());
+        let mut r = Self { addr: addr.to_string(), conn: None, next_id: 1, token };
         r.reconnect()?;
         Ok(r)
     }
@@ -68,7 +74,11 @@ impl Backend for Remote {
     fn call(&mut self, method: &str, params: Value) -> Result<Value, String> {
         let id = self.next_id;
         self.next_id += 1;
-        let line = json!({"id": id, "method": method, "params": params}).to_string();
+        let mut msg = json!({"id": id, "method": method, "params": params});
+        if let (Some(t), Some(o)) = (&self.token, msg.as_object_mut()) {
+            o.insert("token".into(), Value::String(t.clone()));
+        }
+        let line = msg.to_string();
         let reply = match self.roundtrip(&line) {
             Ok(r) => r,
             Err(_) => self.roundtrip(&line).map_err(|e| format!("Redrob CAD at {}: {e}", self.addr))?,

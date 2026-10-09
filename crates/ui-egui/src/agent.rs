@@ -1,0 +1,324 @@
+//! The Agent palette: a chat with Redrob Code, which drives this window through its own MCP tools.
+//!
+//! The UI crate stays platform-neutral (it also runs in the browser): the agent process and its
+//! protocol live behind [`AgentHost`], supplied by the desktop app through
+//! [`crate::Services::agent`]. Without one (the web build) the palette says so.
+
+use egui::{Color32, RichText, vec2};
+
+use crate::CadApp;
+use crate::theme::Tokens;
+
+/// One choice in a permission request, as the agent offered it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PermissionOption {
+    pub id: String,
+    pub name: String,
+    /// `allow_once`, `allow_always`, `reject_once` or `reject_always`.
+    pub kind: String,
+}
+
+/// What the agent process reports, in order.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum AgentEvent {
+    /// The session is open; `name` is the agent's own name and version.
+    Ready { name: String },
+    /// A piece of the agent's reply.
+    Text(String),
+    /// A piece of the agent's visible reasoning.
+    Thought(String),
+    /// A tool call started or changed state.
+    Tool { id: String, title: String, status: String },
+    /// The agent asks before running a tool; answer with [`AgentHost::answer`].
+    Permission { request: u64, title: String, options: Vec<PermissionOption> },
+    /// The turn ended; `stop` is the protocol's stop reason (`end_turn`, `cancelled`, ...).
+    TurnEnd { stop: String },
+    /// Something the user should read that is not part of the reply.
+    Notice(String),
+    /// The turn or the session failed.
+    Error(String),
+}
+
+/// A running agent session. Every call returns at once; results arrive through [`Self::poll`].
+pub trait AgentHost {
+    fn prompt(&mut self, text: &str);
+    fn cancel(&mut self);
+    /// Answer a [`AgentEvent::Permission`]; `None` declines.
+    fn answer(&mut self, request: u64, option: Option<&str>);
+    fn poll(&mut self) -> Vec<AgentEvent>;
+}
+
+/// Starts an agent session on first use.
+pub type AgentFactory = Box<dyn FnMut() -> Result<Box<dyn AgentHost>, String>>;
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Entry {
+    User(String),
+    Agent(String),
+    Thought(String),
+    Tool { id: String, title: String, status: String },
+    Notice(String),
+    Error(String),
+}
+
+#[derive(Default)]
+pub struct AgentPanel {
+    host: Option<Box<dyn AgentHost>>,
+    pub entries: Vec<Entry>,
+    pub input: String,
+    pub busy: bool,
+    pub agent_name: Option<String>,
+    pub pending: Option<(u64, String, Vec<PermissionOption>)>,
+}
+
+impl AgentPanel {
+    /// Fold one event into the transcript. Text and thought chunks extend the open entry.
+    pub fn apply(&mut self, ev: AgentEvent) {
+        match ev {
+            AgentEvent::Ready { name } => self.agent_name = Some(name),
+            AgentEvent::Text(s) => match self.entries.last_mut() {
+                Some(Entry::Agent(t)) => t.push_str(&s),
+                _ => self.entries.push(Entry::Agent(s)),
+            },
+            AgentEvent::Thought(s) => match self.entries.last_mut() {
+                Some(Entry::Thought(t)) => t.push_str(&s),
+                _ => self.entries.push(Entry::Thought(s)),
+            },
+            AgentEvent::Tool { id, title, status } => {
+                let found = self.entries.iter_mut().rev().find_map(|e| match e {
+                    Entry::Tool { id: i, title: t, status: s } if *i == id => Some((t, s)),
+                    _ => None,
+                });
+                match found {
+                    Some((t, s)) => {
+                        if !title.is_empty() {
+                            *t = title;
+                        }
+                        if !status.is_empty() {
+                            *s = status;
+                        }
+                    }
+                    None => self.entries.push(Entry::Tool { id, title, status }),
+                }
+            }
+            AgentEvent::Permission { request, title, options } => self.pending = Some((request, title, options)),
+            AgentEvent::TurnEnd { stop } => {
+                self.busy = false;
+                self.pending = None;
+                if stop != "end_turn" {
+                    self.entries.push(Entry::Notice(match stop.as_str() {
+                        "cancelled" => "Stopped.".to_string(),
+                        "max_tokens" => "The reply hit its length limit.".to_string(),
+                        "refusal" => "Redrob Code declined this request.".to_string(),
+                        other => format!("The turn ended: {other}."),
+                    }));
+                }
+            }
+            AgentEvent::Notice(s) => self.entries.push(Entry::Notice(s)),
+            AgentEvent::Error(s) => {
+                self.busy = false;
+                self.pending = None;
+                self.entries.push(Entry::Error(s));
+            }
+        }
+    }
+
+    fn send(&mut self, factory: &mut Option<AgentFactory>) {
+        let text = self.input.trim().to_string();
+        if text.is_empty() || self.busy {
+            return;
+        }
+        if self.host.is_none() {
+            let Some(f) = factory.as_mut() else {
+                self.entries.push(Entry::Error("The agent runs in the desktop app only.".into()));
+                return;
+            };
+            match f() {
+                Ok(h) => self.host = Some(h),
+                Err(e) => {
+                    self.entries.push(Entry::Error(e));
+                    return;
+                }
+            }
+        }
+        self.input.clear();
+        self.entries.push(Entry::User(text.clone()));
+        self.busy = true;
+        if let Some(h) = self.host.as_mut() {
+            h.prompt(&text);
+        }
+    }
+
+    /// Drain the host. Returns true while a turn is running, so the caller keeps repainting.
+    pub fn poll(&mut self) -> bool {
+        if let Some(h) = self.host.as_mut() {
+            for ev in h.poll() {
+                self.apply(ev);
+            }
+        }
+        self.busy || self.pending.is_some()
+    }
+
+    fn answer(&mut self, option: Option<String>) {
+        if let (Some((req, _, _)), Some(h)) = (self.pending.take(), self.host.as_mut()) {
+            h.answer(req, option.as_deref());
+        }
+    }
+
+    fn cancel(&mut self) {
+        if let Some(h) = self.host.as_mut() {
+            h.cancel();
+        }
+    }
+}
+
+/// The palette body.
+pub fn agent_section(app: &mut CadApp, ui: &mut egui::Ui) {
+    let t = Tokens::get();
+    let panel = &mut app.agent;
+    ui.add_space(6.0);
+    ui.horizontal(|ui| {
+        ui.add_space(10.0);
+        ui.label(RichText::new("Agent").size(14.0).color(t.text));
+        if let Some(n) = &panel.agent_name {
+            ui.label(RichText::new(n).small().color(t.text_faint));
+        }
+    });
+    ui.add_space(4.0);
+    let input_h = 86.0;
+    let list_h = (ui.available_height() - input_h).max(80.0);
+    egui::ScrollArea::vertical().id_salt("agent_log").max_height(list_h).auto_shrink([false, false]).stick_to_bottom(true).show(ui, |ui| {
+        ui.set_width(ui.available_width() - 10.0);
+        if panel.entries.is_empty() {
+            ui.add_space(4.0);
+            ui.horizontal_wrapped(|ui| {
+                ui.add_space(10.0);
+                ui.label(RichText::new("Ask Redrob Code to draw, change or check this drawing.").color(t.text_dim));
+            });
+        }
+        for e in &panel.entries {
+            ui.horizontal_wrapped(|ui| {
+                ui.add_space(10.0);
+                match e {
+                    Entry::User(s) => {
+                        ui.label(RichText::new(s).color(t.text).strong());
+                    }
+                    Entry::Agent(s) => {
+                        ui.label(RichText::new(s).color(t.text));
+                    }
+                    Entry::Thought(s) => {
+                        ui.label(RichText::new(s).italics().small().color(t.text_faint));
+                    }
+                    Entry::Tool { title, status, .. } => {
+                        let mark = match status.as_str() {
+                            "completed" => "✓",
+                            "failed" => "✗",
+                            _ => "…",
+                        };
+                        ui.label(RichText::new(format!("{mark} {title}")).small().color(t.text_dim));
+                    }
+                    Entry::Notice(s) => {
+                        ui.label(RichText::new(s).small().color(t.text_dim));
+                    }
+                    Entry::Error(s) => {
+                        ui.label(RichText::new(s).small().color(Color32::from_rgb(0xff, 0x8a, 0x80)));
+                    }
+                }
+            });
+            ui.add_space(4.0);
+        }
+    });
+    let mut answer: Option<Option<String>> = None;
+    if let Some((_, title, options)) = &panel.pending {
+        ui.horizontal_wrapped(|ui| {
+            ui.add_space(10.0);
+            ui.label(RichText::new(format!("Allow {title}?")).color(t.text));
+        });
+        ui.horizontal_wrapped(|ui| {
+            ui.add_space(10.0);
+            for o in options {
+                if ui.button(&o.name).clicked() {
+                    answer = Some(if o.kind.starts_with("reject") { None } else { Some(o.id.clone()) });
+                }
+            }
+        });
+    }
+    if let Some(a) = answer {
+        panel.answer(a);
+    }
+    ui.add_space(4.0);
+    let mut send = false;
+    let mut stop = false;
+    ui.horizontal(|ui| {
+        ui.add_space(10.0);
+        let w = ui.available_width() - 10.0;
+        let edit = egui::TextEdit::multiline(&mut panel.input).hint_text("Message Redrob Code").desired_rows(2).desired_width(w);
+        let r = ui.add_enabled(!panel.busy, edit);
+        if r.has_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter) && !i.modifiers.shift) {
+            send = true;
+        }
+    });
+    ui.horizontal(|ui| {
+        ui.add_space(10.0);
+        if panel.busy {
+            ui.spinner();
+            if ui.add_sized(vec2(60.0, 22.0), egui::Button::new("Stop")).clicked() {
+                stop = true;
+            }
+        } else if ui.add_sized(vec2(60.0, 22.0), egui::Button::new("Send")).clicked() {
+            send = true;
+        }
+    });
+    if send {
+        // A trailing newline from Enter is not part of the message.
+        let trimmed = panel.input.trim_end_matches('\n').to_string();
+        panel.input = trimmed;
+        panel.send(&mut app.services.agent);
+    }
+    if stop {
+        panel.cancel();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn chunks_merge_and_tools_update_in_place() {
+        let mut p = AgentPanel { busy: true, ..Default::default() };
+        p.apply(AgentEvent::Text("Drawing ".into()));
+        p.apply(AgentEvent::Text("a circle.".into()));
+        p.apply(AgentEvent::Tool { id: "t1".into(), title: "command_line".into(), status: "pending".into() });
+        p.apply(AgentEvent::Tool { id: "t1".into(), title: String::new(), status: "completed".into() });
+        p.apply(AgentEvent::Text("Done.".into()));
+        p.apply(AgentEvent::TurnEnd { stop: "end_turn".into() });
+        assert_eq!(
+            p.entries,
+            vec![
+                Entry::Agent("Drawing a circle.".into()),
+                Entry::Tool { id: "t1".into(), title: "command_line".into(), status: "completed".into() },
+                Entry::Agent("Done.".into()),
+            ]
+        );
+        assert!(!p.busy);
+    }
+
+    #[test]
+    fn cancelled_turn_leaves_a_notice_and_clears_a_pending_question() {
+        let mut p = AgentPanel { busy: true, ..Default::default() };
+        p.apply(AgentEvent::Permission { request: 3, title: "execute".into(), options: vec![] });
+        assert!(p.pending.is_some());
+        p.apply(AgentEvent::TurnEnd { stop: "cancelled".into() });
+        assert!(p.pending.is_none());
+        assert_eq!(p.entries, vec![Entry::Notice("Stopped.".into())]);
+    }
+
+    #[test]
+    fn without_a_host_factory_the_panel_says_so() {
+        let mut p = AgentPanel { input: "draw a box".into(), ..Default::default() };
+        p.send(&mut None);
+        assert_eq!(p.entries, vec![Entry::Error("The agent runs in the desktop app only.".into())]);
+        assert!(!p.busy);
+    }
+}
