@@ -538,6 +538,7 @@ version = "0.3.0"
 dependencies = [
  "cadcraft-engine",
  "cadcraft-io",
+ "cadcraft-mcp",
  "cadcraft-ui-egui",
  "eframe",
  "egui",

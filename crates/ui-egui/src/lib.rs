@@ -8,6 +8,7 @@
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 #![forbid(unsafe_code)]
 
+pub mod agent;
 pub mod canvas;
 pub mod chrome;
 pub mod cmdline;
@@ -53,6 +54,8 @@ pub struct UiState {
     pub start_tab: bool,
     pub dialog: Option<String>,
     pub history_lines: usize,
+    /// Right palette tab: 0 Layers and Properties, 3 Agent.
+    pub palette_tab: u8,
 }
 
 impl Default for UiState {
@@ -74,6 +77,7 @@ impl Default for UiState {
             start_tab: false,
             dialog: None,
             history_lines: 3,
+            palette_tab: 0,
         }
     }
 }
@@ -83,6 +87,8 @@ impl Default for UiState {
 pub struct Services {
     pub pick_open: Option<Box<dyn Fn() -> Option<String>>>,
     pub pick_save: Option<Box<dyn Fn(&str) -> Option<String>>>,
+    /// Starts the built-in agent (desktop only; `None` in the browser).
+    pub agent: Option<agent::AgentFactory>,
 }
 
 pub struct CadApp {
@@ -101,6 +107,7 @@ pub struct CadApp {
     styled: bool,
     pub frame_ms: f64,
     pub quit_requested: bool,
+    pub agent: agent::AgentPanel,
 }
 
 impl CadApp {
@@ -121,6 +128,7 @@ impl CadApp {
             styled: false,
             frame_ms: 0.0,
             quit_requested: false,
+            agent: agent::AgentPanel::default(),
         }
     }
 
@@ -198,6 +206,9 @@ impl CadApp {
             self.styled = true;
         }
         self.drain_control(ctx);
+        if self.agent.poll() {
+            ctx.request_repaint_after(std::time::Duration::from_millis(50));
+        }
         if !self.synthetic.is_empty() {
             ctx.request_repaint();
         }

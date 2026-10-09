@@ -5,9 +5,14 @@
 //! `--control <port>` (or `CADCRAFT_CONTROL_PORT`) starts a localhost JSON-lines control server:
 //! `{"id":1,"method":"cmdline.input","params":{"text":"circle 0,0 5"}}` → `{"id":1,"ok":true,…}`.
 //! See `cadcraft_ui_egui::control` for the methods.
+//!
+//! Without `--control`, the server still runs on a free port with a per-launch token, for the
+//! built-in agent only (see `acp`). `redrob-cad mcp --connect <addr>` is the MCP server that agent
+//! is given: it serves MCP on stdio and drives the window at `<addr>`.
 #![cfg_attr(all(target_os = "windows", not(debug_assertions)), windows_subsystem = "windows")]
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
+mod acp;
 mod control_server;
 #[cfg(target_os = "macos")]
 mod native_menu;
@@ -50,8 +55,9 @@ pub fn install_io() {
     });
 }
 
-fn services() -> Services {
+fn services(agent: Option<cadcraft_ui_egui::agent::AgentFactory>) -> Services {
     Services {
+        agent,
         pick_open: Some(Box::new(|| {
             rfd::FileDialog::new()
                 .add_filter("Drawing (DXF)", &["dxf"])
@@ -83,7 +89,57 @@ fn version_string() -> String {
     format!("redrob-cad {} ({sha})", env!("CARGO_PKG_VERSION"))
 }
 
+/// A per-launch secret for the control server: 128 bits from the standard library's randomly
+/// seeded hasher (no extra dependency for one value).
+fn control_token() -> String {
+    use std::hash::{BuildHasher, Hasher};
+    let mut out = String::new();
+    for i in 0..2u8 {
+        let mut h = std::collections::hash_map::RandomState::new().build_hasher();
+        h.write_u8(i);
+        h.write_u128(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0));
+        out.push_str(&format!("{:016x}", h.finish()));
+    }
+    out
+}
+
+/// Where the agent works: the launch directory, or the home directory when launched from a
+/// desktop shell (whose working directory is `/`).
+fn agent_cwd() -> String {
+    let home = std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" }).map(std::path::PathBuf::from);
+    let cwd = std::env::current_dir().ok().filter(|d| d.parent().is_some());
+    cwd.or(home).map(|d| d.to_string_lossy().to_string()).unwrap_or_else(|| ".".into())
+}
+
+/// `redrob-cad mcp --connect <addr>`: the MCP server the built-in agent runs.
+fn serve_mcp(args: &[String]) -> std::process::ExitCode {
+    let Some(addr) = args.iter().position(|a| a == "--connect").and_then(|i| args.get(i + 1)) else {
+        eprintln!("usage: redrob-cad mcp --connect HOST:PORT");
+        return std::process::ExitCode::FAILURE;
+    };
+    let backend = match cadcraft_mcp::Remote::connect(addr) {
+        Ok(r) => r,
+        Err(e) => {
+            eprintln!("redrob-cad: cannot connect to {addr}: {e}");
+            return std::process::ExitCode::FAILURE;
+        }
+    };
+    let mut server = cadcraft_mcp::Server::new(Box::new(backend));
+    match server.serve(std::io::stdin().lock(), std::io::stdout().lock()) {
+        Ok(()) => std::process::ExitCode::SUCCESS,
+        Err(e) => {
+            eprintln!("redrob-cad: mcp: {e}");
+            std::process::ExitCode::FAILURE
+        }
+    }
+}
+
 fn main() -> eframe::Result {
+    let argv: Vec<String> = std::env::args().skip(1).collect();
+    if argv.first().map(String::as_str) == Some("mcp") {
+        let code = serve_mcp(&argv[1..]);
+        std::process::exit(if code == std::process::ExitCode::SUCCESS { 0 } else { 1 });
+    }
     let mut control_port: Option<u16> = std::env::var("CADCRAFT_CONTROL_PORT").ok().and_then(|p| p.parse().ok());
     let mut files = Vec::new();
     let mut sample = false;
@@ -119,15 +175,24 @@ fn main() -> eframe::Result {
         "Redrob CAD",
         options,
         Box::new(move |cc| {
-            let mut app = CadApp::new(Session::empty(), services());
+            // `--control PORT` keeps the tokenless protocol; otherwise a free port and a token.
+            let token = if control_port.is_some() { None } else { Some(control_token()) };
+            let (rx, bound) = control_server::start(control_port.unwrap_or(0), cc.egui_ctx.clone(), token.clone());
+            let agent: Option<cadcraft_ui_egui::agent::AgentFactory> = bound.map(|port| {
+                let link = acp::McpLink { addr: format!("127.0.0.1:{port}"), token };
+                let ctx = cc.egui_ctx.clone();
+                Box::new(move || {
+                    let bin = acp::find_binary().ok_or_else(|| acp::INSTALL_HINT.to_string())?;
+                    let host = acp::AcpHost::start(&bin, &agent_cwd(), link.clone(), ctx.clone())?;
+                    Ok(Box::new(host) as Box<dyn cadcraft_ui_egui::agent::AgentHost>)
+                }) as cadcraft_ui_egui::agent::AgentFactory
+            });
+            let mut app = CadApp::new(Session::empty(), services(agent));
             app.integrated_titlebar = cfg!(target_os = "macos");
             if let Some(rs) = &cc.wgpu_render_state {
                 app.set_wgpu(rs);
             }
-            if let Some(port) = control_port {
-                let rx = control_server::start(port, cc.egui_ctx.clone());
-                app = app.with_control(rx);
-            }
+            app = app.with_control(rx);
             if sample {
                 let _ = app.run("ui.sample", serde_json::json!({}));
             }

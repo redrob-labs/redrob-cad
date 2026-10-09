@@ -260,10 +260,27 @@ pub fn right_palettes(app: &mut CadApp, ui: &mut egui::Ui) {
         for (i, icon) in [Icon::Layers, Icon::Blocks, Icon::Properties].iter().enumerate() {
             let br = Rect::from_center_size(pos2(r.left() + 30.0 + i as f32 * 52.0, r.top() + tab_h / 2.0), vec2(20.0, 20.0));
             icons::paint(&p, br, *icon, false);
+            if ui.interact(br.expand(6.0), ui.id().with(("palette_tab", i)), Sense::click()).clicked() {
+                app.ui.palette_tab = 0;
+            }
+        }
+        // The Agent tab: a text tab, since the icon set has no agent glyph.
+        let ar = Rect::from_center_size(pos2(r.left() + 30.0 + 3.0 * 52.0 + 8.0, r.top() + tab_h / 2.0), vec2(48.0, 22.0));
+        let on = app.ui.palette_tab == 3;
+        if on {
+            p.rect_filled(ar, 3.0, t.tab_active);
+        }
+        p.text(ar.center(), egui::Align2::CENTER_CENTER, "Agent", egui::FontId::proportional(12.5), if on { t.text } else { t.text_dim });
+        if ui.interact(ar, ui.id().with("palette_tab_agent"), Sense::click()).on_hover_text("Redrob Code").clicked() {
+            app.ui.palette_tab = 3;
         }
         icons::paint(&p, Rect::from_center_size(pos2(r.right() - 14.0, r.top() + tab_h / 2.0), vec2(14.0, 14.0)), Icon::ChevronRight, false);
         let body = Rect::from_min_max(pos2(r.left(), r.top() + tab_h), r.max);
         ui.scope_builder(egui::UiBuilder::new().max_rect(body), |ui| {
+            if app.ui.palette_tab == 3 {
+                crate::agent::agent_section(app, ui);
+                return;
+            }
             egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
                 layers_section(app, ui);
                 ui.add_space(8.0);
