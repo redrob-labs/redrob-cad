@@ -1,106 +1,41 @@
-# Redrob CAD: patch-based customization of FreeCAD
+# Redrob CAD
 
-Redrob CAD is a parametric 3D modeller with an AI agent sidecar, an LGPL-2.1-or-later fork of FreeCAD.
-This repository holds **only our changes**. Upstream FreeCAD is fetched at build time, never
-vendored, so `git log` here shows Redrob CAD work rather than being buried under upstream history.
+Redrob CAD is an agentic 2D drafting app that lets an AI agent draw, edit and check DWG and DXF
+drawings for you.
 
+한국어: [README.ko.md](./README.ko.md)
+
+It is a hard fork of [CADCraft](https://github.com/storytold/cadcraft), written in Rust. It runs natively
+on macOS, Windows, Linux and FreeBSD, and in the browser via WebAssembly. Agents drive it over MCP
+(`crates/mcp`, see [docs/mcp.md](./docs/mcp.md)).
+
+## Status
+
+Early. The tree is CADCraft `v0.3.0` with our fork files added. Planned next, one pull request each:
+
+1. Rebrand to Redrob CAD (name, app id, icon, about text; upstream trademarks removed).
+2. Redrob Code as the built-in agent, talking to the app over MCP.
+3. Connect device, so the app signs in to a Redrob workspace.
+
+## Build and test
+
+Requirements: Rust stable (1.90 or newer). On Linux, the X11/Wayland development libraries listed in
+[`.github/workflows/ci.yml`](./.github/workflows/ci.yml).
+
+```sh
+git clone https://github.com/redrob-labs/redrob-cad.git
+cd redrob-cad
+cargo run -p cadcraft --release   # the desktop app
+cargo xtask ci                    # the gate CI runs
 ```
-upstream.json     the pinned upstream repo + commit -- the only place a baseline appears
-overlay/          files that exist only in this product (copied in, never patched)
-patches/          our modifications to upstream files, one patch per logical change
-scripts/          fetch, apply, and THE GATE
-```
 
-Build:
+## Documents
 
-```
-./scripts/verify-patches.sh     # fetch upstream, apply everything, assert the result
-```
+- Fork point, absorbing upstream, what this fork does not own: [UPSTREAM.md](./UPSTREAM.md)
+- Attribution: [NOTICE](./NOTICE)
+- Contribution rules: CONTRIBUTING.md and FORKS.md in [redrob-labs/.github](https://github.com/redrob-labs/.github)
 
-That leaves a complete, customized FreeCAD tree in `build/freecad`, which is then built with
-FreeCAD's own CMake + pixi toolchain.
+## License
 
-## Why this shape
-
-The previous shape was a **single squashed import commit**: 13,265 tracked files, no upstream
-remote, no tags, and no merge base with FreeCAD. Nothing recorded which upstream commit it came
-from, so upstream releases could never be pulled: the fork could only diverge.
-
-Recovering that baseline was the first task, and it was done by measurement rather than by
-guessing. Diffing the snapshot against current upstream `main` showed **1,430 differing files**,
-which looks like a heavily modified fork. It is not: of 120 randomly sampled differing files,
-**every single one** had its snapshot content present verbatim somewhere in upstream's history.
-The divergence was upstream moving on, not us editing. Scoring the snapshot against all 1,143
-first-parent commits on `main` put the minimum at `d1424838c2` (2026-09-07) (**59 files**) and
-all 59 are now accounted for:
-
-| Kind | Count | Where it lives now |
-|---|---|---|
-| Files only we have | 10 | `overlay/` |
-| Upstream files we modify | 10 | `patches/` (5 patches, grouped by intent) |
-| Upstream files we delete | 39 | `scripts/upstream-ci-files.txt` |
-
-So the customization is 20 files against a 13,000-file upstream. Storing the other ~13,200 was
-what made upstream unpullable.
-
-## The 39 deletions were upstream's entire CI
-
-The import commit deleted **all of FreeCAD's own pipeline**: `CI_primary.yml`, the Linux, macOS
-and Windows build actions, CodeQL, the release builds, the LibPack jobs. That is why this
-repository had no CI: not an omission, a deletion, with no record that upstream's had ever
-existed.
-
-It is still removed, because upstream's pipeline is built for upstream's infrastructure (its
-LibPack hosting, its caches, its repository secrets) and running all 39 unchanged on a fork
-produces a wall of red nobody reads. The difference is that it is now a **reviewable list** in
-`scripts/upstream-ci-files.txt` rather than an invisible deletion, and re-enabling one workflow is
-a one-line diff.
-
-Meanwhile this repository now has CI of its own, which it did not before. It runs the gate, and it
-runs `package/windows-sign-filter.test.sh`: a test this repository added in PR #1 and then had no
-way to execute.
-
-## Versioning
-
-`version.json` is upstream's, unmodified. FreeCAD adopted CalVer (`YY.N`) in FEP-0003, so
-`26.3.0-dev` is upstream's own numbering for the third 2026 cycle, not a fork renumbering. The
-gate asserts the shipped version matches `upstream.json`, so the pin and the build cannot drift
-apart silently.
-
-The `26.3` branch is scheduled for 2026-09-30. When it exists, prefer pinning that tag over a
-`main`-branch commit.
-
-## Bumping upstream
-
-1. Edit `commit` (and `version`) in `upstream.json`.
-2. Run `./scripts/verify-patches.sh`.
-3. A patch that no longer applies fails with the conflicting hunk named. Regenerate it against the
-   new upstream and commit both together.
-4. If upstream added or removed a string that names FreeCAD, the sweep fails with a diff against
-   `scripts/sweep-strings.expected.tsv`. Read every new row: rename it only if it names this
-   application, otherwise add the phrase to `KEEP` in `scripts/sweep-strings.py`. Then run
-   `python3 scripts/sweep-strings.py build/freecad --update-expected scripts/sweep-strings.expected.tsv`
-   on a freshly gated tree and commit the list.
-
-## The product name in strings
-
-`scripts/sweep-strings.py` writes the product name into user-visible strings at build time: Qt
-`tr()` strings in C++, Designer labels in `.ui` files, `translate()` strings in Python, and every
-`.ts` translation of a string it changed. The translations matter: Qt finds a translation by its
-source text, so a renamed string with an untouched `.ts` entry is English in every language. Until
-this was a build step, 98 Korean strings were.
-
-It leaves FreeCAD's name wherever the sentence is about FreeCAD: its forum, wiki and website, its
-contributors, its licence text, and the version history of files ("may not be readable by older
-versions of FreeCAD" stays true). The full list of what it rewrites is reviewed and committed in
-`scripts/sweep-strings.expected.tsv`.
-
-The gate discards and refetches the checkout before applying anything. Verifying against a tree
-that is already half-patched proves nothing: a stale patch would report success because its
-changes were already there. The sibling `redrob-browser` repository carries 258 Firefox patches
-with no gate; one went stale and its CI trigger named a branch that does not exist, so nothing ran
-and nobody found out.
-
-## The previous tree
-
-Preserved on `archive/opencad-snapshot`. Nothing was force-pushed and no history was discarded.
+MIT OR Apache-2.0, at your option, as upstream. See [LICENSE-MIT](./LICENSE-MIT),
+[LICENSE-APACHE](./LICENSE-APACHE) and [NOTICE](./NOTICE).
