@@ -17,14 +17,14 @@ use cadcraft_engine::Session;
 use serde_json::{Value, json};
 
 const USAGE: &str = "usage:
-  cadcraft-cli info FILE.dxf
-  cadcraft-cli convert IN.dxf OUT.(dxf|svg|png)
-  cadcraft-cli run [FILE | --sample | --metric] [--script TEXT] [--script-file F.scr] [--cmd 'id {json}']... [--save OUT.dxf] [--export OUT.(png|svg)]
-  cadcraft-cli commands [FILTER]
-  cadcraft-cli mcp [--connect HOST:PORT]
-  cadcraft-cli perf [N]
-  cadcraft-cli sample (bracket|floorplan) OUT.(dxf|dwg|svg|png)
-  cadcraft-cli --version";
+  redrob-cad-cli info FILE.dxf
+  redrob-cad-cli convert IN.dxf OUT.(dxf|svg|png)
+  redrob-cad-cli run [FILE | --sample | --metric] [--script TEXT] [--script-file F.scr] [--cmd 'id {json}']... [--save OUT.dxf] [--export OUT.(png|svg)]
+  redrob-cad-cli commands [FILTER]
+  redrob-cad-cli mcp [--connect HOST:PORT]
+  redrob-cad-cli perf [N]
+  redrob-cad-cli sample (bracket|floorplan) OUT.(dxf|dwg|svg|png)
+  redrob-cad-cli --version";
 
 fn install_io() {
     cadcraft_engine::cmd::file::set_io(cadcraft_engine::cmd::file::IoHooks {
@@ -296,7 +296,7 @@ fn main() -> ExitCode {
                 Some(addr) => match cadcraft_mcp::Remote::connect(addr) {
                     Ok(r) => Box::new(r),
                     Err(e) => {
-                        eprintln!("cadcraft-cli: cannot connect to {addr}: {e}");
+                        eprintln!("redrob-cad-cli: cannot connect to {addr}: {e}");
                         return ExitCode::FAILURE;
                     }
                 },
@@ -307,7 +307,7 @@ fn main() -> ExitCode {
             cadcraft_mcp::Server::new(backend).serve(stdin.lock(), stdout.lock()).map_err(|e| e.to_string())
         }
         Some("--version" | "-V") => {
-            println!("cadcraft-cli {}", env!("CARGO_PKG_VERSION"));
+            println!("redrob-cad-cli {}", env!("CARGO_PKG_VERSION"));
             Ok(())
         }
         _ => Err(USAGE.into()),

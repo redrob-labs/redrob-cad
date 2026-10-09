@@ -10,11 +10,12 @@ FreeBSD에서 네이티브로, 브라우저에서는 WebAssembly로 돈다. 에�
 
 ## 상태
 
-초기 단계. 트리는 CADCraft `v0.3.0`에 포크 파일을 더한 것이다. 다음 순서로 PR 하나씩 진행한다.
+초기 단계. 트리는 CADCraft `v0.3.0`에 포크 파일을 더하고 레드롭 CAD로 리브랜딩한 것이다(앱 ID
+`ai.redrob.cad`, 실행 파일 `redrob-cad`·`redrob-cad-cli`, 레드롭 마크; 상류 상표 제거). 다음 순서로 PR 하나씩
+진행한다.
 
-1. 리브랜딩(이름, 앱 ID, 아이콘, 정보 문구; 상류 상표 제거).
-2. 내장 에이전트로 Redrob Code 연결(MCP로 앱과 대화).
-3. Connect device로 레드롭 워크스페이스 로그인.
+1. 내장 에이전트로 Redrob Code 연결(MCP로 앱과 대화).
+2. Connect device로 레드롭 워크스페이스 로그인.
 
 ## 빌드와 테스트
 

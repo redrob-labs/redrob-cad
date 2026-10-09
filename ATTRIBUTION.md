@@ -10,8 +10,9 @@ CADCraft contributors or third-party material under an open licence (OSI open so
 / CC0, or Creative Commons that allows redistribution). Screenshots of Autodesk software are never
 committed. Font files are not added here: shared fonts live in
 [storytold/craft-fonts](https://github.com/storytold/craft-fonts), an optional build input. The one
-exception is the ArtCraft brand in `docs/brand/`: ArtCraft trademarks, not open source, used under
-`docs/brand/LICENSE-brand.txt`.
+exception is the Redrob mark in `assets/brand/` and the app icons derived from it in
+`assets/app-icon/`: Redrob's own brand, copied verbatim from the Redrob design system (pinned by
+`assets/brand/SHA256SUMS`), not open source and not covered by the code licence.
 
 Generated-in-code assets are original and have no file to list:
 - the UI icon set (`crates/ui-egui/src/icons.rs`);
@@ -23,29 +24,32 @@ Generated-in-code assets are original and have no file to list:
 
 | Asset | Author | Source | Licence | Notes |
 |---|---|---|---|---|
-| `assets/app-icon/hicolor/128x128/apps/ai.storyteller.cadcraft.png` | CADCraft contributors | generated from `assets/app-icon/cadcraft-1024.png` | MIT OR Apache-2.0 | Linux hicolor icon |
-| `assets/app-icon/hicolor/16x16/apps/ai.storyteller.cadcraft.png` | CADCraft contributors | generated from `assets/app-icon/cadcraft-1024.png` | MIT OR Apache-2.0 | Linux hicolor icon |
-| `assets/app-icon/hicolor/24x24/apps/ai.storyteller.cadcraft.png` | CADCraft contributors | generated from `assets/app-icon/cadcraft-1024.png` | MIT OR Apache-2.0 | Linux hicolor icon |
-| `assets/app-icon/hicolor/256x256/apps/ai.storyteller.cadcraft.png` | CADCraft contributors | generated from `assets/app-icon/cadcraft-1024.png` | MIT OR Apache-2.0 | Linux hicolor icon |
-| `assets/app-icon/hicolor/32x32/apps/ai.storyteller.cadcraft.png` | CADCraft contributors | generated from `assets/app-icon/cadcraft-1024.png` | MIT OR Apache-2.0 | Linux hicolor icon |
-| `assets/app-icon/hicolor/48x48/apps/ai.storyteller.cadcraft.png` | CADCraft contributors | generated from `assets/app-icon/cadcraft-1024.png` | MIT OR Apache-2.0 | Linux hicolor icon |
-| `assets/app-icon/hicolor/512x512/apps/ai.storyteller.cadcraft.png` | CADCraft contributors | generated from `assets/app-icon/cadcraft-1024.png` | MIT OR Apache-2.0 | Linux hicolor icon |
-| `assets/app-icon/hicolor/64x64/apps/ai.storyteller.cadcraft.png` | CADCraft contributors | generated from `assets/app-icon/cadcraft-1024.png` | MIT OR Apache-2.0 | Linux hicolor icon |
-| `assets/app-icon/cadcraft.icns` | CADCraft contributors | generated (packaging/icons.sh) | MIT OR Apache-2.0 | macOS icon |
-| `assets/app-icon/cadcraft.ico` | CADCraft contributors | generated (packaging/icons.sh) | MIT OR Apache-2.0 | Windows icon |
-| `assets/app-icon/cadcraft-64.png` | CADCraft contributors | generated | MIT OR Apache-2.0 | |
-| `assets/app-icon/cadcraft-256.png` | CADCraft contributors | generated | MIT OR Apache-2.0 | |
-| `assets/app-icon/cadcraft-1024.png` | CADCraft contributors | generated | MIT OR Apache-2.0 | |
-| `assets/app-icon/cadcraft-macos-512.png` | CADCraft contributors | generated (macOS margin variant) | MIT OR Apache-2.0 | |
+| `assets/app-icon/hicolor/128x128/apps/ai.redrob.cad.png` | Redrob | derived from `assets/brand/` by `packaging/brand-assets.sh` | Redrob brand, all rights reserved | App icon |
+| `assets/app-icon/hicolor/16x16/apps/ai.redrob.cad.png` | Redrob | derived from `assets/brand/` by `packaging/brand-assets.sh` | Redrob brand, all rights reserved | App icon |
+| `assets/app-icon/hicolor/24x24/apps/ai.redrob.cad.png` | Redrob | derived from `assets/brand/` by `packaging/brand-assets.sh` | Redrob brand, all rights reserved | App icon |
+| `assets/app-icon/hicolor/256x256/apps/ai.redrob.cad.png` | Redrob | derived from `assets/brand/` by `packaging/brand-assets.sh` | Redrob brand, all rights reserved | App icon |
+| `assets/app-icon/hicolor/32x32/apps/ai.redrob.cad.png` | Redrob | derived from `assets/brand/` by `packaging/brand-assets.sh` | Redrob brand, all rights reserved | App icon |
+| `assets/app-icon/hicolor/48x48/apps/ai.redrob.cad.png` | Redrob | derived from `assets/brand/` by `packaging/brand-assets.sh` | Redrob brand, all rights reserved | App icon |
+| `assets/app-icon/hicolor/512x512/apps/ai.redrob.cad.png` | Redrob | derived from `assets/brand/` by `packaging/brand-assets.sh` | Redrob brand, all rights reserved | App icon |
+| `assets/app-icon/hicolor/64x64/apps/ai.redrob.cad.png` | Redrob | derived from `assets/brand/` by `packaging/brand-assets.sh` | Redrob brand, all rights reserved | App icon |
+| `assets/app-icon/redrob-cad-256.png` | Redrob | derived from `assets/brand/` by `packaging/brand-assets.sh` | Redrob brand, all rights reserved | App icon |
+| `assets/app-icon/redrob-cad-512.png` | Redrob | derived from `assets/brand/` by `packaging/brand-assets.sh` | Redrob brand, all rights reserved | App icon |
+| `assets/app-icon/redrob-cad.icns` | Redrob | derived from `assets/brand/` by `packaging/brand-assets.sh` | Redrob brand, all rights reserved | App icon |
+| `assets/app-icon/redrob-cad.ico` | Redrob | derived from `assets/brand/` by `packaging/brand-assets.sh` | Redrob brand, all rights reserved | App icon |
+| `assets/brand/README.md` | Redrob CAD contributors | written for this repository | MIT OR Apache-2.0 | Rules for the brand sources |
+| `assets/brand/SHA256SUMS` | Redrob CAD contributors | written for this repository | MIT OR Apache-2.0 | Checksums of the brand sources |
+| `assets/brand/favicon-16x16.png` | Redrob | redrob-design-system `assets/Favicons/favicon-16x16.png`, verbatim | Redrob brand, all rights reserved | Pinned by `assets/brand/SHA256SUMS` |
+| `assets/brand/favicon-32x32.png` | Redrob | redrob-design-system `assets/Favicons/favicon-32x32.png`, verbatim | Redrob brand, all rights reserved | Pinned by `assets/brand/SHA256SUMS` |
+| `assets/brand/favicon-48x48.png` | Redrob | redrob-design-system `assets/Favicons/favicon-48x48.png`, verbatim | Redrob brand, all rights reserved | Pinned by `assets/brand/SHA256SUMS` |
+| `assets/brand/favicon-64x64.png` | Redrob | redrob-design-system `assets/Favicons/favicon-64x64.png`, verbatim | Redrob brand, all rights reserved | Pinned by `assets/brand/SHA256SUMS` |
+| `assets/brand/favicon.ico` | Redrob | redrob-design-system `assets/Favicons/favicon.ico`, verbatim | Redrob brand, all rights reserved | Pinned by `assets/brand/SHA256SUMS` |
+| `assets/brand/icon-192.png` | Redrob | redrob-design-system `assets/Favicons/icon-192.png`, verbatim | Redrob brand, all rights reserved | Pinned by `assets/brand/SHA256SUMS` |
+| `assets/brand/icon-512.png` | Redrob | redrob-design-system `assets/Favicons/icon-512.png`, verbatim | Redrob brand, all rights reserved | Pinned by `assets/brand/SHA256SUMS` |
+| `assets/brand/symbol-white-192.png` | Redrob | redrob-design-system `assets/Favicons/symbol-white-192.png`, verbatim | Redrob brand, all rights reserved | Pinned by `assets/brand/SHA256SUMS` |
+| `assets/brand/symbol-white-32.png` | Redrob | redrob-design-system `assets/Favicons/symbol-white-32.png`, verbatim | Redrob brand, all rights reserved | Pinned by `assets/brand/SHA256SUMS` |
+| `assets/brand/symbol-white-512.png` | Redrob | redrob-design-system `assets/Favicons/symbol-white-512.png`, verbatim | Redrob brand, all rights reserved | Pinned by `assets/brand/SHA256SUMS` |
+| `assets/brand/symbol-white-64.png` | Redrob | redrob-design-system `assets/Favicons/symbol-white-64.png`, verbatim | Redrob brand, all rights reserved | Pinned by `assets/brand/SHA256SUMS` |
 | `examples/apartment.dxf` | CADCraft contributors | sample drawing made with cadcraft-cli commands | MIT OR Apache-2.0 | Original |
 | `docs/images/ui-apartment.png` | CADCraft contributors | screenshot of CADCraft itself (examples/apartment.dxf) | MIT OR Apache-2.0 | Original; no Autodesk UI |
 | `docs/images/ui-layout.png` | CADCraft contributors | screenshot of CADCraft itself (a layout of examples/apartment.dxf) | MIT OR Apache-2.0 | Original; no Autodesk UI |
 | `docs/images/ui-bracket.png` | CADCraft contributors | screenshot of CADCraft itself (sample drawing generated in code) | MIT OR Apache-2.0 | Original; no Autodesk UI |
-| `docs/brand/artcraft-logo-white.png` | ArtCraft Team | storytold/craftrules `assets/brand/` | ArtCraft brand terms (`docs/brand/LICENSE-brand.txt`) | Trademark, not open source |
-| `docs/brand/artcraft-logo-white.svg` | ArtCraft Team | storytold/craftrules `assets/brand/` | ArtCraft brand terms (`docs/brand/LICENSE-brand.txt`) | Trademark, not open source |
-| `docs/brand/artcraft-logo.png` | ArtCraft Team | storytold/craftrules `assets/brand/` | ArtCraft brand terms (`docs/brand/LICENSE-brand.txt`) | Trademark, not open source |
-| `docs/brand/artcraft-logo.svg` | ArtCraft Team | storytold/craftrules `assets/brand/` | ArtCraft brand terms (`docs/brand/LICENSE-brand.txt`) | Trademark, not open source |
-| `docs/brand/artcraft-mark-black.png` | ArtCraft Team | storytold/craftrules `assets/brand/` | ArtCraft brand terms (`docs/brand/LICENSE-brand.txt`) | Trademark, not open source |
-| `docs/brand/artcraft-mark-black.svg` | ArtCraft Team | storytold/craftrules `assets/brand/` | ArtCraft brand terms (`docs/brand/LICENSE-brand.txt`) | Trademark, not open source |
-| `docs/brand/artcraft-mark.png` | ArtCraft Team | storytold/craftrules `assets/brand/` | ArtCraft brand terms (`docs/brand/LICENSE-brand.txt`) | Trademark, not open source |
-| `docs/brand/artcraft-mark.svg` | ArtCraft Team | storytold/craftrules `assets/brand/` | ArtCraft brand terms (`docs/brand/LICENSE-brand.txt`) | Trademark, not open source |

@@ -28,12 +28,12 @@ impl NativeMenu {
         let menu = Menu::new();
         let mut items = HashMap::new();
         let mut counter = 0usize;
-        let app_menu = Submenu::new("CADCraft", true);
-        let about = MenuItem::with_id("cc-about", "About CADCraft", true, None);
-        let discord = MenuItem::with_id("cc-discord", "Join the ArtCraft Discord…", true, None);
+        let app_menu = Submenu::new("Redrob CAD", true);
+        let about = MenuItem::with_id("cc-about", "About Redrob CAD", true, None);
+        let issues = MenuItem::with_id("cc-issues", "Report an Issue…", true, None);
         let _ = app_menu.append_items(&[
             &about,
-            &discord,
+            &issues,
             &PredefinedMenuItem::separator(),
             &PredefinedMenuItem::services(None),
             &PredefinedMenuItem::separator(),
@@ -44,7 +44,7 @@ impl NativeMenu {
             &PredefinedMenuItem::quit(None),
         ]);
         items.insert("cc-about".into(), ("ui.dialog.about".into(), about));
-        items.insert("cc-discord".into(), ("ui.discord".into(), discord));
+        items.insert("cc-issues".into(), ("ui.issues".into(), issues));
         let _ = menu.append(&app_menu);
         for (title, entries) in menus::tree(app) {
             let sub = Submenu::new(&title, true);
@@ -58,8 +58,8 @@ impl NativeMenu {
     pub fn poll(&mut self, app: &mut CadApp, ctx: &egui::Context) {
         while let Ok(ev) = MenuEvent::receiver().try_recv() {
             if let Some((cmd, _)) = self.items.get(ev.id.as_ref()) {
-                if cmd == "ui.discord" {
-                    ctx.open_url(egui::OpenUrl::new_tab("https://discord.gg/artcraft"));
+                if cmd == "ui.issues" {
+                    ctx.open_url(egui::OpenUrl::new_tab("https://github.com/redrob-labs/redrob-cad/issues"));
                 } else {
                     menus::activate(app, &cmd.clone());
                 }

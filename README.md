@@ -11,11 +11,12 @@ on macOS, Windows, Linux and FreeBSD, and in the browser via WebAssembly. Agents
 
 ## Status
 
-Early. The tree is CADCraft `v0.3.0` with our fork files added. Planned next, one pull request each:
+Early. The tree is CADCraft `v0.3.0` with our fork files added, rebranded to Redrob CAD (name, app id
+`ai.redrob.cad`, binaries `redrob-cad` and `redrob-cad-cli`, the Redrob mark; upstream trademarks
+removed). Planned next, one pull request each:
 
-1. Rebrand to Redrob CAD (name, app id, icon, about text; upstream trademarks removed).
-2. Redrob Code as the built-in agent, talking to the app over MCP.
-3. Connect device, so the app signs in to a Redrob workspace.
+1. Redrob Code as the built-in agent, talking to the app over MCP.
+2. Connect device, so the app signs in to a Redrob workspace.
 
 ## Build and test
 

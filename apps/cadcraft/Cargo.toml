@@ -1,14 +1,18 @@
 [package]
 name = "cadcraft"
-description = "CADCraft desktop app"
+description = "Redrob CAD desktop app"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 publish = false
-default-run = "cadcraft"
+default-run = "redrob-cad"
 
 [lints]
 workspace = true
+
+[[bin]]
+name = "redrob-cad"
+path = "src/main.rs"
 
 [dependencies]
 cadcraft-engine = { workspace = true }

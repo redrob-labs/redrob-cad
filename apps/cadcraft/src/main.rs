@@ -71,16 +71,16 @@ fn services() -> Services {
     }
 }
 
-const APP_ID: &str = "ai.storyteller.cadcraft";
+const APP_ID: &str = "ai.redrob.cad";
 
 fn app_icon() -> Option<egui::IconData> {
-    let png: &[u8] = include_bytes!("../../../assets/app-icon/cadcraft-256.png");
+    let png: &[u8] = include_bytes!("../../../assets/app-icon/redrob-cad-256.png");
     eframe::icon_data::from_png_bytes(png).map_err(|e| log::warn!("app icon: {e}")).ok()
 }
 
 fn version_string() -> String {
     let sha = option_env!("CADCRAFT_BUILD_SHA").unwrap_or("dev");
-    format!("cadcraft {} ({sha})", env!("CARGO_PKG_VERSION"))
+    format!("redrob-cad {} ({sha})", env!("CARGO_PKG_VERSION"))
 }
 
 fn main() -> eframe::Result {
@@ -102,7 +102,7 @@ fn main() -> eframe::Result {
     install_io();
     let mut options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_title("CADCraft")
+            .with_title("Redrob CAD")
             .with_inner_size([1600.0, 1000.0])
             .with_min_inner_size([900.0, 560.0])
             .with_drag_and_drop(true)
@@ -116,7 +116,7 @@ fn main() -> eframe::Result {
         options.viewport = options.viewport.with_icon(icon);
     }
     eframe::run_native(
-        "CADCraft",
+        "Redrob CAD",
         options,
         Box::new(move |cc| {
             let mut app = CadApp::new(Session::empty(), services());

@@ -28,7 +28,8 @@ English: [UPSTREAM.md](./UPSTREAM.md)
 
 상류 `NOTICE`에 따르면 `docs/brand/`의 ArtCraft 이름·워드마크·로고는 ArtCraft Team의 상표이며 오픈소스가
 아니고 코드 라이선스의 대상도 아니다. `upstream-base.json`의 `proprietaryPrefixes`에 이 경로가 있다.
-리브랜딩에서 제거하며, 상류 흡수로 다시 들어오면 안 된다.
+리브랜딩에서 제거했다. 상류 흡수로 다시 들어오거나 상류 제품명·링크가 사용자에게 보이는 곳에 나타나면
+`cargo xtask brand`가 실패한다.
 
 ## 상류 흡수
 

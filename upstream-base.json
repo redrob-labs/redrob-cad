@@ -9,8 +9,8 @@
   "baseSubject": "Bump version to 0.3.0 (from 0.2.0) for release",
   "excludedPrefixes": [],
   "proprietaryPrefixes": ["docs/brand/"],
-  "proprietaryReason": "Upstream's NOTICE states the ArtCraft name, wordmark and logos in docs/brand/ are trademarks of the ArtCraft Team, not open source and not covered by MIT OR Apache-2.0. They are removed by the rebrand and must not return.",
-  "proprietaryReplaced": false,
+  "proprietaryReason": "Upstream's NOTICE states the ArtCraft name, wordmark and logos in docs/brand/ are trademarks of the ArtCraft Team, not open source and not covered by MIT OR Apache-2.0. They were removed by the rebrand and must not return (cargo xtask brand).",
+  "proprietaryReplaced": true,
   "lastSyncedUpstream": null,
   "previousBase": {
     "upstream": "FreeCAD",

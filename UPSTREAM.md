@@ -30,7 +30,8 @@ Until 2026-10-09 this repository was a patch set over FreeCAD. That work is kept
 
 Upstream's `NOTICE` states that the ArtCraft name, wordmark and logos in `docs/brand/` are trademarks of
 the ArtCraft Team, not open source, and not covered by the code licence. `upstream-base.json` lists that
-prefix under `proprietaryPrefixes`. The rebrand removes it; it must not come back on a sync.
+prefix under `proprietaryPrefixes`. The rebrand removed it; `cargo xtask brand` fails if it comes back
+on a sync, or if an upstream product name or link reaches a surface a user sees.
 
 ## Absorbing upstream
 
