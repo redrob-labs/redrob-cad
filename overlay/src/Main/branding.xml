@@ -10,9 +10,21 @@
 
   One name, and it is the product's: Redrob CAD. scripts/sweep-strings.py reads Application from
   this file, so this is the single place the name is decided and every swept string follows it.
+
+  ExeName is not cosmetic. FreeCAD builds every user folder from it (settings, macros, add-ons,
+  cache, the log file) and names its single-instance socket after it. Left as "FreeCAD", this
+  application shared all of those with any FreeCAD on the same computer: each overwrote the other's
+  settings, and a file opened from the desktop could land in the other program's window. FreeCAD
+  skips the vendor in those paths, so ExeVendor only sets Qt's organization name.
+
+  DesktopFileName must match the installed desktop entry (ai.redrob.cad.desktop): on Wayland it is
+  the application id that joins a window to its launcher and icon.
 -->
 <Branding version="1.0">
   <Application>Redrob CAD</Application>
   <WindowTitle>Redrob CAD</WindowTitle>
+  <ExeName>Redrob CAD</ExeName>
+  <ExeVendor>Redrob</ExeVendor>
+  <DesktopFileName>ai.redrob.cad</DesktopFileName>
   <MaintainerUrl>https://github.com/redrob-labs/redrob-cad</MaintainerUrl>
 </Branding>

@@ -5,6 +5,7 @@ set(RedrobCAD_SRCS
     InitGui.py
     RedrobAgent.py
     RedrobCADCommands.py
+    RedrobCADImport.py
 )
 
 set(RedrobCAD_RESOURCES

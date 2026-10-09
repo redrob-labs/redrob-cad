@@ -48,3 +48,9 @@ _module_dir = (
 )
 RedrobCADWorkbench.Icon = str(_module_dir / "Resources" / "icons" / "redrob-cad.png")
 Gui.addWorkbench(RedrobCADWorkbench())
+
+# Once per profile: offer to copy a FreeCAD user's preferences, macros and add-ons, since this
+# application keeps its own settings folder. It does nothing without Qt (the gate's stand-in loader).
+import RedrobCADImport
+
+RedrobCADImport.offer_later()
