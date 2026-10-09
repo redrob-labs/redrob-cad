@@ -28,6 +28,8 @@ log = { workspace = true }
 winresource = "0.1"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+# The console device flow (connect a Redrob workspace). rustls, Mozilla's root store.
+ureq = { version = "=3.4.2", default-features = false, features = ["rustls"] }
 rfd = { workspace = true }
 
 [target.'cfg(target_os = "macos")'.dependencies]

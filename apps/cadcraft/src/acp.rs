@@ -20,7 +20,7 @@ use serde_json::{Value, json};
 /// Overrides where Redrob Code is looked up.
 pub const BINARY_ENV: &str = "REDROB_CODE_PATH";
 pub const INSTALL_HINT: &str = "Redrob Code is not installed. Install it from https://code.redrob.ai, then send again.";
-pub const SIGN_IN_HINT: &str = "Sign in to Redrob Code first: run `redrob auth login` in a terminal, then send again.";
+pub const SIGN_IN_HINT: &str = "Redrob Code needs a Redrob workspace. Connect one above, then send again.";
 /// Overrides the model the agent uses; otherwise Redrob's own router.
 pub const MODEL_ENV: &str = "REDROB_CAD_MODEL";
 pub const DEFAULT_MODEL: &str = "redrob/auto";
@@ -125,9 +125,10 @@ pub struct AcpHost {
 impl AcpHost {
     /// Spawn `redrob acp` in `cwd` and start the handshake; the session opens in the background
     /// and any prompt sent before it is ready is queued.
-    pub fn start(binary: &Path, cwd: &str, mcp: McpLink, ctx: egui::Context) -> Result<Self, String> {
+    pub fn start(binary: &Path, cwd: &str, mcp: McpLink, env: &[(&str, String)], ctx: egui::Context) -> Result<Self, String> {
         let mut child = Command::new(binary)
             .args(["acp", "--cwd", cwd])
+            .envs(env.iter().map(|(k, v)| (*k, v.as_str())))
             .current_dir(cwd)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -417,7 +418,7 @@ read l
         let _ = std::fs::write(&script, body);
         let _ = std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755));
         let link = McpLink { addr: "127.0.0.1:4242".into(), token: Some("t0k".into()) };
-        let Ok(mut host) = AcpHost::start(&script, &dir.to_string_lossy(), link, egui::Context::default()) else {
+        let Ok(mut host) = AcpHost::start(&script, &dir.to_string_lossy(), link, &[], egui::Context::default()) else {
             unreachable_in_test("start failed");
             return;
         };

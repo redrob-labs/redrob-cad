@@ -69,6 +69,8 @@ pub struct AgentPanel {
     pub busy: bool,
     pub agent_name: Option<String>,
     pub pending: Option<(u64, String, Vec<PermissionOption>)>,
+    /// The account generation the running host was started with.
+    generation: u64,
 }
 
 impl AgentPanel {
@@ -120,6 +122,20 @@ impl AgentPanel {
                 self.pending = None;
                 self.entries.push(Entry::Error(s));
             }
+        }
+    }
+
+    /// A different workspace key: the next message starts a fresh agent that uses it.
+    pub fn account_changed(&mut self, generation: u64) {
+        if generation == self.generation {
+            return;
+        }
+        self.generation = generation;
+        if self.host.take().is_some() {
+            self.busy = false;
+            self.pending = None;
+            self.agent_name = None;
+            self.entries.push(Entry::Notice("Workspace changed. The next message starts the agent with it.".into()));
         }
     }
 
@@ -175,15 +191,21 @@ impl AgentPanel {
 /// The palette body.
 pub fn agent_section(app: &mut CadApp, ui: &mut egui::Ui) {
     let t = Tokens::get();
-    let panel = &mut app.agent;
     ui.add_space(6.0);
     ui.horizontal(|ui| {
         ui.add_space(10.0);
         ui.label(RichText::new("Agent").size(14.0).color(t.text));
-        if let Some(n) = &panel.agent_name {
+        if let Some(n) = &app.agent.agent_name {
             ui.label(RichText::new(n).small().color(t.text_faint));
         }
     });
+    if let Some(g) = app.services.account.as_ref().map(|a| a.generation()) {
+        app.agent.account_changed(g);
+    }
+    if crate::account::account_row(&mut app.services.account, ui) {
+        ui.ctx().request_repaint_after(std::time::Duration::from_millis(500));
+    }
+    let panel = &mut app.agent;
     ui.add_space(4.0);
     let input_h = 86.0;
     let list_h = (ui.available_height() - input_h).max(80.0);
@@ -312,6 +334,29 @@ mod tests {
         p.apply(AgentEvent::TurnEnd { stop: "cancelled".into() });
         assert!(p.pending.is_none());
         assert_eq!(p.entries, vec![Entry::Notice("Stopped.".into())]);
+    }
+
+    struct Echo;
+    impl AgentHost for Echo {
+        fn prompt(&mut self, _: &str) {}
+        fn cancel(&mut self) {}
+        fn answer(&mut self, _: u64, _: Option<&str>) {}
+        fn poll(&mut self) -> Vec<AgentEvent> {
+            Vec::new()
+        }
+    }
+
+    #[test]
+    fn a_new_workspace_key_restarts_the_agent() {
+        let mut p = AgentPanel { input: "hi".into(), ..Default::default() };
+        let mut factory: Option<AgentFactory> = Some(Box::new(|| Ok(Box::new(Echo) as Box<dyn AgentHost>)));
+        p.send(&mut factory);
+        assert!(p.host.is_some());
+        p.account_changed(0);
+        assert!(p.host.is_some(), "same generation keeps the agent");
+        p.account_changed(1);
+        assert!(p.host.is_none() && !p.busy);
+        assert_eq!(p.entries.last(), Some(&Entry::Notice("Workspace changed. The next message starts the agent with it.".into())));
     }
 
     #[test]

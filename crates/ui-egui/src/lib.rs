@@ -8,6 +8,7 @@
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 #![forbid(unsafe_code)]
 
+pub mod account;
 pub mod agent;
 pub mod canvas;
 pub mod chrome;
@@ -89,6 +90,8 @@ pub struct Services {
     pub pick_save: Option<Box<dyn Fn(&str) -> Option<String>>>,
     /// Starts the built-in agent (desktop only; `None` in the browser).
     pub agent: Option<agent::AgentFactory>,
+    /// The connected Redrob workspace and the device flow (desktop only).
+    pub account: Option<Box<dyn account::AccountService>>,
 }
 
 pub struct CadApp {

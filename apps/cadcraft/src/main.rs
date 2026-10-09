@@ -14,6 +14,7 @@
 
 mod acp;
 mod control_server;
+mod device;
 #[cfg(target_os = "macos")]
 mod native_menu;
 
@@ -55,9 +56,10 @@ pub fn install_io() {
     });
 }
 
-fn services(agent: Option<cadcraft_ui_egui::agent::AgentFactory>) -> Services {
+fn services(agent: Option<cadcraft_ui_egui::agent::AgentFactory>, account: Option<Box<dyn cadcraft_ui_egui::account::AccountService>>) -> Services {
     Services {
         agent,
+        account,
         pick_open: Some(Box::new(|| {
             rfd::FileDialog::new()
                 .add_filter("Drawing (DXF)", &["dxf"])
@@ -178,16 +180,27 @@ fn main() -> eframe::Result {
             // `--control PORT` keeps the tokenless protocol; otherwise a free port and a token.
             let token = if control_port.is_some() { None } else { Some(control_token()) };
             let (rx, bound) = control_server::start(control_port.unwrap_or(0), cc.egui_ctx.clone(), token.clone());
+            let base = std::env::var(device::CONSOLE_API_ENV).ok().filter(|b| !b.is_empty()).unwrap_or_else(|| device::CONSOLE_API.to_string());
+            let account = device::DeviceAccount::new(
+                device::config_dir().map(|d| d.join("account.json")),
+                std::sync::Arc::new(device::Https),
+                base,
+                Some(cc.egui_ctx.clone()),
+            );
+            let keys = account.key_source();
             let agent: Option<cadcraft_ui_egui::agent::AgentFactory> = bound.map(|port| {
                 let link = acp::McpLink { addr: format!("127.0.0.1:{port}"), token };
                 let ctx = cc.egui_ctx.clone();
                 Box::new(move || {
                     let bin = acp::find_binary().ok_or_else(|| acp::INSTALL_HINT.to_string())?;
-                    let host = acp::AcpHost::start(&bin, &agent_cwd(), link.clone(), ctx.clone())?;
+                    // The connected workspace's key, as the variable Redrob Code reads for Redrob.
+                    let env: Vec<(&str, String)> =
+                        keys.lock().ok().and_then(|k| k.clone()).map(|k| vec![("REDROB_API_KEY", k.api_key)]).unwrap_or_default();
+                    let host = acp::AcpHost::start(&bin, &agent_cwd(), link.clone(), &env, ctx.clone())?;
                     Ok(Box::new(host) as Box<dyn cadcraft_ui_egui::agent::AgentHost>)
                 }) as cadcraft_ui_egui::agent::AgentFactory
             });
-            let mut app = CadApp::new(Session::empty(), services(agent));
+            let mut app = CadApp::new(Session::empty(), services(agent, Some(Box::new(account))));
             app.integrated_titlebar = cfg!(target_os = "macos");
             if let Some(rs) = &cc.wgpu_render_state {
                 app.set_wgpu(rs);
