@@ -461,6 +461,18 @@ mod ttf_tests {
         assert!((maxy - 1.0).abs() < 0.1, "cap height ~ text height, got {maxy}");
     }
 
+    /// Every installed candidate, not just the first: DejaVu Sans has no OS/2 cap height, and on
+    /// Linux it is usually the only one present, so the first-found check above alone hid it.
+    #[test]
+    fn cap_height_matches_text_height_for_each_installed_font() {
+        for name in ["Arial", "Helvetica", "DejaVuSans", "Verdana", "LiberationSans-Regular"] {
+            let Some(bytes) = crate::ttf::find(name) else { continue };
+            let run = crate::ttf::layout_line(&bytes, "H", 1.0, 1.0, 0.0).unwrap();
+            let maxy = run.strokes.iter().flatten().map(|p| p.y).fold(f64::MIN, f64::max);
+            assert!((maxy - 1.0).abs() < 0.02, "{name}: top of H at text height 1 is {maxy}");
+        }
+    }
+
     #[test]
     fn stroke_names_are_not_ttf() {
         assert!(crate::ttf::find("txt.shx").is_none());

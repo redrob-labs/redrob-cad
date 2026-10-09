@@ -192,9 +192,22 @@ impl OutlinePen for Pen {
 }
 
 /// Cap height of a font in font units at 1000 units per em.
-fn cap_height(f: &FontRef) -> f64 {
+///
+/// Read from OS/2 `sCapHeight` when the font has one. Fonts with an OS/2 table older than
+/// version 2 (DejaVu, the default sans on most Linux systems) have no such field; for those the
+/// top of the flat-topped `H` is the cap height by definition. Only when the font has no usable
+/// `H` either does this fall back to a fixed share of the ascent; for DejaVu that share is wrong
+/// and drew its text visibly taller than the height asked for.
+fn cap_height(font: &[u8], f: &FontRef) -> f64 {
     let metrics = f.metrics(Size::new(UPEM), LocationRef::default());
-    f64::from(metrics.cap_height.filter(|c| *c > 0.0).unwrap_or(metrics.ascent * 0.72).max(1.0))
+    if let Some(c) = metrics.cap_height.filter(|c| *c > 0.0) {
+        return f64::from(c);
+    }
+    let top = glyph(font, f, 'H').contours.iter().flatten().map(|p| p.y).fold(f64::NEG_INFINITY, f64::max);
+    if top.is_finite() && top > 1.0 {
+        return top;
+    }
+    f64::from((metrics.ascent * 0.72).max(1.0))
 }
 
 fn glyph(font: &[u8], f: &FontRef, c: char) -> Arc<GlyphOutline> {
@@ -223,7 +236,7 @@ fn glyph(font: &[u8], f: &FontRef, c: char) -> Arc<GlyphOutline> {
 pub fn shape(font: &[u8], s: &str, height: f64, width_factor: f64, oblique: f64) -> Option<Shaped> {
     let f = FontRef::new(font).ok()?;
     let h = if height.is_finite() && height > 0.0 { height } else { 1.0 };
-    let scale = h / cap_height(&f);
+    let scale = h / cap_height(font, &f);
     let wf = if width_factor.is_finite() && width_factor.abs() > 1e-6 { width_factor } else { 1.0 };
     let shear = oblique.tan().clamp(-10.0, 10.0);
     let mut out = Shaped::default();
@@ -260,7 +273,7 @@ pub fn shape(font: &[u8], s: &str, height: f64, width_factor: f64, oblique: f64)
 /// Width of one line set in a TrueType font.
 pub fn width(font: &[u8], s: &str, height: f64, width_factor: f64) -> Option<f64> {
     let f = FontRef::new(font).ok()?;
-    let scale = height / cap_height(&f);
+    let scale = height / cap_height(font, &f);
     let wf = if width_factor.is_finite() && width_factor.abs() > 1e-6 { width_factor } else { 1.0 };
     Some(crate::decode_controls(s).iter().map(|(c, _, _)| glyph(font, &f, *c).advance * scale * wf).sum())
 }
