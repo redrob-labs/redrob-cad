@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Build the browser version and zip it:  $DIST/cadcraft-web-<version>.zip
+# Build the browser version and zip it:  $DIST/redrob-cad-web-<version>.zip
 #
 # Usage: packaging/web/package.sh [--skip-build]
 #
 # Needs: trunk (brew install trunk / cargo install trunk --locked) and the wasm32-unknown-unknown
-# target. The zip holds a self-contained static site in cadcraft-web-<version>/ that works
+# target. The zip holds a self-contained static site in redrob-cad-web-<version>/ that works
 # from any URL path and inside an <iframe>. Hosting notes: packaging/web/README.md.
 set -euo pipefail
 # shellcheck source=../env.sh
@@ -24,7 +24,7 @@ if grep -Eq '(src|href)="/[^/]' "$SITE/index.html"; then
   exit 1
 fi
 
-NAME="cadcraft-web-$VERSION"
+NAME="redrob-cad-web-$VERSION"
 WORK="$CARGO_TARGET_DIR/web-package"
 rm -rf "$WORK"
 mkdir -p "$WORK/$NAME"

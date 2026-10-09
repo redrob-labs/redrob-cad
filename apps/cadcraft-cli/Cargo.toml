@@ -1,6 +1,6 @@
 [package]
 name = "cadcraft-cli"
-description = "CADCraft command-line tool: info, convert, run scripts, export, commands, MCP server"
+description = "Redrob CAD command-line tool: info, convert, run scripts, export, commands, MCP server"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -8,6 +8,10 @@ publish = false
 
 [lints]
 workspace = true
+
+[[bin]]
+name = "redrob-cad-cli"
+path = "src/main.rs"
 
 [dependencies]
 cadcraft-engine = { workspace = true }

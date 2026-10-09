@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Build, sign and (optionally) notarize the macOS release artifacts:
 #
-#   $DIST/cadcraft-<version>-macos-<arch>.dmg          CADCraft.app on a drag-to-Applications DMG
-#   $DIST/cadcraft-cli-<version>-macos-<arch>.zip      the headless CLI
+#   $DIST/redrob-cad-<version>-macos-<arch>.dmg          Redrob CAD.app on a drag-to-Applications DMG
+#   $DIST/redrob-cad-cli-<version>-macos-<arch>.zip      the headless CLI
 #
 # Usage: packaging/macos/package.sh [--arch universal|aarch64|x86_64] [--skip-build]
 #
@@ -39,9 +39,9 @@ export MACOSX_DEPLOYMENT_TARGET=11.0
 IDENTITY="${MACOS_SIGN_IDENTITY:--}"
 SHORT_VERSION="${VERSION%%-*}"
 WORK="$CARGO_TARGET_DIR/macos-package"
-APP="$WORK/CADCraft.app"
-DMG="$DIST/cadcraft-$VERSION-macos-$ARCH.dmg"
-CLI_ZIP="$DIST/cadcraft-cli-$VERSION-macos-$ARCH.zip"
+APP="$WORK/Redrob CAD.app"
+DMG="$DIST/redrob-cad-$VERSION-macos-$ARCH.dmg"
+CLI_ZIP="$DIST/redrob-cad-cli-$VERSION-macos-$ARCH.zip"
 
 NOTARIZE=0
 if [ "$IDENTITY" = "-" ]; then
@@ -52,7 +52,7 @@ else
   warn "macOS: APPLE_ID / APPLE_PASSWORD / APPLE_TEAM_ID incomplete; signed but not notarized"
 fi
 
-echo "==> CADCraft $VERSION for macOS ($ARCH), identity: $IDENTITY, notarize: $NOTARIZE"
+echo "==> Redrob CAD $VERSION for macOS ($ARCH), identity: $IDENTITY, notarize: $NOTARIZE"
 
 # ---- build -------------------------------------------------------------------------------------
 if [ "$SKIP_BUILD" = 0 ]; then
@@ -63,7 +63,7 @@ fi
 
 rm -rf "$WORK"
 mkdir -p "$WORK/bin"
-for bin in cadcraft cadcraft-cli; do
+for bin in redrob-cad redrob-cad-cli; do
   inputs=()
   for t in "${TARGETS[@]}"; do inputs+=("$CARGO_TARGET_DIR/$t/release/$bin"); done
   lipo -create -output "$WORK/bin/$bin" "${inputs[@]}"
@@ -97,12 +97,12 @@ notarize() {
   fi
 }
 
-# ---- CADCraft.app ----------------------------------------------------------------------------
+# ---- Redrob CAD.app ----------------------------------------------------------------------------
 echo "==> assembling $APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 # Executable and icon carry the display name (CFBundleExecutable / CFBundleIconFile).
-cp "$WORK/bin/cadcraft" "$APP/Contents/MacOS/CADCraft"
-cp "$ROOT/assets/app-icon/cadcraft.icns" "$APP/Contents/Resources/CADCraft.icns"
+cp "$WORK/bin/redrob-cad" "$APP/Contents/MacOS/Redrob CAD"
+cp "$ROOT/assets/app-icon/redrob-cad.icns" "$APP/Contents/Resources/Redrob CAD.icns"
 # Licences of the embedded craft-fonts fonts (only when built with CRAFT_FONTS_DIR).
 copy_font_licences "$APP/Contents/Resources"
 sed -e "s/@VERSION@/$VERSION/g" -e "s/@SHORT_VERSION@/$SHORT_VERSION/g" \
@@ -113,13 +113,13 @@ printf 'APPL????' >"$APP/Contents/PkgInfo"
 
 # Sign inside-out: nested code first, then the bundle itself (no --deep on the final signature).
 # Today the only nested code is the main executable; frameworks/helpers would be signed here too.
-sign --options runtime --entitlements "$HERE/entitlements.plist" "$APP/Contents/MacOS/CADCraft"
+sign --options runtime --entitlements "$HERE/entitlements.plist" "$APP/Contents/MacOS/Redrob CAD"
 sign --options runtime --entitlements "$HERE/entitlements.plist" "$APP"
 codesign --verify --strict --deep --verbose=2 "$APP"
 
 if [ "$NOTARIZE" = 1 ]; then
-  ditto -c -k --keepParent "$APP" "$WORK/CADCraft-notarize.zip"
-  notarize "$WORK/CADCraft-notarize.zip"
+  ditto -c -k --keepParent "$APP" "$WORK/redrob-cad-notarize.zip"
+  notarize "$WORK/redrob-cad-notarize.zip"
   xcrun stapler staple "$APP"
   xcrun stapler validate "$APP"
   spctl --assess --type execute -vvv "$APP"
@@ -129,12 +129,12 @@ fi
 echo "==> building $DMG"
 STAGE="$WORK/dmg"
 mkdir -p "$STAGE"
-ditto "$APP" "$STAGE/CADCraft.app"
+ditto "$APP" "$STAGE/Redrob CAD.app"
 ln -s /Applications "$STAGE/Applications"
 rm -f "$DMG" "$WORK/raw.dmg"
 # makehybrid + convert builds the image without attaching a device, unlike `create -srcfolder`,
 # which is flaky on CI runners ("Resource busy") and hangs in sandboxed sessions.
-hdiutil makehybrid -hfs -hfs-volume-name "CADCraft $VERSION" -hfs-openfolder "$STAGE" -o "$WORK/raw.dmg" "$STAGE"
+hdiutil makehybrid -hfs -hfs-volume-name "Redrob CAD $VERSION" -hfs-openfolder "$STAGE" -o "$WORK/raw.dmg" "$STAGE"
 hdiutil convert "$WORK/raw.dmg" -format UDZO -imagekey zlib-level=9 -o "$DMG"
 rm -f "$WORK/raw.dmg"
 sign "$DMG"
@@ -148,17 +148,17 @@ fi
 
 # ---- CLI ---------------------------------------------------------------------------------------
 echo "==> building $CLI_ZIP"
-CLI_DIR="$WORK/cadcraft-cli-$VERSION-macos-$ARCH"
+CLI_DIR="$WORK/redrob-cad-cli-$VERSION-macos-$ARCH"
 mkdir -p "$CLI_DIR"
-cp "$WORK/bin/cadcraft-cli" "$CLI_DIR/"
+cp "$WORK/bin/redrob-cad-cli" "$CLI_DIR/"
 copy_docs "$CLI_DIR"
-sign --options runtime "$CLI_DIR/cadcraft-cli"
-codesign --verify --strict --verbose=2 "$CLI_DIR/cadcraft-cli"
+sign --options runtime "$CLI_DIR/redrob-cad-cli"
+codesign --verify --strict --verbose=2 "$CLI_DIR/redrob-cad-cli"
 rm -f "$CLI_ZIP"
 ditto -c -k --keepParent "$CLI_DIR" "$CLI_ZIP"
 # A bare Mach-O can't carry a stapled ticket; Gatekeeper looks the notarization up online.
 if [ "$NOTARIZE" = 1 ]; then notarize "$CLI_ZIP"; fi
 
-"$WORK/bin/cadcraft-cli" --version
+"$WORK/bin/redrob-cad-cli" --version
 echo "==> done"
 ls -lh "$DMG" "$CLI_ZIP"

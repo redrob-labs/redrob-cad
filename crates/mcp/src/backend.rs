@@ -71,7 +71,7 @@ impl Backend for Remote {
         let line = json!({"id": id, "method": method, "params": params}).to_string();
         let reply = match self.roundtrip(&line) {
             Ok(r) => r,
-            Err(_) => self.roundtrip(&line).map_err(|e| format!("CADCraft at {}: {e}", self.addr))?,
+            Err(_) => self.roundtrip(&line).map_err(|e| format!("Redrob CAD at {}: {e}", self.addr))?,
         };
         let v: Value = serde_json::from_str(&reply).map_err(|e| format!("bad reply: {e}"))?;
         if v.get("ok").and_then(Value::as_bool) == Some(true) {
@@ -84,7 +84,7 @@ impl Backend for Remote {
         true
     }
     fn describe(&self) -> String {
-        format!("connected to CADCraft at {}", self.addr)
+        format!("connected to Redrob CAD at {}", self.addr)
     }
 }
 
@@ -183,6 +183,6 @@ impl Backend for Headless {
         false
     }
     fn describe(&self) -> String {
-        "headless CADCraft session".into()
+        "headless Redrob CAD session".into()
     }
 }

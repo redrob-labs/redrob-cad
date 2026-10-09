@@ -92,7 +92,7 @@ fn dsettings(app: &mut CadApp, ctx: &egui::Context, open: &mut bool) {
 fn about(ctx: &egui::Context, open: &mut bool) {
     let t = Tokens::get();
     let tab_id = egui::Id::new("about_tab");
-    egui::Window::new("About CADCraft").open(open).default_size(vec2(640.0, 420.0)).collapsible(false).show(ctx, |ui| {
+    egui::Window::new("About Redrob CAD").open(open).default_size(vec2(640.0, 420.0)).collapsible(false).show(ctx, |ui| {
         let mut tab = ui.data_mut(|d| d.get_temp::<u8>(tab_id)).unwrap_or(0);
         ui.horizontal(|ui| {
             for (i, l) in ["About", "Contributors", "Models"].iter().enumerate() {
@@ -107,13 +107,13 @@ fn about(ctx: &egui::Context, open: &mut bool) {
             1 => crate::credits::contributors_ui(ui),
             2 => crate::credits::models_ui(ui),
             _ => {
-                ui.heading("CADCraft");
+                ui.heading("Redrob CAD");
                 ui.label(format!("Version {}", env!("CARGO_PKG_VERSION")));
                 ui.label("Computer-aided design and drafting: an open-source, clean-room CAD application written in pure Rust.");
                 ui.add_space(6.0);
-                ui.label(RichText::new("One of the Crafting Apps by the ArtCraft team and community.").color(t.text_dim));
-                ui.hyperlink_to("getartcraft.com/apps/cadcraft", "https://getartcraft.com/apps/cadcraft");
-                ui.hyperlink_to("Join us on Discord", "https://discord.gg/artcraft");
+                ui.label(RichText::new("Made by Redrob. Built on CADCraft by the ArtCraft team and contributors.").color(t.text_dim));
+                ui.hyperlink_to("github.com/redrob-labs/redrob-cad", "https://github.com/redrob-labs/redrob-cad");
+                ui.hyperlink_to("Report an issue", "https://github.com/redrob-labs/redrob-cad/issues");
                 ui.add_space(6.0);
                 ui.label(RichText::new("MIT OR Apache-2.0. Not affiliated with Autodesk, Inc.").small().color(t.text_faint));
             }

@@ -1,11 +1,11 @@
 <#
 .SYNOPSIS
-  Build, sign and package CADCraft for Windows.
+  Build, sign and package Redrob CAD for Windows.
 
 .DESCRIPTION
   Produces, in $env:DIST (default: dist/release):
-    cadcraft-<version>-windows-<arch>.msi            per-machine installer (WiX v5)
-    cadcraft-<version>-windows-<arch>-portable.zip   cadcraft.exe + cadcraft-cli.exe
+    redrob-cad-<version>-windows-<arch>.msi            per-machine installer (WiX v5)
+    redrob-cad-<version>-windows-<arch>-portable.zip   redrob-cad.exe + redrob-cad-cli.exe
 
   The binaries link the C runtime statically (+crt-static), so neither the MSI nor the portable
   zip needs the Visual C++ redistributable. Signing is delegated to sign.ps1 (skipped with a
@@ -53,7 +53,7 @@ New-Item -ItemType Directory -Force -Path $Dist | Out-Null
 if (-not $env:CADCRAFT_BUILD_SHA) { $env:CADCRAFT_BUILD_SHA = (git -C $Root rev-parse HEAD 2>$null) }
 if (-not $env:CADCRAFT_BUILD_DATE) { $env:CADCRAFT_BUILD_DATE = (Get-Date).ToUniversalTime().ToString('yyyy-MM-dd') }
 
-Write-Output "CADCraft $Version for Windows $Arch ($Target)"
+Write-Output "Redrob CAD $Version for Windows $Arch ($Target)"
 
 if (-not $SkipBuild) {
   # Static CRT: no VC++ redistributable needed. Scoped to the target so host build scripts and
@@ -77,7 +77,7 @@ function Get-PeHeader([string] $Path) {
   return @{ Machine = [BitConverter]::ToUInt16($bytes, $pe + 4); Subsystem = [BitConverter]::ToUInt16($bytes, $pe + 0x5C) }
 }
 $Machine = switch ($Arch) { 'x64' { 0x8664 } 'x86' { 0x14C } 'arm64' { 0xAA64 } }
-foreach ($check in @(@('cadcraft.exe', 2), @('cadcraft-cli.exe', 3))) {
+foreach ($check in @(@('redrob-cad.exe', 2), @('redrob-cad-cli.exe', 3))) {
   $h = Get-PeHeader (Join-Path $Bin $check[0])
   if ($h.Machine -ne $Machine) { throw "$($check[0]) is for machine 0x$('{0:X}' -f $h.Machine), expected 0x$('{0:X}' -f $Machine) ($Arch)" }
   if ($h.Subsystem -ne $check[1]) { throw "$($check[0]) has PE subsystem $($h.Subsystem), expected $($check[1])" }
@@ -86,15 +86,15 @@ foreach ($check in @(@('cadcraft.exe', 2), @('cadcraft-cli.exe', 3))) {
 $Stage = Join-Path $TargetDir "windows-package\$Arch"
 Remove-Item -Recurse -Force $Stage -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $Stage | Out-Null
-Copy-Item (Join-Path $Bin 'cadcraft.exe'), (Join-Path $Bin 'cadcraft-cli.exe') $Stage
+Copy-Item (Join-Path $Bin 'redrob-cad.exe'), (Join-Path $Bin 'redrob-cad-cli.exe') $Stage
 
-& (Join-Path $PSScriptRoot 'sign.ps1') (Join-Path $Stage 'cadcraft.exe') (Join-Path $Stage 'cadcraft-cli.exe')
+& (Join-Path $PSScriptRoot 'sign.ps1') (Join-Path $Stage 'redrob-cad.exe') (Join-Path $Stage 'redrob-cad-cli.exe')
 
 # ---- MSI ---------------------------------------------------------------------------------------
-$Msi = Join-Path $Dist "cadcraft-$Version-windows-$Arch.msi"
+$Msi = Join-Path $Dist "redrob-cad-$Version-windows-$Arch.msi"
 Invoke-Native 'wix build' {
-  wix build (Join-Path $PSScriptRoot 'cadcraft.wxs') -arch $Arch `
-    -d "Version=$MsiVersion" -d "BinDir=$Stage" -d "IconPath=$(Join-Path $Root 'assets\app-icon\cadcraft.ico')" `
+  wix build (Join-Path $PSScriptRoot 'redrob-cad.wxs') -arch $Arch `
+    -d "Version=$MsiVersion" -d "BinDir=$Stage" -d "IconPath=$(Join-Path $Root 'assets\app-icon\redrob-cad.ico')" `
     -o $Msi
 }
 # wix writes its debug symbols (.wixpdb) next to the MSI; keep them out of the release assets.
@@ -102,7 +102,7 @@ Remove-Item -Force -ErrorAction SilentlyContinue ([IO.Path]::ChangeExtension($Ms
 & (Join-Path $PSScriptRoot 'sign.ps1') $Msi
 
 # ---- portable zip ------------------------------------------------------------------------------
-$Portable = Join-Path $TargetDir "windows-package\cadcraft-$Version-windows-$Arch-portable"
+$Portable = Join-Path $TargetDir "windows-package\redrob-cad-$Version-windows-$Arch-portable"
 Remove-Item -Recurse -Force $Portable -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $Portable | Out-Null
 Copy-Item (Join-Path $Stage '*.exe') $Portable
@@ -116,7 +116,7 @@ if ($env:CRAFT_FONTS_DIR) {
     Copy-Item $ofl.FullName (Join-Path $Portable "OFL-$($ofl.Directory.Name).txt")
   }
 }
-$Zip = Join-Path $Dist "cadcraft-$Version-windows-$Arch-portable.zip"
+$Zip = Join-Path $Dist "redrob-cad-$Version-windows-$Arch-portable.zip"
 Remove-Item -Force $Zip -ErrorAction SilentlyContinue
 Compress-Archive -Path $Portable -DestinationPath $Zip
 
@@ -124,8 +124,8 @@ Compress-Archive -Path $Portable -DestinationPath $Zip
 # here; .github/workflows/windows-arm64.yml installs and runs it on ARM64 instead.
 $HostArch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant()
 if ($Arch -ne 'arm64' -or $HostArch -eq 'arm64') {
-  Invoke-Native 'cadcraft-cli --version' { & (Join-Path $Stage 'cadcraft-cli.exe') --version }
+  Invoke-Native 'redrob-cad-cli --version' { & (Join-Path $Stage 'redrob-cad-cli.exe') --version }
 } else {
-  Write-Output "skipping cadcraft-cli --version: an $Arch build doesn't run on this $HostArch machine"
+  Write-Output "skipping redrob-cad-cli --version: an $Arch build doesn't run on this $HostArch machine"
 }
 Get-Item $Msi, $Zip | Format-Table Name, Length

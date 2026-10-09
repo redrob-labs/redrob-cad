@@ -1,5 +1,5 @@
 # Release pipeline: every push to `release` builds signed installers for every platform and
-# creates or updates the draft GitHub Release "CADCraft v<version>". See docs/releasing.md.
+# creates or updates the draft GitHub Release "Redrob CAD v<version>". See docs/releasing.md.
 #
 # Pushes to `release` trigger the run; pushing there is limited by a repository ruleset to org
 # admins and the release-managers team. The jobs that sign (macOS, Windows) and the one that
@@ -61,7 +61,7 @@ jobs:
             echo "date=$(date -u +%Y-%m-%d)"
             echo "prerelease=$pre"
           } >>"$GITHUB_OUTPUT"
-          echo "### CADCraft v$v (\`${GITHUB_SHA::9}\`)" >>"$GITHUB_STEP_SUMMARY"
+          echo "### Redrob CAD v$v (\`${GITHUB_SHA::9}\`)" >>"$GITHUB_STEP_SUMMARY"
 
   macos:
     name: macOS universal
@@ -193,9 +193,9 @@ jobs:
       - name: Check the packages
         run: |
           dpkg-deb --info dist/release/*.deb
-          dpkg-deb --contents dist/release/*.deb | grep -E 'usr/bin/cadcraft$|metainfo|applications'
-          ldd target/release/cadcraft
-          python3 -c "import yaml; m = yaml.safe_load(open('packaging/linux/flatpak/ai.storyteller.cadcraft.yml')); assert m['id'] == 'ai.storyteller.cadcraft'"
+          dpkg-deb --contents dist/release/*.deb | grep -E 'usr/bin/redrob-cad$|metainfo|applications'
+          ldd target/release/redrob-cad
+          python3 -c "import yaml; m = yaml.safe_load(open('packaging/linux/flatpak/ai.redrob.cad.yml')); assert m['id'] == 'ai.redrob.cad'"
           for appimage in dist/release/*.AppImage; do
             chmod +x "$appimage"
             APPIMAGE_EXTRACT_AND_RUN=1 "$appimage" --version
@@ -242,7 +242,7 @@ jobs:
           # Ubuntu 24.04's AppArmor blocks the unprivileged user namespaces bubblewrap needs.
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
       - name: Build the Flatpak bundle
-        run: packaging/linux/flatpak-bundle.sh "dist/linux/cadcraft-$CADCRAFT_VERSION-linux-${{ matrix.arch }}.tar.gz"
+        run: packaging/linux/flatpak-bundle.sh "dist/linux/redrob-cad-$CADCRAFT_VERSION-linux-${{ matrix.arch }}.tar.gz"
       - uses: actions/upload-artifact@v4
         with:
           name: release-flatpak-${{ matrix.arch }}
@@ -312,9 +312,9 @@ jobs:
             git config --global --add safe.directory "*"
             if [ -n "$INPUT_VERSION" ]; then cargo xtask version set "$CADCRAFT_VERSION"; fi
             cargo build --release --locked -p cadcraft -p cadcraft-cli
-            name="cadcraft-$CADCRAFT_VERSION-freebsd-x86_64"
+            name="redrob-cad-$CADCRAFT_VERSION-freebsd-x86_64"
             mkdir -p "dist/release/$name"
-            cp target/release/cadcraft target/release/cadcraft-cli README.md LICENSE-MIT LICENSE-APACHE NOTICE ATTRIBUTION.md "dist/release/$name/"
+            cp target/release/redrob-cad target/release/redrob-cad-cli README.md LICENSE-MIT LICENSE-APACHE NOTICE ATTRIBUTION.md "dist/release/$name/"
             mkdir -p "dist/release/$name/icons"
             cp -R assets/app-icon/hicolor "dist/release/$name/icons/" 2>/dev/null || true
             (cd dist/release && tar -czf "$name.tar.gz" "$name" && rm -rf "$name")
@@ -354,7 +354,7 @@ jobs:
         working-directory: artifacts
         run: |
           tag="v$VERSION"
-          title="CADCraft v$VERSION"
+          title="Redrob CAD v$VERSION"
           pre=()
           if [ "$PRERELEASE" = true ]; then pre=(--prerelease); fi
           if draft="$(gh release view "$tag" --json isDraft --jq .isDraft 2>/dev/null)"; then
