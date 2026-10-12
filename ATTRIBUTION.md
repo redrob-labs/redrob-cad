@@ -14,6 +14,11 @@ exception is the Redrob mark in `assets/brand/` and the app icons derived from i
 `assets/app-icon/`: Redrob's own brand, copied verbatim from the Redrob design system (pinned by
 `assets/brand/SHA256SUMS`), not open source and not covered by the code licence.
 
+A second exception is the Korean UI face `crates/ui-egui/assets/fonts/WantedSans-Regular.ttf`:
+egui's built-in fonts carry no Hangul, so it is embedded in the binary. It is the Redrob design
+system's Korean system face, copied verbatim, under the SIL Open Font License 1.1 (licence text
+beside it).
+
 Generated-in-code assets are original and have no file to list:
 - the UI icon set (`crates/ui-egui/src/icons.rs`);
 - the "CADCraft Stroke" single-stroke drafting font (`crates/fonts/src/stroke.rs`);
@@ -24,6 +29,8 @@ Generated-in-code assets are original and have no file to list:
 
 | Asset | Author | Source | Licence | Notes |
 |---|---|---|---|---|
+| `crates/ui-egui/assets/fonts/WantedSans-Regular.ttf` | Wanted Lab, Inc. (The Wanted Sans Project Authors) | Redrob design system `assets/Fonts/`, from [wanteddev/wanted-sans](https://github.com/wanteddev/wanted-sans) v1.003 | SIL OFL 1.1 | Korean UI face, embedded |
+| `crates/ui-egui/assets/fonts/WantedSans-OFL.txt` | The Wanted Sans Project Authors | [wanteddev/wanted-sans](https://github.com/wanteddev/wanted-sans) `OFL.txt` | SIL OFL 1.1 | Licence of the face above |
 | `assets/app-icon/hicolor/128x128/apps/ai.redrob.cad.png` | Redrob | derived from `assets/brand/` by `packaging/brand-assets.sh` | Redrob brand, all rights reserved | App icon |
 | `assets/app-icon/hicolor/16x16/apps/ai.redrob.cad.png` | Redrob | derived from `assets/brand/` by `packaging/brand-assets.sh` | Redrob brand, all rights reserved | App icon |
 | `assets/app-icon/hicolor/24x24/apps/ai.redrob.cad.png` | Redrob | derived from `assets/brand/` by `packaging/brand-assets.sh` | Redrob brand, all rights reserved | App icon |
