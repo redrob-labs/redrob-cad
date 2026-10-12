@@ -17,6 +17,7 @@ pub mod control;
 pub mod credits;
 pub mod dialogs;
 pub mod gpu;
+pub mod i18n;
 pub mod icons;
 pub mod layers;
 pub mod menus;
@@ -92,6 +93,8 @@ pub struct Services {
     pub agent: Option<agent::AgentFactory>,
     /// The connected Redrob workspace and the device flow (desktop only).
     pub account: Option<Box<dyn account::AccountService>>,
+    /// Saves the interface language the user picked (desktop: a settings file).
+    pub save_language: Option<Box<dyn Fn(i18n::Lang)>>,
 }
 
 pub struct CadApp {

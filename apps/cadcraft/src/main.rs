@@ -21,16 +21,18 @@ mod native_menu;
 use cadcraft_engine::Session;
 use cadcraft_ui_egui::{CadApp, Services};
 
-struct App(CadApp, #[cfg(target_os = "macos")] Option<native_menu::NativeMenu>);
+struct App(CadApp, #[cfg(target_os = "macos")] Option<(native_menu::NativeMenu, cadcraft_ui_egui::i18n::Lang)>);
 
 impl eframe::App for App {
     fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         #[cfg(target_os = "macos")]
         {
-            if self.1.is_none() && std::env::var_os("CADCRAFT_NO_NATIVE_MENU").is_none() {
-                self.1 = Some(native_menu::NativeMenu::install(&mut self.0));
+            // (Re)built at launch and whenever the interface language changes, so its titles follow.
+            let lang = cadcraft_ui_egui::i18n::lang();
+            if self.1.as_ref().is_none_or(|(_, l)| *l != lang) && std::env::var_os("CADCRAFT_NO_NATIVE_MENU").is_none() {
+                self.1 = Some((native_menu::NativeMenu::install(&mut self.0), lang));
             }
-            if let Some(m) = &mut self.1 {
+            if let Some((m, _)) = &mut self.1 {
                 m.poll(&mut self.0, ctx);
             }
         }
@@ -47,6 +49,40 @@ impl eframe::App for App {
     }
 }
 
+/// The interface language: `REDROB_CAD_LANG`, else the one saved from the Language menu, else
+/// the platform's (POSIX locale variables, then the OS setting).
+fn startup_language() -> cadcraft_ui_egui::i18n::Lang {
+    use cadcraft_ui_egui::i18n::{self, Lang};
+    if let Some(l) = std::env::var("REDROB_CAD_LANG").ok().and_then(|v| Lang::from_code(&v)) {
+        return l;
+    }
+    let saved = settings_path()
+        .and_then(|p| std::fs::read_to_string(p).ok())
+        .and_then(|t| serde_json::from_str::<serde_json::Value>(&t).ok())
+        .and_then(|v| v.get("language").and_then(serde_json::Value::as_str).and_then(Lang::from_code));
+    saved.unwrap_or_else(|| i18n::detect(sys_locale::get_locale().as_deref()))
+}
+
+fn settings_path() -> Option<std::path::PathBuf> {
+    device::config_dir().map(|d| d.join("settings.json"))
+}
+
+/// Writes the language into `settings.json`, keeping any other keys there.
+fn save_language(l: cadcraft_ui_egui::i18n::Lang) {
+    let Some(path) = settings_path() else { return };
+    let mut v =
+        std::fs::read_to_string(&path).ok().and_then(|t| serde_json::from_str::<serde_json::Value>(&t).ok()).unwrap_or_else(|| serde_json::json!({}));
+    if let Some(o) = v.as_object_mut() {
+        o.insert("language".into(), serde_json::json!(l.code()));
+    }
+    if let Some(dir) = path.parent() {
+        let _ = std::fs::create_dir_all(dir);
+    }
+    if let Err(e) = std::fs::write(&path, format!("{v:#}\n")) {
+        log::warn!("saving the language: {e}");
+    }
+}
+
 /// File format hooks for the engine (it stays I/O-agnostic).
 pub fn install_io() {
     cadcraft_engine::cmd::file::set_io(cadcraft_engine::cmd::file::IoHooks {
@@ -60,6 +96,7 @@ fn services(agent: Option<cadcraft_ui_egui::agent::AgentFactory>, account: Optio
     Services {
         agent,
         account,
+        save_language: Some(Box::new(save_language)),
         pick_open: Some(Box::new(|| {
             rfd::FileDialog::new()
                 .add_filter("Drawing (DXF)", &["dxf"])
@@ -158,6 +195,7 @@ fn main() -> eframe::Result {
         }
     }
     install_io();
+    cadcraft_ui_egui::i18n::set_lang(startup_language());
     let mut options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_title("Redrob CAD")

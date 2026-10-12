@@ -3,6 +3,7 @@
 //! Icons are line drawings on a 24×24 design grid: light strokes for existing geometry, blue for
 //! the geometry a command creates and orange dots for picked points.
 
+use crate::i18n::tr;
 use egui::{Color32, Painter, Pos2, Rect, Stroke, pos2};
 
 use crate::theme::Tokens;
@@ -896,5 +897,5 @@ pub fn button(ui: &mut egui::Ui, icon: Icon, size: f32, tooltip: &str, selected:
         ui.painter().rect_filled(rect, 3.0, t.control_hover.gamma_multiply(0.6));
     }
     paint(ui.painter(), rect.shrink(size * 0.08), icon, !ui.is_enabled());
-    resp.on_hover_text(tooltip)
+    resp.on_hover_text(tr(tooltip))
 }
