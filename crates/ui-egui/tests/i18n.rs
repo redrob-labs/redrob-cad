@@ -232,6 +232,15 @@ fn korean_lookups_behave() {
     assert_eq!(tr_runtime("Model: redrob/auto"), "모델: redrob/auto");
     assert_eq!(tr_runtime("Workspace: Acme"), "워크스페이스: Acme");
     assert_eq!(tr_log("Command: CIRCLE"), "명령: CIRCLE");
+    // A multi-line report keeps its indents and translates line by line.
+    let report = "----------------   REGIONS   ----------------\nArea:                    12.5664\n    Radius = 2.0000";
+    let ko = tr_log(report);
+    assert_eq!(ko.lines().count(), 3, "{ko}");
+    assert!(
+        ko.contains("영역") && ko.contains("12.5664") && ko.lines().nth(2).is_some_and(|l| l.starts_with("    ") && l.contains("2.0000")),
+        "{ko}"
+    );
+    assert!(!ko.contains("Area:") && !ko.contains("Radius"), "{ko}");
     i18n::set_lang(Lang::En);
     assert_eq!(tr("Send"), "Send");
     assert_eq!(tr_runtime("Model: redrob/auto"), "Model: redrob/auto");

@@ -137,6 +137,14 @@ pub fn tr_log(line: &str) -> String {
     if lang() == Lang::En {
         return line.to_string();
     }
+    // Reports (LIST, AREA) are one entry of many lines; each line keeps its indent.
+    if line.contains('\n') {
+        return line.split('\n').map(tr_log).collect::<Vec<_>>().join("\n");
+    }
+    let body = line.trim_start();
+    if body.len() != line.len() && !body.is_empty() {
+        return format!("{}{}", &line[..line.len() - body.len()], tr_log(body));
+    }
     if let Some(t) = ko().get(line) {
         return t.clone();
     }

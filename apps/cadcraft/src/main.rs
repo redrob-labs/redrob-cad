@@ -21,16 +21,18 @@ mod native_menu;
 use cadcraft_engine::Session;
 use cadcraft_ui_egui::{CadApp, Services};
 
-struct App(CadApp, #[cfg(target_os = "macos")] Option<native_menu::NativeMenu>);
+struct App(CadApp, #[cfg(target_os = "macos")] Option<(native_menu::NativeMenu, cadcraft_ui_egui::i18n::Lang)>);
 
 impl eframe::App for App {
     fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         #[cfg(target_os = "macos")]
         {
-            if self.1.is_none() && std::env::var_os("CADCRAFT_NO_NATIVE_MENU").is_none() {
-                self.1 = Some(native_menu::NativeMenu::install(&mut self.0));
+            // (Re)built at launch and whenever the interface language changes, so its titles follow.
+            let lang = cadcraft_ui_egui::i18n::lang();
+            if self.1.as_ref().is_none_or(|(_, l)| *l != lang) && std::env::var_os("CADCRAFT_NO_NATIVE_MENU").is_none() {
+                self.1 = Some((native_menu::NativeMenu::install(&mut self.0), lang));
             }
-            if let Some(m) = &mut self.1 {
+            if let Some((m, _)) = &mut self.1 {
                 m.poll(&mut self.0, ctx);
             }
         }
