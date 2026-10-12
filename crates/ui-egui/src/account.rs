@@ -54,8 +54,8 @@ pub fn account_row(service: &mut Option<Box<dyn AccountService>>, ui: &mut egui:
     let state = svc.state();
     let account = svc.account();
     let mut action: Option<fn(&mut dyn AccountService)> = None;
+    // The caller's frame supplies the side margins.
     ui.horizontal_wrapped(|ui| {
-        ui.add_space(10.0);
         match (&account, &state) {
             (_, ConnectState::Starting) => {
                 ui.spinner();
