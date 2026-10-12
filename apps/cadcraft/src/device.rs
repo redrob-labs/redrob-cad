@@ -81,6 +81,44 @@ impl Stored {
     }
 }
 
+/// Overrides the shared account file's directory (Redrob Launcher's `REDROB_SHARED_DIR`).
+pub const SHARED_DIR_ENV: &str = "REDROB_SHARED_DIR";
+
+/// Redrob Launcher's shared account file: the workspace the computer is signed in to, which every
+/// Redrob app may read and only the launcher writes (redrob-launcher `docs/shared-account.md`).
+/// Same shape as this app's own `account.json`.
+pub fn shared_account_path() -> Option<PathBuf> {
+    let env = |k: &str| std::env::var_os(k).filter(|v| !v.is_empty()).map(PathBuf::from);
+    let dir = if let Some(d) = env(SHARED_DIR_ENV) {
+        d
+    } else if cfg!(windows) {
+        env("APPDATA")?.join("Redrob").join("Shared")
+    } else if cfg!(target_os = "macos") {
+        env("HOME")?.join("Library/Application Support/ai.redrob.shared")
+    } else {
+        env("XDG_CONFIG_HOME").or_else(|| env("HOME").map(|h| h.join(".config")))?.join("redrob-shared")
+    };
+    Some(dir.join("account.json"))
+}
+
+/// The key the app uses now: its own when it has one, else the computer's shared one, read fresh
+/// every time (the person may sign in or out in Redrob Launcher while this app is open).
+#[derive(Clone)]
+pub struct KeySource {
+    own: Arc<Mutex<Option<Stored>>>,
+    shared: Option<PathBuf>,
+}
+
+impl KeySource {
+    /// The key and whether it is the shared one.
+    pub fn current(&self) -> Option<(Stored, bool)> {
+        if let Some(s) = self.own.lock().ok().and_then(|g| g.clone()) {
+            return Some((s, false));
+        }
+        self.shared.as_deref().and_then(load).map(|s| (s, true))
+    }
+}
+
 /// `account.json`'s directory for this platform.
 pub fn config_dir() -> Option<PathBuf> {
     if let Some(d) = std::env::var_os(CONFIG_DIR_ENV).filter(|d| !d.is_empty()) {
@@ -194,6 +232,10 @@ struct Attempt {
 /// The app's account: the stored key, and at most one connection attempt in the background.
 pub struct DeviceAccount {
     path: Option<PathBuf>,
+    /// Redrob Launcher's shared account file, the fallback when this app has no key of its own.
+    shared: Option<PathBuf>,
+    /// The shared key last seen, so a change there restarts the agent like a change here does.
+    shared_seen: Mutex<Option<String>>,
     stored: Arc<Mutex<Option<Stored>>>,
     attempt: Arc<Mutex<Attempt>>,
     generation: Arc<AtomicU64>,
@@ -203,10 +245,13 @@ pub struct DeviceAccount {
 }
 
 impl DeviceAccount {
-    pub fn new(path: Option<PathBuf>, transport: Arc<dyn Transport>, base: String, ctx: Option<egui::Context>) -> Self {
+    pub fn new(path: Option<PathBuf>, shared: Option<PathBuf>, transport: Arc<dyn Transport>, base: String, ctx: Option<egui::Context>) -> Self {
         let stored = path.as_deref().and_then(load);
+        let shared_seen = Mutex::new(shared.as_deref().and_then(load).map(|s| s.api_key));
         Self {
             path,
+            shared,
+            shared_seen,
             stored: Arc::new(Mutex::new(stored)),
             attempt: Arc::new(Mutex::new(Attempt { state: ConnectState::Idle, expires: None, cancelled: Arc::new(AtomicBool::new(false)) })),
             generation: Arc::new(AtomicU64::new(0)),
@@ -217,8 +262,8 @@ impl DeviceAccount {
     }
 
     /// The key the agent is started with, read at the moment it starts.
-    pub fn key_source(&self) -> Arc<Mutex<Option<Stored>>> {
-        self.stored.clone()
+    pub fn key_source(&self) -> KeySource {
+        KeySource { own: self.stored.clone(), shared: self.shared.clone() }
     }
 }
 
@@ -234,8 +279,12 @@ fn plain(p: &Poll) -> String {
 
 impl AccountService for DeviceAccount {
     fn account(&self) -> Option<Account> {
-        let s = self.stored.lock().ok()?.clone()?;
-        Some(Account { account_name: if s.account_name.is_empty() { "Redrob workspace".into() } else { s.account_name }, key_name: s.api_key_name })
+        let (s, via_launcher) = self.key_source().current()?;
+        Some(Account {
+            account_name: if s.account_name.is_empty() { "Redrob workspace".into() } else { s.account_name },
+            key_name: s.api_key_name,
+            via_launcher,
+        })
     }
 
     fn state(&mut self) -> ConnectState {
@@ -349,6 +398,14 @@ impl AccountService for DeviceAccount {
     }
 
     fn generation(&self) -> u64 {
+        // Signing in or out in Redrob Launcher changes the shared key: count it like a change here.
+        let now = self.shared.as_deref().and_then(load).map(|s| s.api_key);
+        if let Ok(mut seen) = self.shared_seen.lock()
+            && *seen != now
+        {
+            *seen = now;
+            self.generation.fetch_add(1, Ordering::SeqCst);
+        }
         self.generation.load(Ordering::SeqCst)
     }
 }
@@ -458,7 +515,7 @@ mod tests {
             let mode = std::fs::metadata(&path).map(|m| m.permissions().mode() & 0o777).unwrap_or(0);
             assert_eq!(mode, 0o600);
         }
-        let mut acct = DeviceAccount::new(Some(path.clone()), Arc::new(Script::new(vec![])), "https://c".into(), None);
+        let mut acct = DeviceAccount::new(Some(path.clone()), None, Arc::new(Script::new(vec![])), "https://c".into(), None);
         assert_eq!(acct.account().map(|a| a.account_name), Some("Acme".into()));
         acct.disconnect();
         assert!(!path.exists() && acct.account().is_none() && acct.generation() == 1);
@@ -468,7 +525,7 @@ mod tests {
     #[test]
     fn a_refused_start_is_reported_in_plain_words() {
         let mut acct =
-            DeviceAccount::new(None, Arc::new(Script::new(vec![Ok((400, json!({"error": "invalid_request"})))])), "https://c".into(), None);
+            DeviceAccount::new(None, None, Arc::new(Script::new(vec![Ok((400, json!({"error": "invalid_request"})))])), "https://c".into(), None);
         acct.connect();
         let deadline = Instant::now() + Duration::from_secs(5);
         while matches!(acct.state(), ConnectState::Starting) && Instant::now() < deadline {
@@ -476,5 +533,41 @@ mod tests {
         }
         assert_eq!(acct.state(), ConnectState::Failed("console.redrob.ai would not start the connection.".into()));
         assert!(acct.account().is_none());
+    }
+
+    #[test]
+    fn the_shared_launcher_key_is_the_fallback_and_its_changes_restart_the_agent() {
+        let dir = std::env::temp_dir().join(format!("redrob-cad-shared-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let own = dir.join("own").join("account.json");
+        let shared = dir.join("shared").join("account.json");
+        let key = |k: &str, name: &str| Stored {
+            api_key: k.into(),
+            api_key_name: name.into(),
+            account_name: "Acme".into(),
+            api_base_url: "https://c".into(),
+        };
+        let acct = DeviceAccount::new(Some(own.clone()), Some(shared.clone()), Arc::new(Script::new(vec![])), "https://c".into(), None);
+        assert!(acct.account().is_none());
+        let g0 = acct.generation();
+        // Signed in through Redrob Launcher: used, marked as such, and the agent restarts with it.
+        assert!(save(&shared, &key("rk_shared", "Redrob Launcher")).is_ok());
+        assert_eq!(acct.account().map(|a| (a.key_name, a.via_launcher)), Some(("Redrob Launcher".into(), true)));
+        assert_eq!(acct.key_source().current().map(|(s, via)| (s.api_key, via)), Some(("rk_shared".into(), true)));
+        assert!(acct.generation() > g0);
+        let g1 = acct.generation();
+        assert_eq!(acct.generation(), g1, "an unchanged shared key restarts nothing");
+        // The app's own key wins.
+        assert!(save(&own, &key("rk_own", "Redrob CAD")).is_ok());
+        let mut acct = DeviceAccount::new(Some(own.clone()), Some(shared.clone()), Arc::new(Script::new(vec![])), "https://c".into(), None);
+        assert_eq!(acct.key_source().current().map(|(s, via)| (s.api_key, via)), Some(("rk_own".into(), false)));
+        // Disconnecting here removes only this app's own key; the launcher's file is not this app's to delete.
+        acct.disconnect();
+        assert!(!own.exists() && shared.exists());
+        assert_eq!(acct.key_source().current().map(|(s, _)| s.api_key), Some("rk_shared".into()));
+        // Signed out in the launcher: nothing left.
+        assert!(std::fs::remove_file(&shared).is_ok());
+        assert!(acct.account().is_none());
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }
