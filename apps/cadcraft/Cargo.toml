@@ -31,6 +31,8 @@ winresource = "0.1"
 # The console device flow (connect a Redrob workspace). rustls, Mozilla's root store.
 ureq = { version = "=3.4.2", default-features = false, features = ["rustls"] }
 rfd = { workspace = true }
+# The OS interface language on macOS and Windows, which set no LANG for GUI apps.
+sys-locale = "=0.3.2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 muda = { version = "0.21", default-features = false }

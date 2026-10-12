@@ -1,6 +1,7 @@
 //! Menus (in-window menu bar; the native macOS menu is built from the same tree), UI-only
 //! commands and keyboard shortcuts.
 
+use crate::i18n::tr_label;
 use serde_json::{Value, json};
 
 use crate::CadApp;
@@ -34,6 +35,9 @@ pub const UI_COMMANDS: &[(&str, &str, &[&str], Option<&str>)] = &[
     ("ui.dialog.commands", "Command Reference", &["Help", "Redrob CAD Help"], Some("F1")),
     ("ui.noop", "", &[], None),
     ("ui.quit", "Quit Redrob CAD", &[], Some("Cmd+Q")),
+    // Each language is named in itself, so the menu reads in whatever language is active.
+    ("ui.lang.en", "English", &["Tools", "Language", "English"], None),
+    ("ui.lang.ko", "한국어", &["Tools", "Language", "한국어"], None),
 ];
 
 pub fn is_ui_command(id: &str) -> bool {
@@ -139,6 +143,14 @@ pub fn run_ui_command(app: &mut CadApp, id: &str, params: &Value) -> Option<Resu
             Ok(Value::Null)
         }
         "ui.noop" => Ok(Value::Null),
+        "ui.lang.en" | "ui.lang.ko" => {
+            let l = if id == "ui.lang.ko" { crate::i18n::Lang::Ko } else { crate::i18n::Lang::En };
+            crate::i18n::set_lang(l);
+            if let Some(save) = &app.services.save_language {
+                save(l);
+            }
+            Ok(json!({ "language": l.code() }))
+        }
         "layer" | "la" | "layers" if params.is_null() => {
             app.ui.dialog = Some("layers".into());
             Ok(Value::Null)
@@ -216,7 +228,7 @@ pub fn tree(app: &CadApp) -> Vec<(String, Vec<Entry>)> {
 fn entry_ui(ui: &mut egui::Ui, e: &Entry, clicked: &mut Option<String>) {
     match e {
         Entry::Item { label, id, shortcut, enabled } => {
-            let mut b = egui::Button::new(label);
+            let mut b = egui::Button::new(tr_label(label));
             if let Some(s) = shortcut {
                 b = b.shortcut_text(s.replace("Cmd+", "⌘").replace("Shift+", "⇧"));
             }
@@ -226,7 +238,7 @@ fn entry_ui(ui: &mut egui::Ui, e: &Entry, clicked: &mut Option<String>) {
             }
         }
         Entry::Sub { label, children } => {
-            ui.menu_button(label, |ui| {
+            ui.menu_button(tr_label(label), |ui| {
                 for c in children {
                     entry_ui(ui, c, clicked);
                 }
@@ -244,7 +256,7 @@ pub fn menu_bar(app: &mut CadApp, ui: &mut egui::Ui) {
         |ui| {
             egui::MenuBar::new().ui(ui, |ui| {
                 for (name, entries) in &tree {
-                    ui.menu_button(name, |ui| {
+                    ui.menu_button(tr_label(name), |ui| {
                         for e in entries {
                             entry_ui(ui, e, &mut clicked);
                         }

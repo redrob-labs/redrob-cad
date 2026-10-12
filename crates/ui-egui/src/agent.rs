@@ -4,6 +4,7 @@
 //! protocol live behind [`AgentHost`], supplied by the desktop app through
 //! [`crate::Services::agent`]. Without one (the web build) the palette says so.
 
+use crate::i18n::{tr, tr_runtime, trf};
 use egui::{Color32, RichText, vec2};
 
 use crate::CadApp;
@@ -200,7 +201,7 @@ pub fn agent_section(app: &mut CadApp, ui: &mut egui::Ui) {
     let t = Tokens::get();
     egui::Frame::NONE.inner_margin(egui::Margin::symmetric(MARGIN, 8)).show(ui, |ui| {
         ui.horizontal(|ui| {
-            ui.label(RichText::new("Agent").size(14.0).color(t.text));
+            ui.label(RichText::new(tr("Agent")).size(14.0).color(t.text));
             if let Some(n) = &app.agent.agent_name {
                 ui.label(RichText::new(n).small().color(t.text_faint));
             }
@@ -225,7 +226,7 @@ fn chat(app: &mut CadApp, ui: &mut egui::Ui) {
     egui::ScrollArea::vertical().id_salt("agent_log").max_height(list_h).auto_shrink([false, false]).stick_to_bottom(true).show(ui, |ui| {
         ui.add_space(GAP);
         if panel.entries.is_empty() {
-            ui.add(egui::Label::new(RichText::new("Ask Redrob Code to draw, change or check this drawing.").color(t.text_dim)).wrap());
+            ui.add(egui::Label::new(RichText::new(tr("Ask Redrob Code to draw, change or check this drawing.")).color(t.text_dim)).wrap());
         }
         let full = ui.available_width();
         for e in &panel.entries {
@@ -265,10 +266,10 @@ fn chat(app: &mut CadApp, ui: &mut egui::Ui) {
                         });
                 }
                 Entry::Notice(s) => {
-                    ui.add(egui::Label::new(RichText::new(s).small().color(t.text_dim)).wrap());
+                    ui.add(egui::Label::new(RichText::new(tr_runtime(s)).small().color(t.text_dim)).wrap());
                 }
                 Entry::Error(s) => {
-                    ui.add(egui::Label::new(RichText::new(s).small().color(Color32::from_rgb(0xff, 0x8a, 0x80))).wrap());
+                    ui.add(egui::Label::new(RichText::new(tr_runtime(s)).small().color(Color32::from_rgb(0xff, 0x8a, 0x80))).wrap());
                 }
             }
             ui.add_space(GAP);
@@ -276,7 +277,7 @@ fn chat(app: &mut CadApp, ui: &mut egui::Ui) {
     });
     let mut answer: Option<Option<String>> = None;
     if let Some((_, title, options)) = &panel.pending {
-        ui.add(egui::Label::new(RichText::new(format!("Allow {title}?")).color(t.text)).wrap());
+        ui.add(egui::Label::new(RichText::new(trf("Allow {tool}?", &[("tool", title)])).color(t.text)).wrap());
         ui.horizontal_wrapped(|ui| {
             for o in options {
                 if ui.button(&o.name).clicked() {
@@ -296,7 +297,7 @@ fn chat(app: &mut CadApp, ui: &mut egui::Ui) {
         ui,
         |ui| {
             let edit = egui::TextEdit::multiline(&mut panel.input)
-                .hint_text("Message Redrob Code")
+                .hint_text(tr("Message Redrob Code"))
                 .frame(egui::Frame::NONE)
                 .desired_rows(2)
                 .desired_width(ui.available_width());
@@ -306,11 +307,11 @@ fn chat(app: &mut CadApp, ui: &mut egui::Ui) {
             }
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 if panel.busy {
-                    if ui.add_sized(vec2(60.0, 22.0), egui::Button::new("Stop")).clicked() {
+                    if ui.add_sized(vec2(60.0, 22.0), egui::Button::new(tr("Stop"))).clicked() {
                         stop = true;
                     }
                     ui.spinner();
-                } else if ui.add_enabled(!panel.input.trim().is_empty(), egui::Button::new("Send").min_size(vec2(60.0, 22.0))).clicked() {
+                } else if ui.add_enabled(!panel.input.trim().is_empty(), egui::Button::new(tr("Send")).min_size(vec2(60.0, 22.0))).clicked() {
                     send = true;
                 }
             });

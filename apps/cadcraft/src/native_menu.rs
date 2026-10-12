@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::str::FromStr;
 
 use cadcraft_ui_egui::CadApp;
+use cadcraft_ui_egui::i18n::{tr, tr_label};
 use cadcraft_ui_egui::menus::{self, Entry};
 use muda::accelerator::Accelerator;
 use muda::{Menu, MenuEvent, MenuItem, PredefinedMenuItem, Submenu};
@@ -29,8 +30,8 @@ impl NativeMenu {
         let mut items = HashMap::new();
         let mut counter = 0usize;
         let app_menu = Submenu::new("Redrob CAD", true);
-        let about = MenuItem::with_id("cc-about", "About Redrob CAD", true, None);
-        let issues = MenuItem::with_id("cc-issues", "Report an Issue…", true, None);
+        let about = MenuItem::with_id("cc-about", tr("About Redrob CAD"), true, None);
+        let issues = MenuItem::with_id("cc-issues", tr("Report an Issue…"), true, None);
         let _ = app_menu.append_items(&[
             &about,
             &issues,
@@ -47,7 +48,7 @@ impl NativeMenu {
         items.insert("cc-issues".into(), ("ui.issues".into(), issues));
         let _ = menu.append(&app_menu);
         for (title, entries) in menus::tree(app) {
-            let sub = Submenu::new(&title, true);
+            let sub = Submenu::new(tr_label(&title), true);
             build(&sub, &entries, &mut items, &mut counter);
             let _ = menu.append(&sub);
         }
@@ -82,14 +83,14 @@ fn build(parent: &Submenu, entries: &[Entry], items: &mut HashMap<String, (Strin
     for e in entries {
         match e {
             Entry::Sub { label, children } => {
-                let sub = Submenu::new(label, true);
+                let sub = Submenu::new(tr_label(label), true);
                 build(&sub, children, items, counter);
                 let _ = parent.append(&sub);
             }
             Entry::Item { label, id, shortcut, enabled } => {
                 *counter += 1;
                 let mid = format!("cc{counter}");
-                let i = MenuItem::with_id(mid.clone(), label, *enabled, shortcut.as_deref().and_then(accel));
+                let i = MenuItem::with_id(mid.clone(), tr_label(label), *enabled, shortcut.as_deref().and_then(accel));
                 let _ = parent.append(&i);
                 items.insert(mid, (id.clone(), i));
             }
