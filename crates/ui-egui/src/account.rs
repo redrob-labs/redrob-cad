@@ -86,13 +86,15 @@ pub fn account_row(service: &mut Option<Box<dyn AccountService>>, ui: &mut egui:
                 ui.vertical(|ui| {
                     ui.horizontal(|ui| {
                         ui.label(RichText::new(trf("Workspace: {name}", &[("name", a.account_name.as_str())])).small().color(t.text_dim));
-                        if a.via_launcher {
-                            ui.label(RichText::new(tr("Signed in with Redrob Launcher")).small().color(t.text_faint));
-                        } else if ui.small_button(tr("Disconnect")).clicked() {
+                        if !a.via_launcher && ui.small_button(tr("Disconnect")).clicked() {
                             action = Some(|s| s.disconnect());
                         }
                     });
                     ui.label(RichText::new(trf("Key: {name}", &[("name", a.key_name.as_str())])).small().color(t.text_faint));
+                    // On its own line: beside the workspace name it widened the palette past its edge.
+                    if a.via_launcher {
+                        ui.label(RichText::new(tr("Signed in with Redrob Launcher")).small().color(t.text_faint));
+                    }
                 });
             }
             (None, s) => {
