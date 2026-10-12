@@ -1,0 +1,147 @@
+#!/usr/bin/env python3
+"""Build the Redrob CAD branded setup (and its uninstaller) for Windows.
+
+Standard library only. Adapted from redrob-browser's installer/windows/build.py. It:
+  1. finds Visual Studio's C++ toolset (vswhere) and runs under vcvarsall for --arch;
+  2. compiles redrob_cad_setup.rc (rc.exe) and redrob_cad_setup.cpp (cl.exe), and links.
+
+The art and fonts are committed in res/ (background.png rendered from background.html; the lockup
+built from the design system's; Pretendard and Wanted Sans, OFL), so the build needs no browser,
+no design-system checkout and no Python packages.
+
+Usage:
+  build.py --arch x64 --out <dir> --name redrob-cad-uninstall.exe --version 1.2.3
+  build.py --arch x64 --out <dir> --name redrob-cad-1.2.3-windows-x64-setup.exe --version 1.2.3 \\
+           --payload redrob-cad-1.2.3-windows-x64.msi
+
+Without --payload the exe is the uninstaller (REDROB_NO_PAYLOAD): it runs --uninstall and the demo
+flags. The MSI ships it in the install folder; the setup embeds the MSI.
+"""
+from __future__ import annotations
+
+import argparse
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+RES = HERE / "res"
+REPO = HERE.parent.parent.parent
+ICON = REPO / "assets" / "app-icon" / "redrob-cad.ico"
+# vcvarsall argument per target, from an x64 (or arm64) host.
+VCVARS_ARCH = {"x64": "x64", "x86": "x64_x86", "arm64": "x64_arm64"}
+
+
+def find_vswhere() -> Path:
+    pf = os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")
+    vswhere = Path(pf) / "Microsoft Visual Studio" / "Installer" / "vswhere.exe"
+    if vswhere.exists():
+        return vswhere
+    found = shutil.which("vswhere")
+    if found:
+        return Path(found)
+    sys.exit("vswhere.exe not found; install Visual Studio 2022 or later with the C++ toolset.")
+
+
+def vs_dev_env(arch: str) -> dict:
+    """The environment of a VS developer prompt for `arch` (vcvarsall), parsed after a marker."""
+    vsinstall = subprocess.run(
+        [str(find_vswhere()), "-latest", "-products", "*",
+         "-requires", "Microsoft.VisualStudio.Component.VC.Tools.x86.x64",
+         "-property", "installationPath"],
+        capture_output=True, text=True, check=True).stdout.strip()
+    if not vsinstall:
+        sys.exit("No Visual Studio install with the C++ toolset found.")
+    vcvars = Path(vsinstall) / "VC" / "Auxiliary" / "Build" / "vcvarsall.bat"
+    if not vcvars.exists():
+        sys.exit(f"vcvarsall.bat missing under {vsinstall}")
+    marker = "__REDROB_ENV__"
+    # A real batch file: an inline `cmd /c "call ... & set"` does not reliably carry vcvars' variables.
+    bat = Path(tempfile.gettempdir()) / "_redrob_cad_vcvars.bat"
+    bat.write_text(f'@echo off\r\ncall "{vcvars}" {VCVARS_ARCH[arch]}\r\necho {marker}\r\nset\r\n', encoding="ascii")
+    try:
+        out = subprocess.run(["cmd", "/c", str(bat)], capture_output=True, text=True, errors="replace").stdout
+    finally:
+        bat.unlink(missing_ok=True)
+    env, seen = {}, False
+    for line in out.splitlines():
+        if line.strip() == marker:
+            seen = True
+        elif seen and "=" in line:
+            k, v = line.split("=", 1)
+            env[k] = v
+    if not {"PATH", "INCLUDE", "LIB"} <= {k.upper() for k in env}:
+        sys.exit(f"vcvarsall {VCVARS_ARCH[arch]} produced no developer environment (no INCLUDE/LIB/PATH).")
+    env.setdefault("SystemRoot", os.environ.get("SystemRoot", r"C:\Windows"))
+    return env
+
+
+def run_in_env(cmd: list, env: dict, cwd: Path) -> None:
+    """Run under the dev env. CreateProcess searches the PARENT's PATH, so resolve cmd[0] ourselves."""
+    path = next((v for k, v in env.items() if k.upper() == "PATH"), None)
+    resolved = shutil.which(cmd[0], path=path)
+    if resolved:
+        cmd = [resolved, *cmd[1:]]
+    print("$", " ".join(map(str, cmd)), flush=True)
+    subprocess.run(cmd, env=env, check=True, cwd=str(cwd))
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--arch", choices=sorted(VCVARS_ARCH), default="x64")
+    ap.add_argument("--out", required=True)
+    ap.add_argument("--name", required=True, help="output file name, e.g. redrob-cad-uninstall.exe")
+    ap.add_argument("--payload", help="the MSI to embed; omit for the uninstaller")
+    ap.add_argument("--version", default="0.0.0")
+    args = ap.parse_args()
+
+    out = Path(args.out).resolve()
+    work = out / f"_build-{Path(args.name).stem}"
+    work.mkdir(parents=True, exist_ok=True)
+    env = vs_dev_env(args.arch)
+
+    def fwd(p) -> str:
+        return str(p).replace("\\", "/")
+
+    numeric = args.version.split("-")[0]
+    parts = (numeric.split(".") + ["0", "0", "0", "0"])[:4]
+    setup = bool(args.payload)
+    # RC's preprocessor treats backslashes in string macros as escapes: generate a header with
+    # forward-slash paths instead of passing /D macros.
+    lines = [
+        "// generated by build.py -- do not edit",
+        f'#define REDROB_BACKGROUND_PATH "{fwd(RES / "background.png")}"',
+        f'#define REDROB_LOCKUP_PATH "{fwd(RES / "lockup.png")}"',
+        f'#define REDROB_FONT_PATH "{fwd(RES / "Pretendard-SemiBold.ttf")}"',
+        f'#define REDROB_FONT_KR_PATH "{fwd(RES / "WantedSans-SemiBold.ttf")}"',
+        f'#define REDROB_ICON_PATH "{fwd(ICON)}"',
+        f"#define REDROB_VER_FILE {','.join(parts)}",
+        f'#define REDROB_VER_STR "{args.version}"',
+        f'#define REDROB_FILE_DESC "{"Redrob CAD Setup" if setup else "Redrob CAD Uninstaller"}"',
+        f'#define REDROB_INTERNAL_NAME "{Path(args.name).stem}"',
+        f'#define REDROB_ORIGINAL_NAME "{args.name}"',
+    ]
+    if setup:
+        lines.append(f'#define REDROB_PAYLOAD_PATH "{fwd(Path(args.payload).resolve())}"')
+    else:
+        lines.append("#define REDROB_NO_PAYLOAD 1")
+    (work / "build_defs.h").write_text("\n".join(lines) + "\n", encoding="ascii")
+
+    res = work / "redrob_cad_setup.res"
+    run_in_env(["rc.exe", "/nologo", f"/I{work}", f"/I{HERE}", f"/fo{res}", str(HERE / "redrob_cad_setup.rc")], env, HERE)
+    exe = out / args.name
+    obj = work / "redrob_cad_setup.obj"
+    run_in_env(["cl.exe", "/nologo", "/EHsc", "/O2", "/W3", "/MT", "/std:c++17", "/utf-8",
+                "/DUNICODE", "/D_UNICODE", f"/Fo{obj}", str(HERE / "redrob_cad_setup.cpp"),
+                "/link", "/SUBSYSTEM:WINDOWS", "/MANIFEST:NO", str(res), f"/OUT:{exe}"], env, work)
+    if not exe.exists():
+        sys.exit(f"link produced no {exe}")
+    shutil.rmtree(work, ignore_errors=True)
+    print(f"built {exe}  {exe.stat().st_size // 1024} KB  (payload: {'yes' if setup else 'none'})")
+
+
+if __name__ == "__main__":
+    main()

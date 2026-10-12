@@ -46,6 +46,13 @@ pub fn find_binary() -> Option<PathBuf> {
     if let Some(home) = std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" }).map(PathBuf::from) {
         dirs.extend([home.join(".redrob/bin"), home.join(".local/bin"), home.join(".bun/bin")]);
     }
+    // Where Redrob Code's Windows installer puts it (per-user, and what the Redrob CAD setup installs).
+    // PATH would find it too, but only for processes started after that installer updated PATH.
+    if cfg!(windows)
+        && let Some(local) = std::env::var_os("LOCALAPPDATA").map(PathBuf::from)
+    {
+        dirs.push(local.join("Redrob").join("bin"));
+    }
     dirs.extend([PathBuf::from("/opt/homebrew/bin"), PathBuf::from("/usr/local/bin")]);
     dirs.into_iter().map(|d| d.join(exe)).find(|p| p.is_file())
 }

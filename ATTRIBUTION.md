@@ -19,6 +19,10 @@ egui's built-in fonts carry no Hangul, so it is embedded in the binary. It is th
 system's Korean system face, copied verbatim, under the SIL Open Font License 1.1 (licence text
 beside it).
 
+The installers carry the same two faces, plus Pretendard SemiBold, embedded in the Windows setup
+(`packaging/windows/setup/res/`, OFL texts beside them), and Redrob brand art built from the design
+system: the setup and DMG backgrounds and the Redrob CAD lockup.
+
 Generated-in-code assets are original and have no file to list:
 - the UI icon set (`crates/ui-egui/src/icons.rs`);
 - the "CADCraft Stroke" single-stroke drafting font (`crates/fonts/src/stroke.rs`);
@@ -29,6 +33,12 @@ Generated-in-code assets are original and have no file to list:
 
 | Asset | Author | Source | Licence | Notes |
 |---|---|---|---|---|
+| `packaging/windows/setup/res/background.png` | Redrob | rendered from `background.html` beside it (deep ground, brand-gradient foot light; redrob-browser's setup art) | Redrob brand, all rights reserved | Windows setup window |
+| `packaging/windows/setup/res/lockup.png` | Redrob | the design system's Redrob Solid Mono White lockup with "CAD" set after it in Pretendard SemiBold, per `assets/Products/README.md` (Lockups) | Redrob brand, all rights reserved | Windows setup and DMG |
+| `packaging/windows/setup/res/Pretendard-SemiBold.ttf` | Kil Hyung-jin | Redrob design system `assets/Fonts/`, from [orioncactus/pretendard](https://github.com/orioncactus/pretendard) | SIL OFL 1.1 (`Pretendard-OFL.txt`) | Setup window, Latin |
+| `packaging/windows/setup/res/WantedSans-SemiBold.ttf` | Wanted Lab, Inc. (The Wanted Sans Project Authors) | Redrob design system `assets/Fonts/`, from [wanteddev/wanted-sans](https://github.com/wanteddev/wanted-sans) | SIL OFL 1.1 (`WantedSans-OFL.txt`) | Setup window, Korean |
+| `packaging/macos/dmg/background.png` | Redrob | rendered from `background.html` beside it | Redrob brand, all rights reserved | DMG window, 1x |
+| `packaging/macos/dmg/background@2x.png` | Redrob | rendered from `background.html` beside it | Redrob brand, all rights reserved | DMG window, 2x |
 | `crates/ui-egui/assets/fonts/WantedSans-Regular.ttf` | Wanted Lab, Inc. (The Wanted Sans Project Authors) | Redrob design system `assets/Fonts/`, from [wanteddev/wanted-sans](https://github.com/wanteddev/wanted-sans) v1.003 | SIL OFL 1.1 | Korean UI face, embedded |
 | `crates/ui-egui/assets/fonts/WantedSans-OFL.txt` | The Wanted Sans Project Authors | [wanteddev/wanted-sans](https://github.com/wanteddev/wanted-sans) `OFL.txt` | SIL OFL 1.1 | Licence of the face above |
 | `assets/app-icon/hicolor/128x128/apps/ai.redrob.cad.png` | Redrob | derived from `assets/brand/` by `packaging/brand-assets.sh` | Redrob brand, all rights reserved | App icon |
