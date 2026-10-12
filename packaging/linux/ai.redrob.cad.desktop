@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Name=Redrob CAD
+GenericName=Computer-Aided Design
+Comment=Draft, dimension and plot 2D drawings; open DXF and DWG files
+Exec=redrob-cad %F
+TryExec=redrob-cad
+Icon=ai.redrob.cad
+Terminal=false
+StartupNotify=true
+StartupWMClass=ai.redrob.cad
+Categories=Graphics;Engineering;VectorGraphics;
+MimeType=image/vnd.dxf;image/vnd.dwg;application/x-dxf;application/acad;
+Keywords=cad;drafting;dxf;dwg;drawing;engineering;architecture;mechanical;

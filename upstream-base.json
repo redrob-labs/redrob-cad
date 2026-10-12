@@ -1,0 +1,21 @@
+{
+  "$comment": "Machine-readable record of where this fork was cut from. The base is upstream's own release tag, and this repository carries upstream's full history up to it, so `git merge-base HEAD upstream/main` resolves and upstream syncs are ordinary three-way merges (see UPSTREAM.md).",
+  "remote": "https://github.com/storytold/cadcraft.git",
+  "remoteName": "upstream",
+  "defaultBranch": "main",
+  "baseTag": "v0.3.0",
+  "base": "59631c8d4f9ffe6c08c5c2065ea17504e53bf821",
+  "baseDate": "2026-10-08",
+  "baseSubject": "Bump version to 0.3.0 (from 0.2.0) for release",
+  "excludedPrefixes": [],
+  "proprietaryPrefixes": ["docs/brand/"],
+  "proprietaryReason": "Upstream's NOTICE states the ArtCraft name, wordmark and logos in docs/brand/ are trademarks of the ArtCraft Team, not open source and not covered by MIT OR Apache-2.0. They were removed by the rebrand and must not return (cargo xtask brand).",
+  "proprietaryReplaced": true,
+  "lastSyncedUpstream": null,
+  "previousBase": {
+    "upstream": "FreeCAD",
+    "archiveBranch": "archive/freecad",
+    "archiveTag": "freecad-final",
+    "commit": "a9a11cd"
+  }
+}

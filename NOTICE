@@ -1,0 +1,31 @@
+Redrob CAD
+Copyright (c) 2026 ArtCraft Team and the CADCraft contributors.
+Copyright (c) 2026 Janghoon Lee (Redrob) and contributors.
+Licensed under the MIT License or the Apache License, Version 2.0, at your option
+(LICENSE-MIT, LICENSE-APACHE).
+
+Redrob CAD is a fork of CADCraft (https://github.com/storytold/cadcraft); see UPSTREAM.md.
+
+The ArtCraft name, wordmark and logos are trademarks of the ArtCraft Team. Redrob CAD does not
+use or ship them. The Redrob name and mark (assets/brand/, assets/app-icon/) belong to Redrob and
+come from the Redrob design system; they are not covered by the license above.
+
+Third-party material
+
+Software dependencies are listed in Cargo.lock. One is under a weak-copyleft licence: the acadrust
+crate (DWG reading and writing, https://github.com/hakanaktt/acadrust) is licensed under the
+Mozilla Public License 2.0 and is used unmodified as a separate library (crates/dwg). Its source
+is available from crates.io and the repository above.
+
+The Korean UI font Wanted Sans (crates/ui-egui/assets/fonts/WantedSans-Regular.ttf) is
+Copyright 2024 The Wanted Sans Project Authors (https://github.com/wanteddev/wanted-sans) and is
+licensed under the SIL Open Font License, Version 1.1 (WantedSans-OFL.txt beside it).
+
+
+None: every other bundled asset is original to CADCraft (icons, drafting font, hatch patterns and
+linetypes are drawn or defined in code). The per-file list is in ATTRIBUTION.md. Builds made with
+the optional craft-fonts input (CRAFT_FONTS_DIR) embed the fonts listed in its ATTRIBUTION.md,
+each under the SIL Open Font License 1.1.
+
+Redrob CAD and CADCraft are independent projects and are not affiliated with, sponsored by or endorsed by
+Autodesk, Inc. AutoCAD and DWG are trademarks of Autodesk, Inc.

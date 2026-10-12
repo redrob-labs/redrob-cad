@@ -1,0 +1,7 @@
+# Read by actionlint in packaging-lint.yml.
+paths:
+  # gitflow.yml is the redrob-labs/.github org template, kept verbatim. Its `git log --format`
+  # puts Markdown backticks in single quotes on purpose; SC2016 reads them as a missed expansion.
+  .github/workflows/gitflow.yml:
+    ignore:
+      - 'SC2016'
