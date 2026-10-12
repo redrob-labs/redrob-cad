@@ -4,15 +4,17 @@
 
 .DESCRIPTION
   Produces, in $env:DIST (default: dist/release):
-    redrob-cad-<version>-windows-<arch>.msi            per-machine installer (WiX v5)
+    redrob-cad-<version>-windows-<arch>-setup.exe      branded setup (setup/), the MSI inside
+    redrob-cad-<version>-windows-<arch>.msi            the MSI alone (WiX v5), for managed deployment
     redrob-cad-<version>-windows-<arch>-portable.zip   redrob-cad.exe + redrob-cad-cli.exe
 
   The binaries link the C runtime statically (+crt-static), so neither the MSI nor the portable
   zip needs the Visual C++ redistributable. Signing is delegated to sign.ps1 (skipped with a
   warning when no signing secrets are set).
 
-  Needs: Rust (MSVC toolchain + the target), the Windows SDK (rc.exe, signtool.exe),
-  and WiX v5: dotnet tool install --global wix --version 5.0.2
+  Needs: Rust (MSVC toolchain + the target), Visual Studio's C++ toolset for the target (the setup
+  is C++), the Windows SDK (rc.exe, signtool.exe), Python 3, and WiX v5:
+  dotnet tool install --global wix --version 5.0.2
 
 .EXAMPLE
   pwsh packaging/windows/package.ps1 -Arch x64
@@ -88,7 +90,13 @@ Remove-Item -Recurse -Force $Stage -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $Stage | Out-Null
 Copy-Item (Join-Path $Bin 'redrob-cad.exe'), (Join-Path $Bin 'redrob-cad-cli.exe') $Stage
 
-& (Join-Path $PSScriptRoot 'sign.ps1') (Join-Path $Stage 'redrob-cad.exe') (Join-Path $Stage 'redrob-cad-cli.exe')
+# The branded uninstaller (the setup app without a payload) goes into the MSI beside the app.
+$SetupDir = Join-Path $PSScriptRoot 'setup'
+Invoke-Native 'build the uninstaller' {
+  python (Join-Path $SetupDir 'build.py') --arch $Arch --out $Stage --name 'redrob-cad-uninstall.exe' --version $Version
+}
+
+& (Join-Path $PSScriptRoot 'sign.ps1') (Join-Path $Stage 'redrob-cad.exe') (Join-Path $Stage 'redrob-cad-cli.exe') (Join-Path $Stage 'redrob-cad-uninstall.exe')
 
 # ---- MSI ---------------------------------------------------------------------------------------
 $Msi = Join-Path $Dist "redrob-cad-$Version-windows-$Arch.msi"
@@ -101,11 +109,18 @@ Invoke-Native 'wix build' {
 Remove-Item -Force -ErrorAction SilentlyContinue ([IO.Path]::ChangeExtension($Msi, '.wixpdb'))
 & (Join-Path $PSScriptRoot 'sign.ps1') $Msi
 
+# ---- branded setup -----------------------------------------------------------------------------
+$SetupExe = Join-Path $Dist "redrob-cad-$Version-windows-$Arch-setup.exe"
+Invoke-Native 'build the setup' {
+  python (Join-Path $SetupDir 'build.py') --arch $Arch --out $Dist --name (Split-Path $SetupExe -Leaf) --version $Version --payload $Msi
+}
+& (Join-Path $PSScriptRoot 'sign.ps1') $SetupExe
+
 # ---- portable zip ------------------------------------------------------------------------------
 $Portable = Join-Path $TargetDir "windows-package\redrob-cad-$Version-windows-$Arch-portable"
 Remove-Item -Recurse -Force $Portable -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $Portable | Out-Null
-Copy-Item (Join-Path $Stage '*.exe') $Portable
+Copy-Item (Join-Path $Stage 'redrob-cad.exe'), (Join-Path $Stage 'redrob-cad-cli.exe') $Portable
 foreach ($f in 'README.md', 'LICENSE', 'LICENSE-MIT', 'LICENSE-APACHE') {
   $p = Join-Path $Root $f
   if (Test-Path $p) { Copy-Item $p $Portable }
@@ -128,4 +143,4 @@ if ($Arch -ne 'arm64' -or $HostArch -eq 'arm64') {
 } else {
   Write-Output "skipping redrob-cad-cli --version: an $Arch build doesn't run on this $HostArch machine"
 }
-Get-Item $Msi, $Zip | Format-Table Name, Length
+Get-Item $SetupExe, $Msi, $Zip | Format-Table Name, Length

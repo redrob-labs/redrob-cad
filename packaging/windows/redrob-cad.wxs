@@ -4,8 +4,15 @@
 
     wix build redrob-cad.wxs -arch x64 -d Version=1.2.3 -d BinDir=... -d IconPath=... -o out.msi
 
-  Per-machine install into Program Files, a Start Menu shortcut, and Redrob CAD offered under
-  "Open with" for .dxf and .dwg drawings (without taking over the user's default app).
+  Dual-purpose (perUserOrMachine). The branded setup (setup/) runs it per-user with ALLUSERS=2
+  MSIINSTALLPERUSER=1: %LOCALAPPDATA%\Programs\Redrob CAD, HKCU, no administrator rights. An
+  administrator can still deploy it per-machine with ALLUSERS=1. Registry goes to HKMU, which follows
+  that choice. A Start Menu shortcut, and Redrob CAD offered under "Open with" for .dxf and .dwg
+  drawings (without taking over the user's default app).
+
+  Settings > Apps shows our own entry (RedrobCAD below), pointing at redrob-cad-uninstall.exe: the
+  branded uninstall window, the same app as the setup. Windows Installer's own entry is hidden
+  (ARPSYSTEMCOMPONENT) so there is one Redrob CAD in the list, not two.
 -->
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
   <Package
@@ -13,7 +20,7 @@
       Manufacturer="Redrob"
       Version="$(var.Version)"
       UpgradeCode="02B4F402-B78B-4D1B-B018-B59C5308CDD8"
-      Scope="perMachine"
+      Scope="perUserOrMachine"
       Compressed="yes"
       Language="1033">
     <SummaryInformation Description="Redrob CAD computer-aided design" Manufacturer="Redrob" />
@@ -28,6 +35,7 @@
     <Property Id="ARPURLINFOABOUT" Value="https://github.com/redrob-labs/redrob-cad" />
     <Property Id="ARPURLUPDATEINFO" Value="https://github.com/redrob-labs/redrob-cad" />
     <Property Id="ARPHELPLINK" Value="https://github.com/redrob-labs/redrob-cad/issues" />
+    <Property Id="ARPSYSTEMCOMPONENT" Value="1" />
 
     <StandardDirectory Id="ProgramFiles6432Folder">
       <Directory Id="INSTALLFOLDER" Name="Redrob CAD" />
@@ -48,15 +56,32 @@
               Icon="CadcraftIcon.ico" IconIndex="0" />
         </File>
 
-        <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\App Paths\redrob-cad.exe" Value="[#CadcraftExe]" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\Applications\redrob-cad.exe\shell\open\command" Value="&quot;[#CadcraftExe]&quot; &quot;%1&quot;" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\.dxf\OpenWithProgids" Name="RedrobCAD.Drawing" Value="" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\.dwg\OpenWithProgids" Name="RedrobCAD.Drawing" Value="" Type="string" />
-        <RegistryValue Root="HKLM" Key="Software\Classes\RedrobCAD.Drawing\shell\open\command" Value="&quot;[#CadcraftExe]&quot; &quot;%1&quot;" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Microsoft\Windows\CurrentVersion\App Paths\redrob-cad.exe" Value="[#CadcraftExe]" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\Applications\redrob-cad.exe\shell\open\command" Value="&quot;[#CadcraftExe]&quot; &quot;%1&quot;" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.dxf\OpenWithProgids" Name="RedrobCAD.Drawing" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\.dwg\OpenWithProgids" Name="RedrobCAD.Drawing" Value="" Type="string" />
+        <RegistryValue Root="HKMU" Key="Software\Classes\RedrobCAD.Drawing\shell\open\command" Value="&quot;[#CadcraftExe]&quot; &quot;%1&quot;" Type="string" />
       </Component>
 
       <Component Id="CadcraftCli">
         <File Id="CadcraftCliExe" Source="$(var.BinDir)\redrob-cad-cli.exe" KeyPath="yes" />
+      </Component>
+
+      <!-- The branded uninstaller and the Settings > Apps entry that opens it. -->
+      <Component Id="CadcraftUninstall">
+        <File Id="CadcraftUninstallExe" Source="$(var.BinDir)\redrob-cad-uninstall.exe" KeyPath="yes" />
+        <RegistryKey Root="HKMU" Key="Software\Microsoft\Windows\CurrentVersion\Uninstall\RedrobCAD">
+          <RegistryValue Name="DisplayName" Value="Redrob CAD" Type="string" />
+          <RegistryValue Name="DisplayVersion" Value="$(var.Version)" Type="string" />
+          <RegistryValue Name="Publisher" Value="Redrob" Type="string" />
+          <RegistryValue Name="DisplayIcon" Value="[#CadcraftExe],0" Type="string" />
+          <RegistryValue Name="InstallLocation" Value="[INSTALLFOLDER]" Type="string" />
+          <RegistryValue Name="UninstallString" Value="&quot;[#CadcraftUninstallExe]&quot; --uninstall" Type="string" />
+          <RegistryValue Name="URLInfoAbout" Value="https://github.com/redrob-labs/redrob-cad" Type="string" />
+          <RegistryValue Name="HelpLink" Value="https://github.com/redrob-labs/redrob-cad/issues" Type="string" />
+          <RegistryValue Name="NoModify" Value="1" Type="integer" />
+          <RegistryValue Name="NoRepair" Value="1" Type="integer" />
+        </RegistryKey>
       </Component>
     </ComponentGroup>
   </Fragment>
