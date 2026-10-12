@@ -75,11 +75,16 @@ pub fn account_row(service: &mut Option<Box<dyn AccountService>>, ui: &mut egui:
                 });
             }
             (Some(a), _) => {
-                ui.label(RichText::new(format!("Workspace: {}", a.account_name)).small().color(t.text_dim))
-                    .on_hover_text(format!("Key: {}", a.key_name));
-                if ui.small_button("Disconnect").clicked() {
-                    action = Some(|s| s.disconnect());
-                }
+                // The key name sits on its own line: a hover tooltip covered the panel text below it.
+                ui.vertical(|ui| {
+                    ui.horizontal(|ui| {
+                        ui.label(RichText::new(format!("Workspace: {}", a.account_name)).small().color(t.text_dim));
+                        if ui.small_button("Disconnect").clicked() {
+                            action = Some(|s| s.disconnect());
+                        }
+                    });
+                    ui.label(RichText::new(format!("Key: {}", a.key_name)).small().color(t.text_faint));
+                });
             }
             (None, s) => {
                 if let ConnectState::Failed(why) = s {
