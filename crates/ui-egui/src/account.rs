@@ -6,6 +6,7 @@
 //! machine a workspace key. The flow and the stored key live behind [`AccountService`], supplied by
 //! the desktop app through [`crate::Services::account`]; the UI only ever sees names, never the key.
 
+use crate::i18n::{tr, trf};
 use egui::{RichText, vec2};
 
 use crate::theme::Tokens;
@@ -54,38 +55,47 @@ pub fn account_row(service: &mut Option<Box<dyn AccountService>>, ui: &mut egui:
     let state = svc.state();
     let account = svc.account();
     let mut action: Option<fn(&mut dyn AccountService)> = None;
+    // The caller's frame supplies the side margins.
     ui.horizontal_wrapped(|ui| {
-        ui.add_space(10.0);
         match (&account, &state) {
             (_, ConnectState::Starting) => {
                 ui.spinner();
-                ui.label(RichText::new("Asking console.redrob.ai for a code…").small().color(t.text_dim));
+                ui.label(RichText::new(tr("Asking console.redrob.ai for a code…")).small().color(t.text_dim));
             }
             (_, ConnectState::Waiting(p)) => {
                 ui.vertical(|ui| {
-                    ui.label(RichText::new("Approve this code on console.redrob.ai:").small().color(t.text_dim));
+                    ui.label(RichText::new(tr("Approve this code on console.redrob.ai:")).small().color(t.text_dim));
                     ui.label(RichText::new(&p.user_code).size(20.0).monospace().color(t.text));
                     ui.horizontal(|ui| {
-                        ui.hyperlink_to("Open console.redrob.ai", &p.url);
-                        ui.label(RichText::new(format!("{}:{:02} left", p.seconds_left / 60, p.seconds_left % 60)).small().color(t.text_faint));
-                        if ui.small_button("Cancel").clicked() {
+                        ui.hyperlink_to(tr("Open console.redrob.ai"), &p.url);
+                        ui.label(
+                            RichText::new(trf("{time} left", &[("time", format!("{}:{:02}", p.seconds_left / 60, p.seconds_left % 60).as_str())]))
+                                .small()
+                                .color(t.text_faint),
+                        );
+                        if ui.small_button(tr("Cancel")).clicked() {
                             action = Some(|s| s.cancel());
                         }
                     });
                 });
             }
             (Some(a), _) => {
-                ui.label(RichText::new(format!("Workspace: {}", a.account_name)).small().color(t.text_dim))
-                    .on_hover_text(format!("Key: {}", a.key_name));
-                if ui.small_button("Disconnect").clicked() {
-                    action = Some(|s| s.disconnect());
-                }
+                // The key name sits on its own line: a hover tooltip covered the panel text below it.
+                ui.vertical(|ui| {
+                    ui.horizontal(|ui| {
+                        ui.label(RichText::new(trf("Workspace: {name}", &[("name", a.account_name.as_str())])).small().color(t.text_dim));
+                        if ui.small_button(tr("Disconnect")).clicked() {
+                            action = Some(|s| s.disconnect());
+                        }
+                    });
+                    ui.label(RichText::new(trf("Key: {name}", &[("name", a.key_name.as_str())])).small().color(t.text_faint));
+                });
             }
             (None, s) => {
                 if let ConnectState::Failed(why) = s {
-                    ui.label(RichText::new(why).small().color(t.text_dim));
+                    ui.label(RichText::new(crate::i18n::tr_runtime(why)).small().color(t.text_dim));
                 }
-                if ui.add_sized(vec2(170.0, 22.0), egui::Button::new("Connect a Redrob workspace")).clicked() {
+                if ui.add_sized(vec2(170.0, 22.0), egui::Button::new(tr("Connect a Redrob workspace"))).clicked() {
                     action = Some(|s| s.connect());
                 }
             }

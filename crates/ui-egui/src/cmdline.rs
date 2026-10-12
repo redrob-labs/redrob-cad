@@ -1,6 +1,7 @@
 //! The floating command line: history, the active prompt with clickable keywords, typed input
 //! (keyboard focus stays on the drawing — typing anywhere goes here) and AutoComplete.
 
+use crate::i18n::tr;
 use cadcraft_engine::Input;
 use egui::{Color32, Key, Pos2, Rect, Sense, Stroke, pos2, vec2};
 
@@ -158,7 +159,13 @@ pub fn show(app: &mut CadApp, ui: &mut egui::Ui, canvas: Rect) {
         let hr = Rect::from_min_size(pos2(bar.left(), bar.top() - lh * lines.len() as f32 - 4.0), vec2(w, lh * lines.len() as f32 + 2.0));
         p.rect_filled(hr, 3.0, Color32::from_rgba_unmultiplied(0x2a, 0x30, 0x3a, 170));
         for (i, l) in lines.iter().enumerate() {
-            p.text(pos2(hr.left() + 8.0, hr.top() + 1.0 + lh * i as f32), egui::Align2::LEFT_TOP, l, crate::theme::small(), t.text_dim);
+            p.text(
+                pos2(hr.left() + 8.0, hr.top() + 1.0 + lh * i as f32),
+                egui::Align2::LEFT_TOP,
+                crate::i18n::tr_log(l),
+                crate::theme::small(),
+                t.text_dim,
+            );
         }
     }
     p.rect_filled(bar, 3.0, t.cmd_bg);
@@ -181,18 +188,18 @@ pub fn show(app: &mut CadApp, ui: &mut egui::Ui, canvas: Rect) {
                 let gw = g.size().x;
                 p.galley(pos2(x, bar.center().y - g.size().y / 2.0), g, t.text_faint);
                 x += gw;
-                let g = p.layout_no_wrap(pr.message.clone(), font.clone(), t.text);
+                let g = p.layout_no_wrap(crate::i18n::tr_runtime(&pr.message), font.clone(), t.text);
                 let gw = g.size().x;
                 p.galley(pos2(x, bar.center().y - g.size().y / 2.0), g, t.text);
                 x += gw;
                 if !pr.keywords.is_empty() {
-                    let g = p.layout_no_wrap(if pr.message.is_empty() { " [".into() } else { " or [".into() }, font.clone(), t.text);
+                    let g = p.layout_no_wrap(if pr.message.is_empty() { " [".into() } else { format!(" {} [", tr("or")) }, font.clone(), t.text);
                     let gw = g.size().x;
                     p.galley(pos2(x, bar.center().y - g.size().y / 2.0), g, t.text);
                     x += gw;
                     let kws = pr.keywords.clone();
                     for (i, k) in kws.iter().enumerate() {
-                        let g = p.layout_no_wrap(k.clone(), font.clone(), Color32::from_rgb(0x8f, 0xc1, 0xff));
+                        let g = p.layout_no_wrap(crate::i18n::tr_keyword(k), font.clone(), Color32::from_rgb(0x8f, 0xc1, 0xff));
                         let r = Rect::from_min_size(pos2(x, bar.top() + 3.0), vec2(g.size().x, h - 6.0));
                         let resp = ui.interact(r, ui.id().with(("kw", i)), Sense::click());
                         if resp.hovered() {
@@ -229,7 +236,7 @@ pub fn show(app: &mut CadApp, ui: &mut egui::Ui, canvas: Rect) {
             }
             None => {
                 if app.cmd.buffer.is_empty() {
-                    p.text(pos2(x, bar.center().y), egui::Align2::LEFT_CENTER, "Type a command", egui::FontId::proportional(12.5), t.text_faint);
+                    p.text(pos2(x, bar.center().y), egui::Align2::LEFT_CENTER, tr("Type a command"), egui::FontId::proportional(12.5), t.text_faint);
                 }
             }
         }

@@ -1,5 +1,6 @@
 //! Window chrome: title and tool bar, file tabs, status bar and the Start page.
 
+use crate::i18n::{tr, trf};
 use egui::{Color32, Rect, Sense, Stroke, pos2, vec2};
 use serde_json::json;
 
@@ -43,7 +44,7 @@ pub fn title_and_toolbar(app: &mut CadApp, ui: &mut egui::Ui) {
         if title_h > 0.0 {
             let title = match app.session.state() {
                 Ok(st) if !app.ui.start_tab => format!("Redrob CAD      {}{}", st.title, if st.title.contains('.') { "" } else { ".dwg" }),
-                _ => "Redrob CAD      Start".into(),
+                _ => format!("Redrob CAD      {}", tr("Start")),
             };
             ui.painter().text(
                 pos2(r.center().x, r.top() + title_h / 2.0 + 1.0),
@@ -53,8 +54,8 @@ pub fn title_and_toolbar(app: &mut CadApp, ui: &mut egui::Ui) {
                 t.text_dim,
             );
             // Allow dragging the window by the title row.
-            let tr = Rect::from_min_size(r.min, vec2(r.width(), title_h));
-            let resp = ui.interact(tr, ui.id().with("titledrag"), Sense::click_and_drag());
+            let tr_v = Rect::from_min_size(r.min, vec2(r.width(), title_h));
+            let resp = ui.interact(tr_v, ui.id().with("titledrag"), Sense::click_and_drag());
             if resp.drag_started() {
                 ui.ctx().send_viewport_cmd(egui::ViewportCommand::StartDrag);
             }
@@ -76,7 +77,7 @@ pub fn title_and_toolbar(app: &mut CadApp, ui: &mut egui::Ui) {
                         ui.painter().rect_filled(br, 3.0, t.control_hover.gamma_multiply(0.6));
                     }
                     icons::paint(ui.painter(), br.shrink(4.0), *icon, false);
-                    if resp.on_hover_text(*tip).clicked() {
+                    if resp.on_hover_text(tr(tip)).clicked() {
                         clicked = Some(*cmd);
                     }
                     x += size + 6.0;
@@ -102,16 +103,16 @@ pub fn file_tabs(app: &mut CadApp, ui: &mut egui::Ui) {
         let plus = Rect::from_min_size(pos2(x, r.top() + 4.0), vec2(18.0, 18.0));
         let presp = ui.interact(plus, ui.id().with("tab+"), Sense::click());
         icons::paint(ui.painter(), plus.shrink(2.0), Icon::Plus, false);
-        if presp.on_hover_text("New Drawing").clicked() {
+        if presp.on_hover_text(tr("New Drawing")).clicked() {
             app.start("new");
             app.ui.start_tab = false;
         }
         x += 24.0;
         let mut tab = |ui: &mut egui::Ui, label: &str, active: bool, w: f32, id: egui::Id| -> (bool, bool) {
-            let tr = Rect::from_min_size(pos2(x, r.top()), vec2(w, r.height()));
-            let resp = ui.interact(tr, id, Sense::click());
+            let tr_v = Rect::from_min_size(pos2(x, r.top()), vec2(w, r.height()));
+            let resp = ui.interact(tr_v, id, Sense::click());
             ui.painter().rect_filled(
-                tr,
+                tr_v,
                 0.0,
                 if active {
                     t.tab_active
@@ -122,7 +123,7 @@ pub fn file_tabs(app: &mut CadApp, ui: &mut egui::Ui) {
                 },
             );
             ui.painter().text(
-                pos2(tr.left() + 8.0, tr.center().y),
+                pos2(tr_v.left() + 8.0, tr_v.center().y),
                 egui::Align2::LEFT_CENTER,
                 label,
                 crate::theme::body(),
@@ -130,16 +131,16 @@ pub fn file_tabs(app: &mut CadApp, ui: &mut egui::Ui) {
             );
             let mut close = false;
             if active || resp.hovered() {
-                let cr = Rect::from_center_size(pos2(tr.right() - 11.0, tr.center().y), vec2(12.0, 12.0));
+                let cr = Rect::from_center_size(pos2(tr_v.right() - 11.0, tr_v.center().y), vec2(12.0, 12.0));
                 let cresp = ui.interact(cr, id.with("x"), Sense::click());
                 icons::paint(ui.painter(), cr, Icon::Close, false);
                 close = cresp.clicked();
             }
-            ui.painter().vline(tr.right(), tr.y_range(), Stroke::new(1.0, t.border));
+            ui.painter().vline(tr_v.right(), tr_v.y_range(), Stroke::new(1.0, t.border));
             x += w;
             (resp.clicked(), close)
         };
-        let (c, _) = tab(ui, "Start", app.ui.start_tab || app.session.docs.is_empty(), 110.0, ui.id().with("tab_start"));
+        let (c, _) = tab(ui, tr("Start"), app.ui.start_tab || app.session.docs.is_empty(), 110.0, ui.id().with("tab_start"));
         if c {
             app.ui.start_tab = true;
         }
@@ -182,7 +183,7 @@ pub fn status_bar(app: &mut CadApp, ui: &mut egui::Ui) {
             let br = Rect::from_min_size(pos2(x, r.top() + 4.0), vec2(18.0, 18.0));
             let resp = ui.interact(br, ui.id().with(("sb", tip)), Sense::click());
             icons::paint(&p, br.shrink(2.0), icon, false);
-            if resp.on_hover_text(tip).clicked() && icon == Icon::Plus {
+            if resp.on_hover_text(tr(tip)).clicked() && icon == Icon::Plus {
                 let _ = app.run("layout.new", json!({}));
             }
             x += 22.0;
@@ -201,17 +202,17 @@ pub fn status_bar(app: &mut CadApp, ui: &mut egui::Ui) {
         }
         let mut switch = None;
         for (i, name) in tabs.iter().enumerate() {
-            let g = p.layout_no_wrap(name.clone(), crate::theme::body(), t.text);
+            let g = p.layout_no_wrap(tr(name).to_string(), crate::theme::body(), t.text);
             let w = g.size().x + 26.0;
-            let tr = Rect::from_min_size(pos2(x, r.top() + 1.0), vec2(w, r.height() - 2.0));
+            let tr_v = Rect::from_min_size(pos2(x, r.top() + 1.0), vec2(w, r.height() - 2.0));
             let active = cur.as_deref().is_ok_and(|c| c == name);
-            let resp = ui.interact(tr, ui.id().with(("lt", i)), Sense::click());
+            let resp = ui.interact(tr_v, ui.id().with(("lt", i)), Sense::click());
             if active {
-                p.rect_filled(tr, 2.0, t.tab_active);
+                p.rect_filled(tr_v, 2.0, t.tab_active);
             } else if resp.hovered() {
-                p.rect_filled(tr, 2.0, t.control.gamma_multiply(0.5));
+                p.rect_filled(tr_v, 2.0, t.control.gamma_multiply(0.5));
             }
-            p.galley(pos2(tr.left() + 13.0, tr.center().y - g.size().y / 2.0), g, if active { t.text } else { t.text_dim });
+            p.galley(pos2(tr_v.left() + 13.0, tr_v.center().y - g.size().y / 2.0), g, if active { t.text } else { t.text_dim });
             if resp.clicked() {
                 switch = Some(name.clone());
             }
@@ -220,7 +221,7 @@ pub fn status_bar(app: &mut CadApp, ui: &mut egui::Ui) {
                 let pr = Rect::from_min_size(pos2(x, r.top() + 5.0), vec2(16.0, 16.0));
                 let presp = ui.interact(pr, ui.id().with("layout_plus"), Sense::click());
                 icons::paint(&p, pr.shrink(2.0), Icon::Plus, false);
-                if presp.on_hover_text("New layout").clicked()
+                if presp.on_hover_text(tr("New layout")).clicked()
                     && let Ok(v) = app.run("layout.new", json!({}))
                     && let Some(n) = v.get("name").and_then(serde_json::Value::as_str)
                 {
@@ -272,8 +273,8 @@ pub fn status_bar(app: &mut CadApp, ui: &mut egui::Ui) {
             let br = Rect::from_min_max(pos2(rx - 60.0, r.center().y - 9.0), pos2(rx - 6.0, r.center().y + 9.0));
             let resp = ui.interact(br, ui.id().with("mspace_toggle"), Sense::click());
             p.rect_filled(br, 3.0, if resp.hovered() { t.control_hover } else { t.toggle_on.gamma_multiply(0.25) });
-            p.text(br.center(), egui::Align2::CENTER_CENTER, label, crate::theme::small(), t.text);
-            if resp.on_hover_text("Switch between model space in a viewport and paper space").clicked() {
+            p.text(br.center(), egui::Align2::CENTER_CENTER, tr(label), crate::theme::small(), t.text);
+            if resp.on_hover_text(tr("Switch between model space in a viewport and paper space")).clicked() {
                 let _ = app.run(if model { "pspace" } else { "mspace" }, json!({}));
                 app.canvas.list = None;
             }
@@ -297,7 +298,7 @@ pub fn status_bar(app: &mut CadApp, ui: &mut egui::Ui) {
                 // Re-tint the icon blue-ish by an underline.
                 p.hline(br.x_range().shrink(4.0), br.bottom() - 1.0, Stroke::new(1.5, t.toggle_on));
             }
-            if resp.on_hover_text(tip).clicked() {
+            if resp.on_hover_text(tr(tip)).clicked() {
                 toggle_cmd = Some(cmd);
             }
             rx += size + 4.0;
@@ -309,7 +310,13 @@ pub fn status_bar(app: &mut CadApp, ui: &mut egui::Ui) {
         if let Some((msg, at)) = &app.status
             && crate::now_ms() - at < 5000.0
         {
-            p.text(pos2(x + 20.0, r.center().y), egui::Align2::LEFT_CENTER, msg, crate::theme::small(), Color32::from_rgb(0xff, 0xd0, 0x80));
+            p.text(
+                pos2(x + 20.0, r.center().y),
+                egui::Align2::LEFT_CENTER,
+                crate::i18n::tr_runtime(msg),
+                crate::theme::small(),
+                Color32::from_rgb(0xff, 0xd0, 0x80),
+            );
         }
     });
 }
@@ -326,7 +333,7 @@ pub fn start_page(app: &mut CadApp, ui: &mut egui::Ui) {
     p.text(
         pos2(left.left() + 34.0, left.top() + 98.0),
         egui::Align2::LEFT_CENTER,
-        format!("Version {}", env!("CARGO_PKG_VERSION")),
+        trf("Version {version}", &[("version", env!("CARGO_PKG_VERSION"))]),
         crate::theme::small(),
         t.text_faint,
     );
@@ -336,25 +343,25 @@ pub fn start_page(app: &mut CadApp, ui: &mut egui::Ui) {
         let br = Rect::from_min_size(pos2(left.left() + 34.0, y), vec2(190.0, 34.0));
         let resp = ui.interact(br, ui.id().with(("start", cmd)), Sense::click());
         p.rect_stroke(br, 2.0, Stroke::new(1.0, if resp.hovered() { t.text } else { t.text_dim }), egui::StrokeKind::Inside);
-        p.text(pos2(br.left() + 16.0, br.center().y), egui::Align2::LEFT_CENTER, label, crate::theme::body(), t.text);
+        p.text(pos2(br.left() + 16.0, br.center().y), egui::Align2::LEFT_CENTER, tr(label), crate::theme::body(), t.text);
         if resp.clicked() {
             action = Some(cmd);
         }
         y += 44.0;
     }
     let main = Rect::from_min_max(pos2(left.right() + 36.0, r.top() + 40.0), r.max);
-    p.text(main.min, egui::Align2::LEFT_TOP, "Recent", egui::FontId::proportional(22.0), t.text);
+    p.text(main.min, egui::Align2::LEFT_TOP, tr("Recent"), egui::FontId::proportional(22.0), t.text);
     p.text(
         pos2(main.center().x, main.center().y),
         egui::Align2::CENTER_CENTER,
-        "There is nothing here yet.",
+        tr("There is nothing here yet."),
         egui::FontId::proportional(18.0),
         t.text,
     );
     p.text(
         pos2(main.center().x, main.center().y + 26.0),
         egui::Align2::CENTER_CENTER,
-        "To get started, create or open a drawing.",
+        tr("To get started, create or open a drawing."),
         crate::theme::body(),
         t.text_dim,
     );

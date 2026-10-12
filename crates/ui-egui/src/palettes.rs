@@ -1,5 +1,6 @@
 //! Tool Sets (left) and the Layers / Properties palettes (right).
 
+use crate::i18n::{tr, trf};
 use cadcraft_color::Color;
 use cadcraft_doc::EntityKind;
 use egui::{Color32, Rect, Sense, Stroke, pos2, vec2};
@@ -129,11 +130,11 @@ pub fn toolsets(app: &mut CadApp, ui: &mut egui::Ui) {
         let mut x = r.left();
         for name in ["Drafting", "Modeling"] {
             let w = 92.0;
-            let tr = Rect::from_min_size(pos2(x, r.top()), vec2(w, tab_h));
+            let tr_v = Rect::from_min_size(pos2(x, r.top()), vec2(w, tab_h));
             let active = app.ui.toolset_tab == name;
-            let resp = ui.interact(tr, ui.id().with(("ts", name)), Sense::click());
-            p.rect_filled(tr, 0.0, if active { t.tab_active } else { t.chrome });
-            p.text(tr.center(), egui::Align2::CENTER_CENTER, name, egui::FontId::proportional(13.5), if active { t.text } else { t.text_dim });
+            let resp = ui.interact(tr_v, ui.id().with(("ts", name)), Sense::click());
+            p.rect_filled(tr_v, 0.0, if active { t.tab_active } else { t.chrome });
+            p.text(tr_v.center(), egui::Align2::CENTER_CENTER, tr(name), egui::FontId::proportional(13.5), if active { t.text } else { t.text_dim });
             if resp.clicked() {
                 app.ui.toolset_tab = name.into();
             }
@@ -143,7 +144,7 @@ pub fn toolsets(app: &mut CadApp, ui: &mut egui::Ui) {
         let cr = Rect::from_center_size(pos2(r.right() - 14.0, r.top() + tab_h / 2.0), vec2(14.0, 14.0));
         let cresp = ui.interact(cr, ui.id().with("ts_collapse"), Sense::click());
         icons::paint(&p, cr, Icon::ChevronLeft, false);
-        if cresp.on_hover_text("Collapse Tool Sets").clicked() {
+        if cresp.on_hover_text(tr("Collapse Tool Sets")).clicked() {
             app.ui.show_toolsets = false;
         }
         let body = Rect::from_min_max(pos2(r.left(), r.top() + tab_h), r.max);
@@ -164,7 +165,7 @@ pub fn toolsets(app: &mut CadApp, ui: &mut egui::Ui) {
                         if collapsed { Icon::ChevronRight } else { Icon::ChevronDown },
                         false,
                     );
-                    pp.text(pos2(hr.left() + 22.0, hr.center().y), egui::Align2::LEFT_CENTER, *name, egui::FontId::proportional(12.5), t.text);
+                    pp.text(pos2(hr.left() + 22.0, hr.center().y), egui::Align2::LEFT_CENTER, tr(name), egui::FontId::proportional(12.5), t.text);
                     icons::paint(pp, Rect::from_center_size(pos2(hr.right() - 12.0, hr.center().y), vec2(11.0, 11.0)), Icon::Gear, false);
                     if hresp.clicked() {
                         toggle_group = Some(name.to_string());
@@ -239,7 +240,7 @@ pub const MODELING: &[(&str, &[Tool], &[Tool])] = &[
 fn section_header(ui: &mut egui::Ui, title: &str) -> Rect {
     let t = Tokens::get();
     let (hr, _) = ui.allocate_exact_size(vec2(ui.available_width(), 26.0), Sense::hover());
-    ui.painter().text(pos2(hr.left() + 10.0, hr.center().y), egui::Align2::LEFT_CENTER, title, egui::FontId::proportional(14.0), t.text);
+    ui.painter().text(pos2(hr.left() + 10.0, hr.center().y), egui::Align2::LEFT_CENTER, tr(title), egui::FontId::proportional(14.0), t.text);
     hr
 }
 
@@ -270,8 +271,8 @@ pub fn right_palettes(app: &mut CadApp, ui: &mut egui::Ui) {
         if on {
             p.rect_filled(ar, 3.0, t.tab_active);
         }
-        p.text(ar.center(), egui::Align2::CENTER_CENTER, "Agent", egui::FontId::proportional(12.5), if on { t.text } else { t.text_dim });
-        if ui.interact(ar, ui.id().with("palette_tab_agent"), Sense::click()).on_hover_text("Redrob Code").clicked() {
+        p.text(ar.center(), egui::Align2::CENTER_CENTER, tr("Agent"), egui::FontId::proportional(12.5), if on { t.text } else { t.text_dim });
+        if ui.interact(ar, ui.id().with("palette_tab_agent"), Sense::click()).on_hover_text(tr("Redrob Code")).clicked() {
             app.ui.palette_tab = 3;
         }
         icons::paint(&p, Rect::from_center_size(pos2(r.right() - 14.0, r.top() + tab_h / 2.0), vec2(14.0, 14.0)), Icon::ChevronRight, false);
@@ -376,7 +377,13 @@ fn layers_section(app: &mut CadApp, ui: &mut egui::Ui) {
         let w = ui.available_width() - 10.0;
         let (rect, _) = ui.allocate_exact_size(vec2(w, 24.0), Sense::hover());
         ui.painter().rect_filled(rect, 3.0, t.control);
-        ui.painter().text(pos2(rect.left() + 8.0, rect.center().y), egui::Align2::LEFT_CENTER, "Unsaved Layer State", crate::theme::body(), t.text);
+        ui.painter().text(
+            pos2(rect.left() + 8.0, rect.center().y),
+            egui::Align2::LEFT_CENTER,
+            tr("Unsaved Layer State"),
+            crate::theme::body(),
+            t.text,
+        );
         icons::paint(ui.painter(), Rect::from_center_size(pos2(rect.right() - 12.0, rect.center().y), vec2(12.0, 12.0)), Icon::ChevronDown, false);
     });
     ui.add_space(4.0);
@@ -390,7 +397,7 @@ fn layers_section(app: &mut CadApp, ui: &mut egui::Ui) {
             if app.ui.show_layer_list { Icon::ChevronDown } else { Icon::ChevronRight },
             false,
         );
-        ui.painter().text(pos2(rect.left() + 20.0, rect.center().y), egui::Align2::LEFT_CENTER, label, crate::theme::body(), t.text);
+        ui.painter().text(pos2(rect.left() + 20.0, rect.center().y), egui::Align2::LEFT_CENTER, tr(label), crate::theme::body(), t.text);
         if resp.clicked() {
             app.ui.show_layer_list = !app.ui.show_layer_list;
         }
@@ -429,7 +436,7 @@ fn prop_row(ui: &mut egui::Ui, label: &str, add: impl FnOnce(&mut egui::Ui)) {
     let t = Tokens::get();
     ui.horizontal(|ui| {
         let (lr, _) = ui.allocate_exact_size(vec2(118.0, 22.0), Sense::hover());
-        ui.painter().text(pos2(lr.right() - 6.0, lr.center().y), egui::Align2::RIGHT_CENTER, label, crate::theme::body(), t.text_dim);
+        ui.painter().text(pos2(lr.right() - 6.0, lr.center().y), egui::Align2::RIGHT_CENTER, tr(label), crate::theme::body(), t.text_dim);
         add(ui);
     });
 }
@@ -445,7 +452,7 @@ fn value_box(ui: &mut egui::Ui, text: &str, combo: bool, enabled: bool) -> egui:
     ui.painter().text(
         pos2(rect.left() + 6.0, rect.center().y),
         egui::Align2::LEFT_CENTER,
-        text,
+        tr(text),
         crate::theme::body(),
         if enabled { t.text } else { t.text_faint },
     );
@@ -480,18 +487,22 @@ fn properties_section(app: &mut CadApp, ui: &mut egui::Ui) {
     ui.painter().rect_filled(seg, 3.0, t.chrome_dark);
     let half = Rect::from_min_size(seg.min, vec2(35.0, 18.0));
     ui.painter().rect_filled(if app.ui.properties_all { half } else { half.translate(vec2(35.0, 0.0)) }, 3.0, t.control);
-    ui.painter().text(half.center(), egui::Align2::CENTER_CENTER, "All", crate::theme::small(), t.text);
-    ui.painter().text(half.center() + vec2(35.0, 0.0), egui::Align2::CENTER_CENTER, "My", crate::theme::small(), t.text);
+    ui.painter().text(half.center(), egui::Align2::CENTER_CENTER, tr("All"), crate::theme::small(), t.text);
+    ui.painter().text(half.center() + vec2(35.0, 0.0), egui::Align2::CENTER_CENTER, tr("My"), crate::theme::small(), t.text);
     let sel = app.session.selection();
     let Ok(d) = app.session.doc() else { return };
     // Selection type combo.
     let types: Vec<&'static str> = sel.iter().filter_map(|h| d.entity(*h).map(|e| e.kind.type_name())).collect();
     let header = match types.len() {
-        0 => "No selection".to_string(),
+        0 => tr("No selection").to_string(),
         1 => types.first().map(|s| s.to_string()).unwrap_or_default(),
         n => {
             let first = types.first().copied().unwrap_or("");
-            if types.iter().all(|t| *t == first) { format!("{first} ({n})") } else { format!("All ({n})") }
+            if types.iter().all(|t| *t == first) {
+                format!("{} ({n})", tr(first))
+            } else {
+                trf("All ({count})", &[("count", n.to_string().as_str())])
+            }
         }
     };
     ui.horizontal(|ui| {
@@ -525,7 +536,7 @@ fn properties_section(app: &mut CadApp, ui: &mut egui::Ui) {
         for (label, val, en) in rows {
             prop_row(ui, label, |ui| match label {
                 "Color" => {
-                    ui.menu_button(format!("■ {val}"), |ui| {
+                    ui.menu_button(format!("■ {}", tr(&val)), |ui| {
                         for (n, c) in [
                             ("ByLayer", 256),
                             ("ByBlock", 0),
@@ -537,7 +548,7 @@ fn properties_section(app: &mut CadApp, ui: &mut egui::Ui) {
                             ("Magenta", 6),
                             ("White", 7),
                         ] {
-                            if ui.button(n).clicked() {
+                            if ui.button(tr(n)).clicked() {
                                 action = Some(("color", json!({ "color": c })));
                                 ui.close();
                             }
@@ -600,11 +611,11 @@ fn properties_section(app: &mut CadApp, ui: &mut egui::Ui) {
     let group = |ui: &mut egui::Ui, title: &str| {
         let (r, _) = ui.allocate_exact_size(vec2(ui.available_width(), 20.0), Sense::hover());
         ui.painter().rect_filled(r.shrink2(vec2(6.0, 1.0)), 2.0, t.chrome_dark);
-        ui.painter().text(pos2(r.left() + 12.0, r.center().y), egui::Align2::LEFT_CENTER, title, crate::theme::small(), t.text_dim);
+        ui.painter().text(pos2(r.left() + 12.0, r.center().y), egui::Align2::LEFT_CENTER, tr(title), crate::theme::small(), t.text_dim);
     };
     group(ui, "General");
     prop_row(ui, "Color", |ui| {
-        ui.menu_button(format!("■ {color}"), |ui| {
+        ui.menu_button(format!("■ {}", tr(&color)), |ui| {
             for (n, c) in [
                 ("ByLayer", 256),
                 ("ByBlock", 0),
@@ -618,7 +629,7 @@ fn properties_section(app: &mut CadApp, ui: &mut egui::Ui) {
                 ("Color 8", 8),
                 ("Color 9", 9),
             ] {
-                if ui.button(n).clicked() {
+                if ui.button(tr(n)).clicked() {
                     set = Some(json!({ "handles": ids, "color": c }));
                     ui.close();
                 }
@@ -636,12 +647,12 @@ fn properties_section(app: &mut CadApp, ui: &mut egui::Ui) {
         });
     });
     prop_row(ui, "Linetype", |ui| {
-        ui.menu_button(linetype.clone(), |ui| {
+        ui.menu_button(tr(&linetype).to_string(), |ui| {
             for l in std::iter::once("ByLayer".to_string())
                 .chain(std::iter::once("ByBlock".to_string()))
                 .chain(linetypes.iter().filter(|l| !["ByLayer", "ByBlock"].contains(&l.as_str())).cloned())
             {
-                if ui.button(&l).clicked() {
+                if ui.button(tr(&l)).clicked() {
                     set = Some(json!({ "handles": ids, "linetype": l }));
                     ui.close();
                 }
@@ -656,8 +667,8 @@ fn properties_section(app: &mut CadApp, ui: &mut egui::Ui) {
         }
     });
     prop_row(ui, "Lineweight", |ui| {
-        ui.menu_button(lw.clone(), |ui| {
-            if ui.button("ByLayer").clicked() {
+        ui.menu_button(tr(&lw).to_string(), |ui| {
+            if ui.button(tr("ByLayer")).clicked() {
                 set = Some(json!({ "handles": ids, "lineweight": "ByLayer" }));
                 ui.close();
             }
@@ -784,7 +795,7 @@ fn properties_section(app: &mut CadApp, ui: &mut egui::Ui) {
                 prop_row(ui, "Closed", |ui| {
                     let mut c = pl.closed;
                     let label = if c { "Yes" } else { "No" };
-                    if ui.checkbox(&mut c, label).changed() {
+                    if ui.checkbox(&mut c, tr(label)).changed() {
                         set = Some(json!({ "handles": ids, "closed": c }));
                     }
                 });

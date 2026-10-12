@@ -87,7 +87,21 @@ pub fn mono() -> FontId {
 }
 
 /// Load a system UI font at run time when one is installed (not bundled), else keep egui's.
+/// The Korean system face of the Redrob design system (Wanted Sans Regular, SIL OFL 1.1; licence
+/// beside the file). egui's own fonts carry no Hangul, so without it Korean renders as boxes.
+pub const KOREAN_FONT: &[u8] = include_bytes!("../assets/fonts/WantedSans-Regular.ttf");
+
+/// Korean system text is set at 96% of the Latin size (design system, `35-korean.md`).
+const KOREAN_SCALE: f32 = 0.96;
+
+/// Fonts: the platform's Latin UI face first, then Wanted Sans for Hangul, then egui's defaults.
+/// A Latin face sets only Latin and a Korean face only Korean, so each glyph falls to the right one.
 pub fn install_fonts(ctx: &egui::Context) {
+    ctx.set_fonts(font_definitions());
+}
+
+pub fn font_definitions() -> egui::FontDefinitions {
+    let mut fonts = egui::FontDefinitions::default();
     #[cfg(not(target_arch = "wasm32"))]
     {
         let candidates: &[&str] = if cfg!(target_os = "macos") {
@@ -102,7 +116,6 @@ pub fn install_fonts(ctx: &egui::Context) {
                 "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
             ]
         };
-        let mut fonts = egui::FontDefinitions::default();
         for path in candidates {
             if let Ok(bytes) = std::fs::read(path) {
                 fonts.font_data.insert("system-ui".into(), std::sync::Arc::new(egui::FontData::from_owned(bytes)));
@@ -112,10 +125,16 @@ pub fn install_fonts(ctx: &egui::Context) {
                 break;
             }
         }
-        ctx.set_fonts(fonts);
     }
-    #[cfg(target_arch = "wasm32")]
-    let _ = ctx;
+    let korean = egui::FontData::from_static(KOREAN_FONT).tweak(egui::FontTweak { scale: KOREAN_SCALE, ..Default::default() });
+    fonts.font_data.insert("korean".into(), std::sync::Arc::new(korean));
+    for family in [FontFamily::Proportional, FontFamily::Monospace] {
+        if let Some(f) = fonts.families.get_mut(&family) {
+            // Right after the family's Latin face, ahead of egui's other fallbacks.
+            f.insert(1.min(f.len()), "korean".into());
+        }
+    }
+    fonts
 }
 
 pub fn apply(ctx: &egui::Context) {
@@ -151,4 +170,26 @@ pub fn apply(ctx: &egui::Context) {
         s.text_styles.insert(egui::TextStyle::Small, small());
         s.text_styles.insert(egui::TextStyle::Monospace, mono());
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Hangul must render in both families; without the bundled face every syllable is a box.
+    #[test]
+    fn korean_renders_in_proportional_and_monospace() {
+        let mut fonts = egui::epaint::text::Fonts::new(egui::epaint::text::TextOptions::default(), font_definitions());
+        for id in [FontId::proportional(13.0), FontId::monospace(12.0)] {
+            for c in "가나다원그리기한국어".chars() {
+                assert!(fonts.has_glyph(&id, c), "{id:?} has no {c:?}");
+            }
+        }
+    }
+
+    /// The bundled face is the design system's file, byte for byte.
+    #[test]
+    fn korean_face_is_the_design_system_file() {
+        assert_eq!(KOREAN_FONT.len(), 2_401_736);
+    }
 }
