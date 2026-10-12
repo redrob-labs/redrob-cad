@@ -1,18 +1,17 @@
-# Release pipeline: every push to `release` builds signed installers for every platform and
-# creates or updates the draft GitHub Release "Redrob CAD v<version>". See docs/releasing.md.
+# Release pipeline: a `vX.Y.Z` tag pushed on `main` builds installers for every platform and
+# creates or updates the draft GitHub Release "Redrob CAD vX.Y.Z". See docs/releasing.md.
 #
-# Pushes to `release` trigger the run; pushing there is limited by a repository ruleset to org
-# admins and the release-managers team. The jobs that sign (macOS, Windows) and the one that
-# drafts the GitHub Release run in the `release` environment (restricted to the `release` branch),
-# which holds the signing secrets. Every secret is optional: missing ones produce unsigned
-# artifacts and a warning, never a failed build. The other jobs (version, Linux, Flatpak, FreeBSD,
-# web) sign nothing and get no secrets, so a manual dispatch on any other branch is a dry run of
-# them: the environment refuses the signing jobs there, and the draft-release job is skipped.
+# The tag must equal the Cargo.toml version; the version job fails otherwise. The jobs that sign
+# (macOS, Windows) and the one that drafts the GitHub Release run in the `release` environment.
+# Signing secrets are the redrob-labs organization's (Apple Developer ID certificate + App Store
+# Connect API key for notarization). Every secret is optional: missing ones produce unsigned
+# artifacts and a warning, never a failed build. A manual dispatch is a dry run: it builds every
+# job and drafts nothing.
 name: Release
 
 on:
   push:
-    branches: [release]
+    tags: ["v*"]
   workflow_dispatch:
     inputs:
       version:
@@ -55,6 +54,10 @@ jobs:
             echo "::error::'$v' is not a version like 1.2.3 or 1.2.3-rc.1"
             exit 1
           fi
+          if [ "$GITHUB_REF_TYPE" = tag ] && [ "$GITHUB_REF_NAME" != "v$v" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match the Cargo.toml version $v"
+            exit 1
+          fi
           case "$v" in *-*) pre=true ;; *) pre=false ;; esac
           {
             echo "version=$v"
@@ -66,7 +69,9 @@ jobs:
   macos:
     name: macOS universal
     needs: version
-    runs-on: macos-15-xlarge  # M2 Pro larger runner; use only in release.yml (actions_macos_xl budget caps spend)
+    # Standard hosted runner: redrob-labs has no larger macOS runners configured, and a job that
+    # names one waits in the queue forever.
+    runs-on: macos-latest
     environment: release
     env:
       CADCRAFT_VERSION: ${{ needs.version.outputs.version }}
@@ -84,15 +89,14 @@ jobs:
         run: cargo xtask version set "$CADCRAFT_VERSION"
       - name: Import signing certificate
         env:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CODESIGN_CERT_P12_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CODESIGN_CERT_PASSWORD }}
         run: packaging/macos/import-cert.sh
       - name: Build, sign, notarize
         env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_NOTARY_API_KEY_P8_BASE64: ${{ secrets.APPLE_NOTARY_API_KEY_P8_BASE64 }}
+          APPLE_NOTARY_API_KEY_ID: ${{ secrets.APPLE_NOTARY_API_KEY_ID }}
+          APPLE_NOTARY_API_ISSUER_ID: ${{ secrets.APPLE_NOTARY_API_ISSUER_ID }}
         run: packaging/macos/package.sh --arch universal
       - uses: actions/upload-artifact@v4
         with:
@@ -329,8 +333,8 @@ jobs:
   release:
     name: Draft GitHub Release
     needs: [version, macos, windows, linux, flatpak, web, freebsd]
-    # Only the `release` branch publishes; a dry run on another branch stops before this job.
-    if: github.ref == 'refs/heads/release'
+    # Only a version tag publishes; a manual dispatch stops before this job.
+    if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
     environment: release
     permissions:
@@ -359,7 +363,7 @@ jobs:
           if [ "$PRERELEASE" = true ]; then pre=(--prerelease); fi
           if draft="$(gh release view "$tag" --json isDraft --jq .isDraft 2>/dev/null)"; then
             if [ "$draft" != "true" ]; then
-              echo "::error::Release $tag is already published. Bump the version (cargo xtask version set) before pushing to release."
+              echo "::error::Release $tag is already published. Bump the version (cargo xtask version set) and tag again."
               exit 1
             fi
             echo "Updating draft $tag: replacing its assets"
