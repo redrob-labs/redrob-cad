@@ -161,7 +161,7 @@ fn main() -> eframe::Result {
     let mut options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_title("Redrob CAD")
-            .with_inner_size([1600.0, 1000.0])
+            .with_inner_size([1440.0, 900.0])
             .with_min_inner_size([900.0, 560.0])
             .with_drag_and_drop(true)
             .with_fullsize_content_view(true)

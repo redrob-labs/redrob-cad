@@ -188,76 +188,96 @@ impl AgentPanel {
     }
 }
 
+/// Side margin of the chat, in points. One value so the header, log and composer line up.
+const MARGIN: i8 = 12;
+/// Gap between two messages.
+const GAP: f32 = 8.0;
+/// A user bubble takes at most this share of the log's width.
+const BUBBLE_SHARE: f32 = 0.85;
+
 /// The palette body.
 pub fn agent_section(app: &mut CadApp, ui: &mut egui::Ui) {
     let t = Tokens::get();
-    ui.add_space(6.0);
-    ui.horizontal(|ui| {
-        ui.add_space(10.0);
-        ui.label(RichText::new("Agent").size(14.0).color(t.text));
-        if let Some(n) = &app.agent.agent_name {
-            ui.label(RichText::new(n).small().color(t.text_faint));
+    egui::Frame::NONE.inner_margin(egui::Margin::symmetric(MARGIN, 8)).show(ui, |ui| {
+        ui.horizontal(|ui| {
+            ui.label(RichText::new("Agent").size(14.0).color(t.text));
+            if let Some(n) = &app.agent.agent_name {
+                ui.label(RichText::new(n).small().color(t.text_faint));
+            }
+        });
+        if let Some(g) = app.services.account.as_ref().map(|a| a.generation()) {
+            app.agent.account_changed(g);
         }
+        if crate::account::account_row(&mut app.services.account, ui) {
+            ui.ctx().request_repaint_after(std::time::Duration::from_millis(500));
+        }
+        ui.add_space(6.0);
+        ui.separator();
+        chat(app, ui);
     });
-    if let Some(g) = app.services.account.as_ref().map(|a| a.generation()) {
-        app.agent.account_changed(g);
-    }
-    if crate::account::account_row(&mut app.services.account, ui) {
-        ui.ctx().request_repaint_after(std::time::Duration::from_millis(500));
-    }
+}
+
+fn chat(app: &mut CadApp, ui: &mut egui::Ui) {
+    let t = Tokens::get();
     let panel = &mut app.agent;
-    ui.add_space(4.0);
-    let input_h = 86.0;
-    let list_h = (ui.available_height() - input_h).max(80.0);
+    let composer_h = 92.0;
+    let list_h = (ui.available_height() - composer_h).max(80.0);
     egui::ScrollArea::vertical().id_salt("agent_log").max_height(list_h).auto_shrink([false, false]).stick_to_bottom(true).show(ui, |ui| {
-        ui.set_width(ui.available_width() - 10.0);
+        ui.add_space(GAP);
         if panel.entries.is_empty() {
-            ui.add_space(4.0);
-            ui.horizontal_wrapped(|ui| {
-                ui.add_space(10.0);
-                ui.label(RichText::new("Ask Redrob Code to draw, change or check this drawing.").color(t.text_dim));
-            });
+            ui.add(egui::Label::new(RichText::new("Ask Redrob Code to draw, change or check this drawing.").color(t.text_dim)).wrap());
         }
+        let full = ui.available_width();
         for e in &panel.entries {
-            ui.horizontal_wrapped(|ui| {
-                ui.add_space(10.0);
-                match e {
-                    Entry::User(s) => {
-                        ui.label(RichText::new(s).color(t.text).strong());
-                    }
-                    Entry::Agent(s) => {
-                        ui.label(RichText::new(s).color(t.text));
-                    }
-                    Entry::Thought(s) => {
-                        ui.label(RichText::new(s).italics().small().color(t.text_faint));
-                    }
-                    Entry::Tool { title, status, .. } => {
-                        let mark = match status.as_str() {
-                            "completed" => "✓",
-                            "failed" => "✗",
-                            _ => "…",
-                        };
-                        ui.label(RichText::new(format!("{mark} {title}")).small().color(t.text_dim));
-                    }
-                    Entry::Notice(s) => {
-                        ui.label(RichText::new(s).small().color(t.text_dim));
-                    }
-                    Entry::Error(s) => {
-                        ui.label(RichText::new(s).small().color(Color32::from_rgb(0xff, 0x8a, 0x80)));
-                    }
+            match e {
+                Entry::User(s) => {
+                    // The user's own words sit on the right, in a bubble.
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
+                        egui::Frame::NONE.fill(t.control).corner_radius(10).inner_margin(egui::Margin::symmetric(10, 7)).show(ui, |ui| {
+                            ui.set_max_width(full * BUBBLE_SHARE);
+                            // The bubble hugs the right edge, but its text still reads left to right.
+                            ui.with_layout(egui::Layout::top_down(egui::Align::Min), |ui| {
+                                ui.add(egui::Label::new(RichText::new(s).color(t.text)).wrap());
+                            });
+                        });
+                    });
                 }
-            });
-            ui.add_space(4.0);
+                Entry::Agent(s) => {
+                    ui.add(egui::Label::new(RichText::new(s).color(t.text)).wrap().selectable(true));
+                }
+                Entry::Thought(s) => {
+                    ui.add(egui::Label::new(RichText::new(s).italics().small().color(t.text_faint)).wrap());
+                }
+                Entry::Tool { title, status, .. } => {
+                    let mark = match status.as_str() {
+                        "completed" => "✓",
+                        "failed" => "✗",
+                        _ => "…",
+                    };
+                    egui::Frame::NONE
+                        .fill(t.chrome_dark)
+                        .stroke(egui::Stroke::new(1.0, t.border))
+                        .corner_radius(6)
+                        .inner_margin(egui::Margin::symmetric(8, 3))
+                        .show(ui, |ui| {
+                            // Proportional font: the monospace one has no ✓ / ✗ glyphs.
+                            ui.add(egui::Label::new(RichText::new(format!("{mark} {title}")).small().color(t.text_dim)).wrap());
+                        });
+                }
+                Entry::Notice(s) => {
+                    ui.add(egui::Label::new(RichText::new(s).small().color(t.text_dim)).wrap());
+                }
+                Entry::Error(s) => {
+                    ui.add(egui::Label::new(RichText::new(s).small().color(Color32::from_rgb(0xff, 0x8a, 0x80))).wrap());
+                }
+            }
+            ui.add_space(GAP);
         }
     });
     let mut answer: Option<Option<String>> = None;
     if let Some((_, title, options)) = &panel.pending {
+        ui.add(egui::Label::new(RichText::new(format!("Allow {title}?")).color(t.text)).wrap());
         ui.horizontal_wrapped(|ui| {
-            ui.add_space(10.0);
-            ui.label(RichText::new(format!("Allow {title}?")).color(t.text));
-        });
-        ui.horizontal_wrapped(|ui| {
-            ui.add_space(10.0);
             for o in options {
                 if ui.button(&o.name).clicked() {
                     answer = Some(if o.kind.starts_with("reject") { None } else { Some(o.id.clone()) });
@@ -268,29 +288,34 @@ pub fn agent_section(app: &mut CadApp, ui: &mut egui::Ui) {
     if let Some(a) = answer {
         panel.answer(a);
     }
-    ui.add_space(4.0);
+    ui.add_space(6.0);
     let mut send = false;
     let mut stop = false;
-    ui.horizontal(|ui| {
-        ui.add_space(10.0);
-        let w = ui.available_width() - 10.0;
-        let edit = egui::TextEdit::multiline(&mut panel.input).hint_text("Message Redrob Code").desired_rows(2).desired_width(w);
-        let r = ui.add_enabled(!panel.busy, edit);
-        if r.has_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter) && !i.modifiers.shift) {
-            send = true;
-        }
-    });
-    ui.horizontal(|ui| {
-        ui.add_space(10.0);
-        if panel.busy {
-            ui.spinner();
-            if ui.add_sized(vec2(60.0, 22.0), egui::Button::new("Stop")).clicked() {
-                stop = true;
+    // The composer: one rounded box holding the text and the Send button, like a chat app.
+    egui::Frame::NONE.fill(t.chrome_dark).stroke(egui::Stroke::new(1.0, t.border)).corner_radius(10).inner_margin(egui::Margin::same(8)).show(
+        ui,
+        |ui| {
+            let edit = egui::TextEdit::multiline(&mut panel.input)
+                .hint_text("Message Redrob Code")
+                .frame(egui::Frame::NONE)
+                .desired_rows(2)
+                .desired_width(ui.available_width());
+            let r = ui.add_enabled(!panel.busy, edit);
+            if r.has_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter) && !i.modifiers.shift) {
+                send = true;
             }
-        } else if ui.add_sized(vec2(60.0, 22.0), egui::Button::new("Send")).clicked() {
-            send = true;
-        }
-    });
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if panel.busy {
+                    if ui.add_sized(vec2(60.0, 22.0), egui::Button::new("Stop")).clicked() {
+                        stop = true;
+                    }
+                    ui.spinner();
+                } else if ui.add_enabled(!panel.input.trim().is_empty(), egui::Button::new("Send").min_size(vec2(60.0, 22.0))).clicked() {
+                    send = true;
+                }
+            });
+        },
+    );
     if send {
         // A trailing newline from Enter is not part of the message.
         let trimmed = panel.input.trim_end_matches('\n').to_string();
