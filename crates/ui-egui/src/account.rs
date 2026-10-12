@@ -16,6 +16,8 @@ use crate::theme::Tokens;
 pub struct Account {
     pub account_name: String,
     pub key_name: String,
+    /// The key is the computer's shared one, from Redrob Launcher: signing out happens there.
+    pub via_launcher: bool,
 }
 
 /// A connection the person is approving.
@@ -84,11 +86,15 @@ pub fn account_row(service: &mut Option<Box<dyn AccountService>>, ui: &mut egui:
                 ui.vertical(|ui| {
                     ui.horizontal(|ui| {
                         ui.label(RichText::new(trf("Workspace: {name}", &[("name", a.account_name.as_str())])).small().color(t.text_dim));
-                        if ui.small_button(tr("Disconnect")).clicked() {
+                        if !a.via_launcher && ui.small_button(tr("Disconnect")).clicked() {
                             action = Some(|s| s.disconnect());
                         }
                     });
                     ui.label(RichText::new(trf("Key: {name}", &[("name", a.key_name.as_str())])).small().color(t.text_faint));
+                    // On its own line: beside the workspace name it widened the palette past its edge.
+                    if a.via_launcher {
+                        ui.label(RichText::new(tr("Signed in with Redrob Launcher")).small().color(t.text_faint));
+                    }
                 });
             }
             (None, s) => {

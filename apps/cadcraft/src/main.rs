@@ -221,6 +221,7 @@ fn main() -> eframe::Result {
             let base = std::env::var(device::CONSOLE_API_ENV).ok().filter(|b| !b.is_empty()).unwrap_or_else(|| device::CONSOLE_API.to_string());
             let account = device::DeviceAccount::new(
                 device::config_dir().map(|d| d.join("account.json")),
+                device::shared_account_path(),
                 std::sync::Arc::new(device::Https),
                 base,
                 Some(cc.egui_ctx.clone()),
@@ -232,8 +233,7 @@ fn main() -> eframe::Result {
                 Box::new(move || {
                     let bin = acp::find_binary().ok_or_else(|| acp::INSTALL_HINT.to_string())?;
                     // The connected workspace's key, as the variable Redrob Code reads for Redrob.
-                    let env: Vec<(&str, String)> =
-                        keys.lock().ok().and_then(|k| k.clone()).map(|k| vec![("REDROB_API_KEY", k.api_key)]).unwrap_or_default();
+                    let env: Vec<(&str, String)> = keys.current().map(|(k, _)| vec![("REDROB_API_KEY", k.api_key)]).unwrap_or_default();
                     let host = acp::AcpHost::start(&bin, &agent_cwd(), link.clone(), &env, ctx.clone())?;
                     Ok(Box::new(host) as Box<dyn cadcraft_ui_egui::agent::AgentHost>)
                 }) as cadcraft_ui_egui::agent::AgentFactory
