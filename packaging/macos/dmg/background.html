@@ -1,0 +1,53 @@
+<!doctype html>
+<!--
+  Background of the Redrob CAD disk image window (660x400), rendered to background.png (1x) and
+  background@2x.png (2x) with headless Chromium and committed; packaging/macos/package.sh hands
+  both to dmgbuild. Not used at run time.
+
+  The same art as the Windows setup (packaging/windows/setup/res/background.html): the deep
+  ground, Redrob Black #0A0B0C, with the brand-gradient foot light (wash-edge, blue-6 ->
+  accent-teal-3, never into black). Redrob CAD has no product color, so the window carries the
+  Redrob lockup with the name after it, Solid Mono White (assets/Products/README.md, "Lockups").
+  Finder draws the two icons (the app at x=170, Applications at x=490, y=230) and their labels;
+  this art leaves that band clear and puts one quiet line under it.
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face { font-family: "Pretendard"; font-weight: 600; src: url("../../windows/setup/res/Pretendard-SemiBold.ttf"); }
+  @font-face { font-family: "Wanted Sans"; font-weight: 600; src: url("../../windows/setup/res/WantedSans-SemiBold.ttf"); }
+  :root { --redrob-black: #0A0B0C; --blue-6: #2B52FF; --accent-teal-3: #6FF4F0; --ink-muted: #838A97; }
+  html, body { margin: 0; padding: 0; }
+  .window { width: 660px; height: 400px; background: var(--redrob-black); position: relative; overflow: hidden; }
+  .wash-bed {
+    position: absolute; left: -5%; right: -5%; bottom: -70px; height: 210px;
+    background: radial-gradient(60% 100% at 50% 100%, rgba(43, 82, 255, 0.85) 0%, rgba(43, 82, 255, 0.42) 34%, rgba(43, 82, 255, 0) 70%);
+    filter: blur(21px); mix-blend-mode: screen;
+  }
+  .wash-core {
+    position: absolute; left: 22%; right: 22%; bottom: -40px; height: 110px;
+    background: radial-gradient(50% 100% at 50% 100%, rgba(111, 244, 240, 0.75) 0%, rgba(111, 244, 240, 0.25) 40%, rgba(111, 244, 240, 0) 72%);
+    filter: blur(14px); mix-blend-mode: screen;
+  }
+  .lockup { position: absolute; top: 46px; left: 50%; transform: translateX(-50%); height: 30px; }
+  .arrow { position: absolute; top: 222px; left: 286px; width: 88px; height: 16px; }
+  .hint {
+    position: absolute; top: 318px; left: 0; right: 0; text-align: center;
+    font: 600 13px/18px "Pretendard", "Wanted Sans", sans-serif; color: var(--ink-muted); letter-spacing: 0;
+  }
+  .hint .kr { font-family: "Wanted Sans", sans-serif; font-size: 12.5px; }
+</style>
+</head>
+<body>
+<div class="window">
+  <div class="wash-bed"></div>
+  <div class="wash-core"></div>
+  <img class="lockup" src="../../windows/setup/res/lockup.png" alt="">
+  <svg class="arrow" viewBox="0 0 88 16" fill="none" stroke="#838A97" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M2 8 H84 M77 2 L84 8 L77 14"/>
+  </svg>
+  <div class="hint">Drag Redrob CAD to Applications<br><span class="kr">Redrob CAD를 Applications 폴더로 끌어 놓으세요</span></div>
+</div>
+</body>
+</html>

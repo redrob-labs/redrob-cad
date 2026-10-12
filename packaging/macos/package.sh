@@ -144,11 +144,35 @@ mkdir -p "$STAGE"
 ditto "$APP" "$STAGE/Redrob CAD.app"
 ln -s /Applications "$STAGE/Applications"
 rm -f "$DMG" "$WORK/raw.dmg"
-# makehybrid + convert builds the image without attaching a device, unlike `create -srcfolder`,
-# which is flaky on CI runners ("Resource busy") and hangs in sandboxed sessions.
-hdiutil makehybrid -hfs -hfs-volume-name "Redrob CAD $VERSION" -hfs-openfolder "$STAGE" -o "$WORK/raw.dmg" "$STAGE"
-hdiutil convert "$WORK/raw.dmg" -format UDZO -imagekey zlib-level=9 -o "$DMG"
-rm -f "$WORK/raw.dmg"
+# The branded window (packaging/macos/dmg): background art, icon positions, no toolbar. dmgbuild
+# (pinned) writes the .DS_Store without Finder scripting, but it attaches the image to do so, which
+# can fail on a busy runner ("Resource busy"). Two tries, then the plain image below: an unbranded
+# DMG still installs, a failed release does not.
+DMGBUILD_VERSION=1.6.7
+BG_TIFF="$WORK/background.tiff"
+tiffutil -cathidpicheck "$HERE/dmg/background.png" "$HERE/dmg/background@2x.png" -out "$BG_TIFF"
+DMGBUILD_VENV="$WORK/dmgbuild-venv"
+branded=0
+if python3 -m venv "$DMGBUILD_VENV" && "$DMGBUILD_VENV/bin/pip" install --quiet "dmgbuild==$DMGBUILD_VERSION"; then
+  for attempt in 1 2; do
+    if "$DMGBUILD_VENV/bin/dmgbuild" -s "$HERE/dmg/settings.py" -D app="$STAGE/Redrob CAD.app" -D background="$BG_TIFF" \
+      "Redrob CAD $VERSION" "$DMG"; then
+      branded=1
+      break
+    fi
+    warn "dmgbuild attempt $attempt failed"
+    rm -f "$DMG"
+    sleep 5
+  done
+fi
+if [ "$branded" = 0 ]; then
+  warn "macOS: building the DMG without its branded window"
+  # makehybrid + convert builds the image without attaching a device, unlike `create -srcfolder`,
+  # which is flaky on CI runners ("Resource busy") and hangs in sandboxed sessions.
+  hdiutil makehybrid -hfs -hfs-volume-name "Redrob CAD $VERSION" -hfs-openfolder "$STAGE" -o "$WORK/raw.dmg" "$STAGE"
+  hdiutil convert "$WORK/raw.dmg" -format UDZO -imagekey zlib-level=9 -o "$DMG"
+  rm -f "$WORK/raw.dmg"
+fi
 sign "$DMG"
 codesign --verify --strict --verbose=2 "$DMG"
 if [ "$NOTARIZE" = 1 ]; then

@@ -98,6 +98,15 @@ jobs:
           APPLE_NOTARY_API_KEY_ID: ${{ secrets.APPLE_NOTARY_API_KEY_ID }}
           APPLE_NOTARY_API_ISSUER_ID: ${{ secrets.APPLE_NOTARY_API_ISSUER_ID }}
         run: packaging/macos/package.sh --arch universal
+      - name: Check the disk image window
+        run: packaging/macos/dmg/ci-check.sh dist/release/redrob-cad-*-macos-universal.dmg dist/screens
+      - name: Keep the disk image screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screens-macos
+          path: dist/screens/*
+          if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         with:
           name: release-macos
@@ -151,6 +160,23 @@ jobs:
           AZURE_SIGNING_ACCOUNT: ${{ secrets.AZURE_SIGNING_ACCOUNT }}
           AZURE_CERT_PROFILE: ${{ secrets.AZURE_CERT_PROFILE }}
         run: ./packaging/windows/package.ps1 -Arch ${{ matrix.arch }}
+      # The branded setup's screens, and a real per-user MSI install and removal. x64 only: the
+      # runner cannot run the arm64 build, and x86 installs the same MSI layout.
+      - name: Check the installers
+        if: matrix.arch == 'x64'
+        shell: pwsh
+        run: >-
+          ./packaging/windows/setup/ci-check.ps1
+          -Setup (Get-Item dist/release/*-setup.exe).FullName
+          -Msi (Get-Item dist/release/*.msi).FullName
+          -Out dist/screens
+      - name: Keep the installer screenshots
+        if: matrix.arch == 'x64' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: screens-windows
+          path: dist/screens/*
+          if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         with:
           name: release-windows-${{ matrix.arch }}
@@ -333,8 +359,14 @@ jobs:
   release:
     name: Draft GitHub Release
     needs: [version, macos, windows, linux, flatpak, web, freebsd]
-    # Only a version tag publishes; a manual dispatch stops before this job.
-    if: github.ref_type == 'tag'
+    # Only a version tag publishes; a manual dispatch stops before this job. FreeBSD does not hold
+    # the release back: its VM action has failed to boot on the hosted runners (v0.0.1), and a
+    # release without the FreeBSD archive beats no release. Every other platform must succeed.
+    if: >-
+      always() && github.ref_type == 'tag' &&
+      needs.version.result == 'success' && needs.macos.result == 'success' &&
+      needs.windows.result == 'success' && needs.linux.result == 'success' &&
+      needs.flatpak.result == 'success' && needs.web.result == 'success'
     runs-on: ubuntu-latest
     environment: release
     permissions:
