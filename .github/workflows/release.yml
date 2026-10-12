@@ -329,8 +329,10 @@ jobs:
         with:
           release: "14.3"
           usesh: true
-          cpu: 4
-          mem: 12288
+          # The runners this private repository gets give KVM 2 cpus and refuse more than ~5 GB
+          # of guest memory ("cannot set up guest memory 'pc.ram'"); 4/12288 failed every release.
+          cpu: 2
+          mem: 5120
           envs: "CADCRAFT_VERSION CADCRAFT_BUILD_DATE CADCRAFT_BUILD_SHA INPUT_VERSION"
           copyback: true
           prepare: |
