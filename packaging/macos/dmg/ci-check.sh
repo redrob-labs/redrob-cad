@@ -15,8 +15,11 @@ test -d "$MNT/Redrob CAD.app" || { echo "no Redrob CAD.app in the image" >&2; ex
 test -L "$MNT/Applications" || { echo "no Applications link in the image" >&2; exit 1; }
 test -s "$MNT/.DS_Store" || { echo "no .DS_Store: the window is not branded" >&2; exit 1; }
 # dmgbuild stores the art at the volume root as .background.tiff (older layouts used .background/).
-BG="$(ls -d "$MNT"/.background.* "$MNT"/.background/* 2>/dev/null | head -1)"
-test -n "$BG" && test -s "$BG" || { echo "no background art on the volume" >&2; exit 1; }
+BG=""
+for f in "$MNT"/.background.* "$MNT"/.background/*; do
+  if [ -s "$f" ]; then BG="$f"; break; fi
+done
+[ -n "$BG" ] || { echo "no background art on the volume" >&2; exit 1; }
 echo "branded: .DS_Store and ${BG#"$MNT"/}"
 
 # The window as a person sees it. Best effort: a runner without a GUI session skips it.
