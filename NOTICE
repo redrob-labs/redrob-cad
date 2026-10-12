@@ -17,6 +17,10 @@ crate (DWG reading and writing, https://github.com/hakanaktt/acadrust) is licens
 Mozilla Public License 2.0 and is used unmodified as a separate library (crates/dwg). Its source
 is available from crates.io and the repository above.
 
+The Korean UI font Wanted Sans (crates/ui-egui/assets/fonts/WantedSans-Regular.ttf) is
+Copyright 2024 The Wanted Sans Project Authors (https://github.com/wanteddev/wanted-sans) and is
+licensed under the SIL Open Font License, Version 1.1 (WantedSans-OFL.txt beside it).
+
 
 None: every other bundled asset is original to CADCraft (icons, drafting font, hatch patterns and
 linetypes are drawn or defined in code). The per-file list is in ATTRIBUTION.md. Builds made with
