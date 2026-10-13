@@ -379,15 +379,24 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GH_REPO: ${{ github.repository }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: packaging
       - uses: actions/download-artifact@v4
         with:
           pattern: release-*
           path: artifacts
           merge-multiple: true
+      # Redrob Launcher reads this file from the release to learn that it uses the shared sign-in.
+      # It must exist before the checksums so SHA256SUMS.txt lists it.
+      - name: Launcher release manifest
+        run: packaging/release-manifest.sh artifacts
       - name: Checksums
         working-directory: artifacts
         run: |
           sha256sum -- * | tee SHA256SUMS.txt
+      - name: Check release assets
+        run: packaging/check-release-dir.sh artifacts
       - name: Create or update the draft release
         working-directory: artifacts
         run: |
