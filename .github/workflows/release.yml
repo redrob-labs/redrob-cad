@@ -243,134 +243,13 @@ jobs:
           path: dist/release/*
           if-no-files-found: error
 
-  flatpak:
-    name: Flatpak ${{ matrix.arch }}
-    needs: [version, linux]
-    # Repackages the Linux job's tarball (the same binaries as the AppImage/deb/rpm); no Rust
-    # build here. 24.04 for a newer flatpak-builder (1.4) than 22.04 ships.
-    runs-on: ${{ matrix.runner }}
-    # No `environment: release`: this job signs nothing, so it gets no release secrets.
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { arch: x86_64, runner: ubuntu-24.04 }
-          - { arch: aarch64, runner: ubuntu-24.04-arm }
-    env:
-      CADCRAFT_VERSION: ${{ needs.version.outputs.version }}
-      CADCRAFT_BUILD_DATE: ${{ needs.version.outputs.date }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          name: release-linux-${{ matrix.arch }}
-          path: dist/linux
-      - name: Install flatpak-builder
-        run: |
-          sudo apt-get update
-          # librsvg2-common: the SVG pixbuf loader that the host's `appstreamcli compose` (run by
-          # flatpak-builder) needs for any scalable icon.
-          sudo apt-get install -y --no-install-recommends flatpak flatpak-builder librsvg2-common
-          # Ubuntu 24.04's AppArmor blocks the unprivileged user namespaces bubblewrap needs.
-          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
-      - name: Build the Flatpak bundle
-        run: packaging/linux/flatpak-bundle.sh "dist/linux/redrob-cad-$CADCRAFT_VERSION-linux-${{ matrix.arch }}.tar.gz"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: release-flatpak-${{ matrix.arch }}
-          path: dist/release/*.flatpak
-          if-no-files-found: error
-
-  web:
-    name: Web (wasm)
-    needs: version
-    runs-on: ubuntu-latest
-    # No `environment: release`: this job signs nothing, so it gets no release secrets.
-    env:
-      CADCRAFT_VERSION: ${{ needs.version.outputs.version }}
-      CADCRAFT_BUILD_DATE: ${{ needs.version.outputs.date }}
-      TRUNK_VERSION: 0.21.14
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: wasm32-unknown-unknown
-      - uses: Swatinem/rust-cache@v2
-        with:
-          key: release-web
-      - name: Install trunk
-        run: |
-          curl -fsSL "https://github.com/trunk-rs/trunk/releases/download/v${TRUNK_VERSION}/trunk-x86_64-unknown-linux-gnu.tar.gz" \
-            | tar -xz -C "$HOME/.cargo/bin" trunk
-          trunk --version
-      - name: Apply version override
-        if: inputs.version != ''
-        run: cargo xtask version set "$CADCRAFT_VERSION"
-      - name: Build and zip
-        run: packaging/web/package.sh
-      - uses: actions/upload-artifact@v4
-        with:
-          name: release-web
-          path: dist/release/*
-          if-no-files-found: error
-
-  freebsd:
-    name: FreeBSD x86_64
-    needs: version
-    # GitHub has no FreeBSD runners: build inside a FreeBSD VM on a Linux runner.
-    runs-on: ubuntu-latest
-    # No `environment: release`: this job signs nothing, so it gets no release secrets.
-    timeout-minutes: 300
-    env:
-      CADCRAFT_VERSION: ${{ needs.version.outputs.version }}
-      CADCRAFT_BUILD_DATE: ${{ needs.version.outputs.date }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Build and package in a FreeBSD VM
-        uses: vmactions/freebsd-vm@c46abacb49f09938ca4e1702d15d836285d694cc # v1
-        with:
-          release: "14.3"
-          usesh: true
-          # The runners this private repository gets give KVM 2 cpus and refuse more than ~5 GB
-          # of guest memory ("cannot set up guest memory 'pc.ram'"); 4/12288 failed every release.
-          cpu: 2
-          mem: 5120
-          envs: "CADCRAFT_VERSION CADCRAFT_BUILD_DATE CADCRAFT_BUILD_SHA INPUT_VERSION"
-          copyback: true
-          prepare: |
-            pkg install -y git curl pkgconf cmake python3 libxkbcommon wayland libX11 libXcursor libXrandr libXi libxcb mesa-libs vulkan-loader gtk3 fontconfig freetype2 alsa-lib
-            curl -fsSL https://sh.rustup.rs | sh -s -- -y --profile minimal
-          run: |
-            set -e
-            . "$HOME/.cargo/env"
-            git config --global --add safe.directory "*"
-            if [ -n "$INPUT_VERSION" ]; then cargo xtask version set "$CADCRAFT_VERSION"; fi
-            cargo build --release --locked -p cadcraft -p cadcraft-cli
-            name="redrob-cad-$CADCRAFT_VERSION-freebsd-x86_64"
-            mkdir -p "dist/release/$name"
-            cp target/release/redrob-cad target/release/redrob-cad-cli README.md LICENSE-MIT LICENSE-APACHE NOTICE ATTRIBUTION.md "dist/release/$name/"
-            mkdir -p "dist/release/$name/icons"
-            cp -R assets/app-icon/hicolor "dist/release/$name/icons/" 2>/dev/null || true
-            (cd dist/release && tar -czf "$name.tar.gz" "$name" && rm -rf "$name")
-            # Keep the copy back to the runner small.
-            rm -rf target
-      - uses: actions/upload-artifact@v4
-        with:
-          name: release-freebsd
-          path: dist/release/*
-          if-no-files-found: error
-
   release:
     name: Draft GitHub Release
-    needs: [version, macos, windows, linux, flatpak, web, freebsd]
-    # Only a version tag publishes; a manual dispatch stops before this job. FreeBSD does not hold
-    # the release back: its VM action has failed to boot on the hosted runners (v0.0.1), and a
-    # release without the FreeBSD archive beats no release. Every other platform must succeed.
-    if: >-
-      always() && github.ref_type == 'tag' &&
-      needs.version.result == 'success' && needs.macos.result == 'success' &&
-      needs.windows.result == 'success' && needs.linux.result == 'success' &&
-      needs.flatpak.result == 'success' && needs.web.result == 'success'
+    needs: [version, macos, windows, linux]
+    # Only a version tag publishes; a manual dispatch stops before this job. Three platforms, all
+    # of which must succeed: the Flatpak, web and FreeBSD builds were dropped from the release
+    # (2026-10-13) as not worth their build time and flakiness for the people the app is for.
+    if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
     environment: release
     permissions:
