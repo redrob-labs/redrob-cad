@@ -1,5 +1,6 @@
-//! The built-in agent: Redrob Code over the Agent Client Protocol (`redrob acp`, JSON-RPC 2.0,
-//! one message per line on the child's stdio).
+//! The built-in agent: Redrob Code over the Agent Client Protocol (`redrob acp --attach`,
+//! JSON-RPC 2.0, one message per line on the child's stdio). `--attach` keeps the process a thin
+//! client of the one shared Redrob Code daemon rather than an engine of its own.
 //!
 //! Only the handful of ACP methods the Agent palette needs are typed here; anything else is
 //! ignored (notifications) or declined (requests). The drawing tools reach the agent as an MCP
@@ -129,12 +130,19 @@ pub struct AcpHost {
     events: Receiver<AgentEvent>,
 }
 
+/// Arguments for the agent process. `--attach` makes it a thin client of the one shared
+/// Redrob Code daemon (started on demand, shared with every other Redrob app, gone after ten
+/// idle minutes) instead of a full engine of its own per window.
+fn acp_args(cwd: &str) -> Vec<String> {
+    vec!["acp".into(), "--attach".into(), "--cwd".into(), cwd.into()]
+}
+
 impl AcpHost {
-    /// Spawn `redrob acp` in `cwd` and start the handshake; the session opens in the background
-    /// and any prompt sent before it is ready is queued.
+    /// Spawn `redrob acp --attach` in `cwd` and start the handshake; the session opens in the
+    /// background and any prompt sent before it is ready is queued.
     pub fn start(binary: &Path, cwd: &str, mcp: McpLink, env: &[(&str, String)], ctx: egui::Context) -> Result<Self, String> {
         let mut child = Command::new(binary)
-            .args(["acp", "--cwd", cwd])
+            .args(acp_args(cwd))
             .envs(env.iter().map(|(k, v)| (*k, v.as_str())))
             .current_dir(cwd)
             .stdin(Stdio::piped())
@@ -396,6 +404,11 @@ mod tests {
     fn last_line_skips_blank_tail() {
         assert_eq!(last_line("a\nerror: no provider\n\n"), "error: no provider");
         assert_eq!(last_line(""), "");
+    }
+
+    #[test]
+    fn attaches_to_the_shared_daemon() {
+        assert_eq!(acp_args("/w"), ["acp", "--attach", "--cwd", "/w"]);
     }
 
     /// The whole client against a scripted agent: handshake, the MCP server it hands over,
