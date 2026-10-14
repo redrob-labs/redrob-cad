@@ -121,7 +121,13 @@ jobs:
     name: Windows ${{ matrix.arch }}
     needs: version
     runs-on: windows-latest
+    # `release` is the environment the organization's federated credential names
+    # (repo:redrob-labs@<org id>/<repo>@<id>:environment:release); any other name is refused.
     environment: release
+    permissions:
+      contents: read
+      # The OIDC token `azure/login` exchanges for the Artifact Signing credential.
+      id-token: write
     strategy:
       fail-fast: false
       matrix:
@@ -133,6 +139,8 @@ jobs:
     env:
       CADCRAFT_VERSION: ${{ needs.version.outputs.version }}
       CADCRAFT_BUILD_DATE: ${{ needs.version.outputs.date }}
+      # Plain IDs (not credentials); here so the login step can be skipped when signing is not set up.
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -148,20 +156,31 @@ jobs:
       - name: Install WiX
         shell: pwsh
         run: dotnet tool install --global wix --version 5.0.2
-      - name: Build, sign, package
+      - name: Build
+        shell: pwsh
+        run: ./packaging/windows/package.ps1 -Arch ${{ matrix.arch }} -BuildOnly
+      # Azure Artifact Signing, authenticated with OpenID Connect: the job's GitHub token is exchanged
+      # for an Azure token against the organization's app registration, whose federated credential
+      # accepts `repo:redrob-labs@<org id>/*:environment:release`. No client secret exists anywhere.
+      # The login comes AFTER the build: GitHub's OIDC token lives minutes, and a login done before
+      # a long build left signtool without a usable credential (it then waited on a browser).
+      # The secrets below are redrob-labs organization secrets; do not recreate them as repository
+      # secrets (a same-named repository secret would override them). All three are plain IDs.
+      - name: Log in to Azure (OIDC)
+        if: env.AZURE_CLIENT_ID != ''
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Sign and package
         shell: pwsh
         env:
-          # The redrob-labs organization secrets (a base64 .pfx and its password), the same two
-          # redrob-office reads. Do not recreate them as repository secrets.
-          WINDOWS_CERTIFICATE: ${{ secrets.WIN_CSC_LINK }}
-          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-          AZURE_SIGNING_ENDPOINT: ${{ secrets.AZURE_SIGNING_ENDPOINT }}
-          AZURE_SIGNING_ACCOUNT: ${{ secrets.AZURE_SIGNING_ACCOUNT }}
-          AZURE_CERT_PROFILE: ${{ secrets.AZURE_CERT_PROFILE }}
-        run: ./packaging/windows/package.ps1 -Arch ${{ matrix.arch }}
+          # sign.ps1 reads these three; the credential comes from the `az login` above.
+          ARTIFACT_SIGNING_ENDPOINT: ${{ secrets.ARTIFACT_SIGNING_ENDPOINT }}
+          ARTIFACT_SIGNING_ACCOUNT: ${{ secrets.ARTIFACT_SIGNING_ACCOUNT }}
+          ARTIFACT_SIGNING_CERT_PROFILE: ${{ secrets.ARTIFACT_SIGNING_CERT_PROFILE }}
+        run: ./packaging/windows/package.ps1 -Arch ${{ matrix.arch }} -SkipBuild
       # The branded setup's screens, and a real per-user MSI install and removal. x64 only: the
       # runner cannot run the arm64 build, and x86 installs the same MSI layout.
       - name: Check the installers
