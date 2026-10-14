@@ -1,12 +1,14 @@
 # Release pipeline: a `vX.Y.Z` tag pushed on `main` builds installers for every platform and
-# creates or updates the draft GitHub Release "Redrob CAD vX.Y.Z". See docs/releasing.md.
+# publishes the GitHub Release "Redrob CAD vX.Y.Z" through the shared redrob-labs/.github
+# release-publish workflow (checksums, launcher manifest, published as latest). See docs/releasing.md.
 #
 # The tag must equal the Cargo.toml version; the version job fails otherwise. The jobs that sign
-# (macOS, Windows) and the one that drafts the GitHub Release run in the `release` environment.
-# Signing secrets are the redrob-labs organization's (Apple Developer ID certificate + App Store
-# Connect API key for notarization). Every secret is optional: missing ones produce unsigned
-# artifacts and a warning, never a failed build. A manual dispatch is a dry run: it builds every
-# job and drafts nothing.
+# (macOS, Windows) and the publish job run in the `release` environment. Signing secrets are the
+# redrob-labs organization's (Apple Developer ID certificate + App Store Connect API key for
+# notarization; Azure Artifact Signing over the job's OpenID Connect login for Windows, through
+# the shared redrob-labs/.github/actions/sign-windows action). Every secret is optional: missing
+# ones produce unsigned artifacts and a warning, never a failed build. A manual dispatch is a dry
+# run: it builds and signs every job and publishes nothing.
 name: Release
 
 on:
@@ -156,16 +158,12 @@ jobs:
       - name: Install WiX
         shell: pwsh
         run: dotnet tool install --global wix --version 5.0.2
-      - name: Build
+      - name: Build and stage
         shell: pwsh
         run: ./packaging/windows/package.ps1 -Arch ${{ matrix.arch }} -BuildOnly
-      # Azure Artifact Signing, authenticated with OpenID Connect: the job's GitHub token is exchanged
-      # for an Azure token against the organization's app registration, whose federated credential
-      # accepts `repo:redrob-labs@<org id>/*:environment:release`. No client secret exists anywhere.
-      # The login comes AFTER the build: GitHub's OIDC token lives minutes, and a login done before
-      # a long build left signtool without a usable credential (it then waited on a browser).
-      # The secrets below are redrob-labs organization secrets; do not recreate them as repository
-      # secrets (a same-named repository secret would override them). All three are plain IDs.
+
+      # The login comes after the build on purpose: the OpenID Connect token is short-lived and a
+      # long build left signtool without a usable credential (it then waited on a browser).
       - name: Log in to Azure (OIDC)
         if: env.AZURE_CLIENT_ID != ''
         uses: azure/login@v3
@@ -173,14 +171,47 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      - name: Sign and package
+
+      # Three signing passes, because two packagers sit between the files: the app, CLI and
+      # uninstaller executables go into the MSI, and the MSI goes into the branded setup.
+      - name: Sign the executables
+        uses: redrob-labs/.github/actions/sign-windows@main
+        with:
+          files: target/windows-package/${{ matrix.arch }}/*.exe
+          description: Redrob CAD
+          url: https://github.com/redrob-labs/redrob-cad
+          endpoint: ${{ secrets.ARTIFACT_SIGNING_ENDPOINT }}
+          account: ${{ secrets.ARTIFACT_SIGNING_ACCOUNT }}
+          cert-profile: ${{ secrets.ARTIFACT_SIGNING_CERT_PROFILE }}
+
+      - name: Package (MSI, portable zip)
         shell: pwsh
-        env:
-          # sign.ps1 reads these three; the credential comes from the `az login` above.
-          ARTIFACT_SIGNING_ENDPOINT: ${{ secrets.ARTIFACT_SIGNING_ENDPOINT }}
-          ARTIFACT_SIGNING_ACCOUNT: ${{ secrets.ARTIFACT_SIGNING_ACCOUNT }}
-          ARTIFACT_SIGNING_CERT_PROFILE: ${{ secrets.ARTIFACT_SIGNING_CERT_PROFILE }}
         run: ./packaging/windows/package.ps1 -Arch ${{ matrix.arch }} -SkipBuild
+
+      - name: Sign the MSI
+        uses: redrob-labs/.github/actions/sign-windows@main
+        with:
+          files: dist/release/*.msi
+          description: Redrob CAD
+          url: https://github.com/redrob-labs/redrob-cad
+          endpoint: ${{ secrets.ARTIFACT_SIGNING_ENDPOINT }}
+          account: ${{ secrets.ARTIFACT_SIGNING_ACCOUNT }}
+          cert-profile: ${{ secrets.ARTIFACT_SIGNING_CERT_PROFILE }}
+
+      - name: Build the setup (wraps the signed MSI)
+        shell: pwsh
+        run: ./packaging/windows/package.ps1 -Arch ${{ matrix.arch }} -SetupOnly
+
+      - name: Sign the setup
+        uses: redrob-labs/.github/actions/sign-windows@main
+        with:
+          files: dist/release/*-setup.exe
+          description: Redrob CAD
+          url: https://github.com/redrob-labs/redrob-cad
+          endpoint: ${{ secrets.ARTIFACT_SIGNING_ENDPOINT }}
+          account: ${{ secrets.ARTIFACT_SIGNING_ACCOUNT }}
+          cert-profile: ${{ secrets.ARTIFACT_SIGNING_CERT_PROFILE }}
+
       # The branded setup's screens, and a real per-user MSI install and removal. x64 only: the
       # runner cannot run the arm64 build, and x86 installs the same MSI layout.
       - name: Check the installers
@@ -262,65 +293,16 @@ jobs:
           path: dist/release/*
           if-no-files-found: error
 
-  release:
-    name: Draft GitHub Release
+  publish:
     needs: [version, macos, windows, linux]
-    # Only a version tag publishes; a manual dispatch stops before this job. Three platforms, all
-    # of which must succeed: the Flatpak, web and FreeBSD builds were dropped from the release
-    # (2026-10-13) as not worth their build time and flakiness for the people the app is for.
-    if: github.ref_type == 'tag'
-    runs-on: ubuntu-latest
-    environment: release
+    # Only a version tag publishes; a manual dispatch stops here. Every build job must have
+    # succeeded: a missing platform is not a release.
+    if: always() && github.ref_type == 'tag' && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') && !contains(needs.*.result, 'skipped')
+    uses: redrob-labs/.github/.github/workflows/release-publish.yml@main
     permissions:
       contents: write
-    env:
-      VERSION: ${{ needs.version.outputs.version }}
-      PRERELEASE: ${{ needs.version.outputs.prerelease }}
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      GH_REPO: ${{ github.repository }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          sparse-checkout: packaging
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: release-*
-          path: artifacts
-          merge-multiple: true
-      # Redrob Launcher reads this file from the release to learn that it uses the shared sign-in.
-      # It must exist before the checksums so SHA256SUMS.txt lists it.
-      - name: Launcher release manifest
-        run: packaging/release-manifest.sh artifacts
-      - name: Checksums
-        working-directory: artifacts
-        run: |
-          sha256sum -- * | tee SHA256SUMS.txt
-      - name: Check release assets
-        run: packaging/check-release-dir.sh artifacts
-      - name: Create or update the draft release
-        working-directory: artifacts
-        run: |
-          tag="v$VERSION"
-          title="Redrob CAD v$VERSION"
-          pre=()
-          if [ "$PRERELEASE" = true ]; then pre=(--prerelease); fi
-          if draft="$(gh release view "$tag" --json isDraft --jq .isDraft 2>/dev/null)"; then
-            if [ "$draft" != "true" ]; then
-              echo "::error::Release $tag is already published. Bump the version (cargo xtask version set) and tag again."
-              exit 1
-            fi
-            echo "Updating draft $tag: replacing its assets"
-            gh release view "$tag" --json assets --jq '.assets[].name' | while read -r asset; do
-              gh release delete-asset "$tag" "$asset" --yes
-            done
-            gh release edit "$tag" --draft --title "$title" --target "$GITHUB_SHA" --prerelease="$PRERELEASE"
-            gh release upload "$tag" --clobber -- *
-          else
-            echo "Creating draft $tag"
-            gh release create "$tag" --draft --title "$title" --target "$GITHUB_SHA" --generate-notes "${pre[@]}" -- *
-          fi
-          {
-            echo "Draft release **$title** at \`${GITHUB_SHA::9}\`:"
-            echo
-            sed 's/^/    /' SHA256SUMS.txt
-          } >>"$GITHUB_STEP_SUMMARY"
+    with:
+      version: ${{ needs.version.outputs.version }}
+      title: Redrob CAD
+      launcher_manifest: true
+      publish: true
