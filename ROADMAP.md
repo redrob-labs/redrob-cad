@@ -17,7 +17,7 @@ agent control over MCP, a scriptable CLI, a web build and a free licence.
 
 A person can do real 2D drafting work in CADCraft and trust it with their files:
 
-- Installable, signed builds for macOS, Windows, Linux, FreeBSD and the web from the release pipeline.
+- Installable, signed builds for macOS, Windows, Linux and the web from the release pipeline.
 - Drawings from AutoCAD open correctly, and CADCraft's DXF/DWG files open cleanly in AutoCAD and other readers.
 - Every common 2D draw, modify, annotate, layer, block, layout and plot command works, both with the mouse and at the command line.
 - No crashes and no lost work: autosave and recovery, plus undo that always works.
