@@ -10,7 +10,7 @@
 
   The binaries link the C runtime statically (+crt-static), so neither the MSI nor the portable
   zip needs the Visual C++ redistributable. Signing is delegated to sign.ps1 (skipped with a
-  warning when no signing secrets are set).
+  warning when Artifact Signing is not configured).
 
   Needs: Rust (MSVC toolchain + the target), Visual Studio's C++ toolset for the target (the setup
   is C++), the Windows SDK (rc.exe, signtool.exe), Python 3, and WiX v5:
@@ -19,12 +19,15 @@
 .EXAMPLE
   pwsh packaging/windows/package.ps1 -Arch x64
   pwsh packaging/windows/package.ps1 -Arch x86 -SkipBuild
+  pwsh packaging/windows/package.ps1 -Arch x64 -BuildOnly  # CI: build first, log in to Azure, then -SkipBuild
   pwsh packaging/windows/package.ps1 -Arch arm64     # cross-compiled; needs the MSVC ARM64 build tools
 #>
 param(
   [ValidateSet('x64', 'x86', 'arm64')] [string] $Arch = 'x64',
-  [switch] $SkipBuild
+  [switch] $SkipBuild,
+  [switch] $BuildOnly
 )
+if ($SkipBuild -and $BuildOnly) { throw '-SkipBuild and -BuildOnly exclude each other' }
 $ErrorActionPreference = 'Stop'
 $Root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 
@@ -66,6 +69,9 @@ if (-not $SkipBuild) {
   $env:CADCRAFT_REQUIRE_WINRES = '1'
   Invoke-Native "cargo build ($Target)" { cargo build --release --locked -p cadcraft -p cadcraft-cli --target $Target }
 }
+# The release workflow builds first and signs in a second invocation, so the short-lived OpenID
+# Connect login happens right before signing instead of expiring during a long build.
+if ($BuildOnly) { exit 0 }
 
 $Bin = Join-Path $TargetDir "$Target\release"
 
