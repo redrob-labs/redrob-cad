@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Build, sign and package Redrob CAD for Windows.
+  Build and package Redrob CAD for Windows.
 
 .DESCRIPTION
   Produces, in $env:DIST (default: dist/release):
@@ -9,25 +9,38 @@
     redrob-cad-<version>-windows-<arch>-portable.zip   redrob-cad.exe + redrob-cad-cli.exe
 
   The binaries link the C runtime statically (+crt-static), so neither the MSI nor the portable
-  zip needs the Visual C++ redistributable. Signing is delegated to sign.ps1 (skipped with a
-  warning when Artifact Signing is not configured).
+  zip needs the Visual C++ redistributable. This script does not sign. Two packagers sit between
+  the files (the executables go into the MSI, the MSI into the setup), so the work is split into
+  three phases the release workflow runs with a signing pass after each, using the shared
+  redrob-labs/.github/actions/sign-windows action:
+
+    -BuildOnly   cargo build; stage redrob-cad.exe, redrob-cad-cli.exe and the uninstaller in
+                 target/windows-package/<arch>/              -> sign the staged executables
+    -SkipBuild   PE checks, MSI, portable zip, CLI smoke test   -> sign the MSI
+    -SetupOnly   the branded setup around the (signed) MSI      -> sign the setup
+
+  With no switch all three phases run in order and the packages are unsigned.
 
   Needs: Rust (MSVC toolchain + the target), Visual Studio's C++ toolset for the target (the setup
-  is C++), the Windows SDK (rc.exe, signtool.exe), Python 3, and WiX v5:
+  is C++), the Windows SDK (rc.exe), Python 3, and WiX v5:
   dotnet tool install --global wix --version 5.0.2
 
 .EXAMPLE
   pwsh packaging/windows/package.ps1 -Arch x64
   pwsh packaging/windows/package.ps1 -Arch x86 -SkipBuild
-  pwsh packaging/windows/package.ps1 -Arch x64 -BuildOnly  # CI: build first, log in to Azure, then -SkipBuild
+  pwsh packaging/windows/package.ps1 -Arch x64 -BuildOnly  # CI phase 1 of 3 (then -SkipBuild, then -SetupOnly)
   pwsh packaging/windows/package.ps1 -Arch arm64     # cross-compiled; needs the MSVC ARM64 build tools
 #>
 param(
   [ValidateSet('x64', 'x86', 'arm64')] [string] $Arch = 'x64',
   [switch] $SkipBuild,
-  [switch] $BuildOnly
+  [switch] $BuildOnly,
+  [switch] $SetupOnly
 )
-if ($SkipBuild -and $BuildOnly) { throw '-SkipBuild and -BuildOnly exclude each other' }
+if (@($SkipBuild, $BuildOnly, $SetupOnly).Where({ $_ }).Count -gt 1) { throw '-SkipBuild, -BuildOnly and -SetupOnly exclude each other' }
+$DoBuild = -not $SkipBuild -and -not $SetupOnly
+$DoPackage = -not $BuildOnly -and -not $SetupOnly
+$DoSetup = $SetupOnly -or (-not $BuildOnly -and -not $SkipBuild)
 $ErrorActionPreference = 'Stop'
 $Root = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 
@@ -60,7 +73,21 @@ if (-not $env:CADCRAFT_BUILD_DATE) { $env:CADCRAFT_BUILD_DATE = (Get-Date).ToUni
 
 Write-Output "Redrob CAD $Version for Windows $Arch ($Target)"
 
-if (-not $SkipBuild) {
+$Bin = Join-Path $TargetDir "$Target\release"
+$Stage = Join-Path $TargetDir "windows-package\$Arch"
+$SetupDir = Join-Path $PSScriptRoot 'setup'
+$Msi = Join-Path $Dist "redrob-cad-$Version-windows-$Arch.msi"
+$Zip = Join-Path $Dist "redrob-cad-$Version-windows-$Arch-portable.zip"
+$SetupExe = Join-Path $Dist "redrob-cad-$Version-windows-$Arch-setup.exe"
+
+function Get-PeHeader([string] $Path) {
+  $bytes = [System.IO.File]::ReadAllBytes($Path)
+  $pe = [BitConverter]::ToInt32($bytes, 0x3C)
+  return @{ Machine = [BitConverter]::ToUInt16($bytes, $pe + 4); Subsystem = [BitConverter]::ToUInt16($bytes, $pe + 0x5C) }
+}
+
+# ---- phase 1: build and stage ------------------------------------------------------------------
+if ($DoBuild) {
   # Static CRT: no VC++ redistributable needed. Scoped to the target so host build scripts and
   # proc-macros are unaffected.
   $flagVar = 'CARGO_TARGET_' + ($Target.ToUpper() -replace '-', '_') + '_RUSTFLAGS'
@@ -68,85 +95,79 @@ if (-not $SkipBuild) {
   # Fail the build (rather than warn) if the icon/VERSIONINFO can't be embedded.
   $env:CADCRAFT_REQUIRE_WINRES = '1'
   Invoke-Native "cargo build ($Target)" { cargo build --release --locked -p cadcraft -p cadcraft-cli --target $Target }
-}
-# The release workflow builds first and signs in a second invocation, so the short-lived OpenID
-# Connect login happens right before signing instead of expiring during a long build.
-if ($BuildOnly) { exit 0 }
 
-$Bin = Join-Path $TargetDir "$Target\release"
-
-# Check both binaries' PE headers before packaging. Machine (COFF header) must match -Arch, so an
-# x64 build can never ship labelled arm64. Subsystem (optional header): 2 = Windows GUI, 3 = console.
-# The app must be GUI (no console window opens with it); the CLI must stay console so its output
-# reaches the terminal.
-function Get-PeHeader([string] $Path) {
-  $bytes = [System.IO.File]::ReadAllBytes($Path)
-  $pe = [BitConverter]::ToInt32($bytes, 0x3C)
-  return @{ Machine = [BitConverter]::ToUInt16($bytes, $pe + 4); Subsystem = [BitConverter]::ToUInt16($bytes, $pe + 0x5C) }
-}
-$Machine = switch ($Arch) { 'x64' { 0x8664 } 'x86' { 0x14C } 'arm64' { 0xAA64 } }
-foreach ($check in @(@('redrob-cad.exe', 2), @('redrob-cad-cli.exe', 3))) {
-  $h = Get-PeHeader (Join-Path $Bin $check[0])
-  if ($h.Machine -ne $Machine) { throw "$($check[0]) is for machine 0x$('{0:X}' -f $h.Machine), expected 0x$('{0:X}' -f $Machine) ($Arch)" }
-  if ($h.Subsystem -ne $check[1]) { throw "$($check[0]) has PE subsystem $($h.Subsystem), expected $($check[1])" }
-  Write-Output "ok $($check[0]): $Arch, PE subsystem $($h.Subsystem)"
-}
-$Stage = Join-Path $TargetDir "windows-package\$Arch"
-Remove-Item -Recurse -Force $Stage -ErrorAction SilentlyContinue
-New-Item -ItemType Directory -Force -Path $Stage | Out-Null
-Copy-Item (Join-Path $Bin 'redrob-cad.exe'), (Join-Path $Bin 'redrob-cad-cli.exe') $Stage
-
-# The branded uninstaller (the setup app without a payload) goes into the MSI beside the app.
-$SetupDir = Join-Path $PSScriptRoot 'setup'
-Invoke-Native 'build the uninstaller' {
-  python (Join-Path $SetupDir 'build.py') --arch $Arch --out $Stage --name 'redrob-cad-uninstall.exe' --version $Version
-}
-
-& (Join-Path $PSScriptRoot 'sign.ps1') (Join-Path $Stage 'redrob-cad.exe') (Join-Path $Stage 'redrob-cad-cli.exe') (Join-Path $Stage 'redrob-cad-uninstall.exe')
-
-# ---- MSI ---------------------------------------------------------------------------------------
-$Msi = Join-Path $Dist "redrob-cad-$Version-windows-$Arch.msi"
-Invoke-Native 'wix build' {
-  wix build (Join-Path $PSScriptRoot 'redrob-cad.wxs') -arch $Arch `
-    -d "Version=$MsiVersion" -d "BinDir=$Stage" -d "IconPath=$(Join-Path $Root 'assets\app-icon\redrob-cad.ico')" `
-    -o $Msi
-}
-# wix writes its debug symbols (.wixpdb) next to the MSI; keep them out of the release assets.
-Remove-Item -Force -ErrorAction SilentlyContinue ([IO.Path]::ChangeExtension($Msi, '.wixpdb'))
-& (Join-Path $PSScriptRoot 'sign.ps1') $Msi
-
-# ---- branded setup -----------------------------------------------------------------------------
-$SetupExe = Join-Path $Dist "redrob-cad-$Version-windows-$Arch-setup.exe"
-Invoke-Native 'build the setup' {
-  python (Join-Path $SetupDir 'build.py') --arch $Arch --out $Dist --name (Split-Path $SetupExe -Leaf) --version $Version --payload $Msi
-}
-& (Join-Path $PSScriptRoot 'sign.ps1') $SetupExe
-
-# ---- portable zip ------------------------------------------------------------------------------
-$Portable = Join-Path $TargetDir "windows-package\redrob-cad-$Version-windows-$Arch-portable"
-Remove-Item -Recurse -Force $Portable -ErrorAction SilentlyContinue
-New-Item -ItemType Directory -Force -Path $Portable | Out-Null
-Copy-Item (Join-Path $Stage 'redrob-cad.exe'), (Join-Path $Stage 'redrob-cad-cli.exe') $Portable
-foreach ($f in 'README.md', 'LICENSE', 'LICENSE-MIT', 'LICENSE-APACHE') {
-  $p = Join-Path $Root $f
-  if (Test-Path $p) { Copy-Item $p $Portable }
-}
-# Builds made with craft-fonts (CRAFT_FONTS_DIR) embed its fonts: ship their licences.
-if ($env:CRAFT_FONTS_DIR) {
-  foreach ($ofl in Get-ChildItem -Path (Join-Path $env:CRAFT_FONTS_DIR 'fonts\*\OFL.txt') -ErrorAction SilentlyContinue) {
-    Copy-Item $ofl.FullName (Join-Path $Portable "OFL-$($ofl.Directory.Name).txt")
+  # The stage is what the MSI and the portable zip are built from, and what the release workflow
+  # signs between this phase and the next: the app, the CLI and the branded uninstaller (the setup
+  # app without a payload).
+  Remove-Item -Recurse -Force $Stage -ErrorAction SilentlyContinue
+  New-Item -ItemType Directory -Force -Path $Stage | Out-Null
+  Copy-Item (Join-Path $Bin 'redrob-cad.exe'), (Join-Path $Bin 'redrob-cad-cli.exe') $Stage
+  Invoke-Native 'build the uninstaller' {
+    python (Join-Path $SetupDir 'build.py') --arch $Arch --out $Stage --name 'redrob-cad-uninstall.exe' --version $Version
   }
 }
-$Zip = Join-Path $Dist "redrob-cad-$Version-windows-$Arch-portable.zip"
-Remove-Item -Force $Zip -ErrorAction SilentlyContinue
-Compress-Archive -Path $Portable -DestinationPath $Zip
+if ($BuildOnly) { exit 0 }
 
-# Smoke-test the CLI when this machine can run it. An ARM64 build made on an x64 runner can't run
-# here; .github/workflows/windows-arm64.yml installs and runs it on ARM64 instead.
-$HostArch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant()
-if ($Arch -ne 'arm64' -or $HostArch -eq 'arm64') {
-  Invoke-Native 'redrob-cad-cli --version' { & (Join-Path $Stage 'redrob-cad-cli.exe') --version }
-} else {
-  Write-Output "skipping redrob-cad-cli --version: an $Arch build doesn't run on this $HostArch machine"
+# ---- phase 2: MSI and portable zip -------------------------------------------------------------
+if ($DoPackage) {
+  # Check the staged binaries' PE headers before packaging. Machine (COFF header) must match -Arch,
+  # so an x64 build can never ship labelled arm64. Subsystem (optional header): 2 = Windows GUI,
+  # 3 = console. The app and the uninstaller must be GUI (no console window opens with them); the
+  # CLI must stay console so its output reaches the terminal.
+  $Machine = switch ($Arch) { 'x64' { 0x8664 } 'x86' { 0x14C } 'arm64' { 0xAA64 } }
+  foreach ($check in @(@('redrob-cad.exe', 2), @('redrob-cad-cli.exe', 3), @('redrob-cad-uninstall.exe', 2))) {
+    $file = Join-Path $Stage $check[0]
+    if (-not (Test-Path $file)) { throw "$($check[0]) is not staged in $Stage; run with -BuildOnly first" }
+    $h = Get-PeHeader $file
+    if ($h.Machine -ne $Machine) { throw "$($check[0]) is for machine 0x$('{0:X}' -f $h.Machine), expected 0x$('{0:X}' -f $Machine) ($Arch)" }
+    if ($h.Subsystem -ne $check[1]) { throw "$($check[0]) has PE subsystem $($h.Subsystem), expected $($check[1])" }
+    Write-Output "ok $($check[0]): $Arch, PE subsystem $($h.Subsystem)"
+  }
+
+  # MSI
+  Invoke-Native 'wix build' {
+    wix build (Join-Path $PSScriptRoot 'redrob-cad.wxs') -arch $Arch `
+      -d "Version=$MsiVersion" -d "BinDir=$Stage" -d "IconPath=$(Join-Path $Root 'assets\app-icon\redrob-cad.ico')" `
+      -o $Msi
+  }
+  # wix writes its debug symbols (.wixpdb) next to the MSI; keep them out of the release assets.
+  Remove-Item -Force -ErrorAction SilentlyContinue ([IO.Path]::ChangeExtension($Msi, '.wixpdb'))
+
+  # Portable zip
+  $Portable = Join-Path $TargetDir "windows-package\redrob-cad-$Version-windows-$Arch-portable"
+  Remove-Item -Recurse -Force $Portable -ErrorAction SilentlyContinue
+  New-Item -ItemType Directory -Force -Path $Portable | Out-Null
+  Copy-Item (Join-Path $Stage 'redrob-cad.exe'), (Join-Path $Stage 'redrob-cad-cli.exe') $Portable
+  foreach ($f in 'README.md', 'LICENSE', 'LICENSE-MIT', 'LICENSE-APACHE') {
+    $p = Join-Path $Root $f
+    if (Test-Path $p) { Copy-Item $p $Portable }
+  }
+  # Builds made with craft-fonts (CRAFT_FONTS_DIR) embed its fonts: ship their licences.
+  if ($env:CRAFT_FONTS_DIR) {
+    foreach ($ofl in Get-ChildItem -Path (Join-Path $env:CRAFT_FONTS_DIR 'fonts\*\OFL.txt') -ErrorAction SilentlyContinue) {
+      Copy-Item $ofl.FullName (Join-Path $Portable "OFL-$($ofl.Directory.Name).txt")
+    }
+  }
+  Remove-Item -Force $Zip -ErrorAction SilentlyContinue
+  Compress-Archive -Path $Portable -DestinationPath $Zip
+
+  # Smoke-test the CLI when this machine can run it. An ARM64 build made on an x64 runner can't run
+  # here; .github/workflows/windows-arm64.yml installs and runs it on ARM64 instead.
+  $HostArch = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant()
+  if ($Arch -ne 'arm64' -or $HostArch -eq 'arm64') {
+    Invoke-Native 'redrob-cad-cli --version' { & (Join-Path $Stage 'redrob-cad-cli.exe') --version }
+  } else {
+    Write-Output "skipping redrob-cad-cli --version: an $Arch build doesn't run on this $HostArch machine"
+  }
 }
-Get-Item $SetupExe, $Msi, $Zip | Format-Table Name, Length
+
+# ---- phase 3: branded setup --------------------------------------------------------------------
+# Last, around the MSI as it ships: in the release workflow the MSI has been signed by now.
+if ($DoSetup) {
+  if (-not (Test-Path $Msi)) { throw "$Msi does not exist; run with -SkipBuild first" }
+  Invoke-Native 'build the setup' {
+    python (Join-Path $SetupDir 'build.py') --arch $Arch --out $Dist --name (Split-Path $SetupExe -Leaf) --version $Version --payload $Msi
+  }
+}
+
+Get-Item $SetupExe, $Msi, $Zip -ErrorAction SilentlyContinue | Format-Table Name, Length
