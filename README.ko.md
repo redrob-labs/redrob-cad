@@ -4,8 +4,8 @@ AI 에이전트가 DWG·DXF 도면을 대신 그리고, 고치고, 검토하는 
 
 English: [README.md](./README.md)
 
-Rust로 작성된 [CADCraft](https://github.com/storytold/cadcraft)의 하드 포크다. macOS, Windows, Linux,
-FreeBSD에서 네이티브로, 브라우저에서는 WebAssembly로 돈다. 에이전트는 MCP로 앱을 조작한다
+Rust로 작성된 [CADCraft](https://github.com/storytold/cadcraft)의 하드 포크다. macOS, Windows, Linux에서
+네이티브로, 브라우저에서는 WebAssembly로 돈다. 에이전트는 MCP로 앱을 조작한다
 (`crates/mcp`, [docs/mcp.md](./docs/mcp.md) 참고).
 
 ## 상태

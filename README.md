@@ -6,7 +6,7 @@ drawings for you.
 한국어: [README.ko.md](./README.ko.md)
 
 It is a hard fork of [CADCraft](https://github.com/storytold/cadcraft), written in Rust. It runs natively
-on macOS, Windows, Linux and FreeBSD, and in the browser via WebAssembly. Agents drive it over MCP
+on macOS, Windows and Linux, and in the browser via WebAssembly. Agents drive it over MCP
 (`crates/mcp`, see [docs/mcp.md](./docs/mcp.md)).
 
 ## Status
