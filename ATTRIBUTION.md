@@ -53,19 +53,11 @@ Generated-in-code assets are original and have no file to list:
 | `assets/app-icon/redrob-cad-512.png` | Redrob | derived from `assets/brand/` by `packaging/brand-assets.sh` | Redrob brand, all rights reserved | App icon |
 | `assets/app-icon/redrob-cad.icns` | Redrob | derived from `assets/brand/` by `packaging/brand-assets.sh` | Redrob brand, all rights reserved | App icon |
 | `assets/app-icon/redrob-cad.ico` | Redrob | derived from `assets/brand/` by `packaging/brand-assets.sh` | Redrob brand, all rights reserved | App icon |
+| `assets/app-icon/redrob-cad-1024.png` | Redrob | derived from `assets/brand/` by `packaging/brand-assets.sh` | Redrob brand, all rights reserved | App icon |
+| `assets/app-icon/favicon.ico` | Redrob | derived from `assets/brand/` by `packaging/brand-assets.sh` | Redrob brand, all rights reserved | Web favicon |
 | `assets/brand/README.md` | Redrob CAD contributors | written for this repository | MIT OR Apache-2.0 | Rules for the brand sources |
 | `assets/brand/SHA256SUMS` | Redrob CAD contributors | written for this repository | MIT OR Apache-2.0 | Checksums of the brand sources |
-| `assets/brand/favicon-16x16.png` | Redrob | redrob-design-system `assets/Favicons/favicon-16x16.png`, verbatim | Redrob brand, all rights reserved | Pinned by `assets/brand/SHA256SUMS` |
-| `assets/brand/favicon-32x32.png` | Redrob | redrob-design-system `assets/Favicons/favicon-32x32.png`, verbatim | Redrob brand, all rights reserved | Pinned by `assets/brand/SHA256SUMS` |
-| `assets/brand/favicon-48x48.png` | Redrob | redrob-design-system `assets/Favicons/favicon-48x48.png`, verbatim | Redrob brand, all rights reserved | Pinned by `assets/brand/SHA256SUMS` |
-| `assets/brand/favicon-64x64.png` | Redrob | redrob-design-system `assets/Favicons/favicon-64x64.png`, verbatim | Redrob brand, all rights reserved | Pinned by `assets/brand/SHA256SUMS` |
-| `assets/brand/favicon.ico` | Redrob | redrob-design-system `assets/Favicons/favicon.ico`, verbatim | Redrob brand, all rights reserved | Pinned by `assets/brand/SHA256SUMS` |
-| `assets/brand/icon-192.png` | Redrob | redrob-design-system `assets/Favicons/icon-192.png`, verbatim | Redrob brand, all rights reserved | Pinned by `assets/brand/SHA256SUMS` |
-| `assets/brand/icon-512.png` | Redrob | redrob-design-system `assets/Favicons/icon-512.png`, verbatim | Redrob brand, all rights reserved | Pinned by `assets/brand/SHA256SUMS` |
-| `assets/brand/symbol-white-192.png` | Redrob | redrob-design-system `assets/Favicons/symbol-white-192.png`, verbatim | Redrob brand, all rights reserved | Pinned by `assets/brand/SHA256SUMS` |
-| `assets/brand/symbol-white-32.png` | Redrob | redrob-design-system `assets/Favicons/symbol-white-32.png`, verbatim | Redrob brand, all rights reserved | Pinned by `assets/brand/SHA256SUMS` |
-| `assets/brand/symbol-white-512.png` | Redrob | redrob-design-system `assets/Favicons/symbol-white-512.png`, verbatim | Redrob brand, all rights reserved | Pinned by `assets/brand/SHA256SUMS` |
-| `assets/brand/symbol-white-64.png` | Redrob | redrob-design-system `assets/Favicons/symbol-white-64.png`, verbatim | Redrob brand, all rights reserved | Pinned by `assets/brand/SHA256SUMS` |
+| `assets/brand/redrob-cad-icon-web.svg` | Redrob | `@redrob-labs/ui@1.8.0` `dist/brand/app-icons/redrob-cad/redrob-cad-icon-web.svg`, verbatim | Redrob brand, all rights reserved | Pinned by `assets/brand/SHA256SUMS` |
 | `examples/apartment.dxf` | CADCraft contributors | sample drawing made with cadcraft-cli commands | MIT OR Apache-2.0 | Original |
 | `docs/images/ui-apartment.png` | CADCraft contributors | screenshot of CADCraft itself (examples/apartment.dxf) | MIT OR Apache-2.0 | Original; no Autodesk UI |
 | `docs/images/ui-layout.png` | CADCraft contributors | screenshot of CADCraft itself (a layout of examples/apartment.dxf) | MIT OR Apache-2.0 | Original; no Autodesk UI |
