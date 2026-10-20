@@ -1,12 +1,14 @@
 # The gate every pull request into develop and main must pass: upstream's own `cargo xtask ci`
 # (fmt, clippy -D warnings, workspace tests, asset attribution, crate layering, wasm check).
 # Upstream ships no PR workflow, so this file is ours; it runs the same command a contributor runs.
+#
+# Runs on pull requests only (a push to develop/main is the merge of a PR that already passed).
+# A docs-only or version-only PR skips the Rust job; a skipped job still satisfies the required
+# check `cargo xtask ci`. The classifier is .github/scripts/ci-changes.py.
 name: CI
 
 on:
   pull_request:
-    branches: [develop, main]
-  push:
     branches: [develop, main]
   workflow_dispatch:
 
@@ -18,8 +20,31 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      heavy: ${{ steps.classify.outputs.heavy }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: classify
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ -z "$BASE_SHA" ]; then
+            echo "heavy=true" >> "$GITHUB_OUTPUT"
+          else
+            python3 .github/scripts/ci-changes.py "$BASE_SHA" | tee -a "$GITHUB_OUTPUT"
+          fi
+
   xtask-ci:
     name: cargo xtask ci
+    needs: changes
+    # Runs unless the classifier succeeded and said light; a failed classifier never skips the gate.
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.heavy == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
