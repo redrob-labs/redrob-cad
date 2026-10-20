@@ -1,17 +1,20 @@
 # Brand sources
 
-Verbatim copies of the Redrob design system's shipped favicon files
-(`redrob-design-system/assets/Favicons/`). `SHA256SUMS` pins them, and
-`packaging/brand-assets.sh` derives everything under `assets/app-icon/` from these and nothing else.
+Verbatim copies of the Redrob CAD app icon from the design system package
+`@redrob-labs/ui@1.8.0` (`dist/brand/app-icons/redrob-cad/`). `SHA256SUMS` pins them (the same
+hashes as that package's `manifest.json`), and `packaging/brand-assets.sh` derives everything
+under `assets/app-icon/` from these and nothing else.
 
-Rules that bind here (design system `10-logo.md` and `assets/Favicons/README.md`):
+Rules that bind here:
 
-- A white symbol on a Redrob Blue (`#2B52FF`) tile. One design, no dark-mode variant.
 - Never redrawn, recolored, re-proportioned, given a shadow, border or second radius.
-- Each size is drawn for itself. Where the design system ships a size it is used as is; any other
-  size is the next larger tile resized down. Nothing is upscaled, so no icon here is larger than 512.
-- `symbol-white-*.png` is the symbol alone on transparent, for a dark ground that is not Redrob Blue.
+- `redrob-cad-icon-web.svg` (rounded tile, transparent corners) is the source of every desktop
+  icon: hicolor PNGs, window icon, `.ico`, `.icns`, the launcher PNG and the web favicon. Desktop
+  shells and the launcher show the PNG unmasked, so the full-bleed `icon` tile is not used.
+- The package's other variants (`icon`, `icon-dark`, `icon-web-dark`, `symbol`) are not shipped
+  here: the app has no maskable/adaptive icon and one favicon.
+- SVG is rendered with Chromium (`CHROME=… packaging/brand-assets.sh`). ImageMagick's SVG reader
+  drops the gradients, so it is never used to render; it only resizes the rendered PNG down.
 
-Redrob CAD has no product glyph of its own in the design system yet, so the app carries the Redrob
-tile. When a CAD glyph is added to `assets/Products/`, replace these sources, update `SHA256SUMS`
-and rerun the script; nothing else changes.
+To update: copy the new SVGs from a newer `@redrob-labs/ui`, update `SHA256SUMS`, rerun the
+script.
