@@ -1,11 +1,9 @@
 # Quick static checks for the release pipeline (seconds, no Rust build): workflow syntax,
-# packaging shell/PowerShell scripts, and the Linux desktop/AppStream/Flatpak metadata.
+# packaging shell/PowerShell scripts, and the Linux desktop/AppStream metadata.
 name: Packaging lint
 
+# Pull requests only: a push to main is the merge of a PR that already ran this.
 on:
-  push:
-    branches: [main, release]
-    paths: [".github/workflows/**", "packaging/**", "assets/app-icon/**"]
   pull_request:
     paths: [".github/workflows/**", "packaging/**", "assets/app-icon/**"]
   workflow_dispatch:
@@ -27,7 +25,7 @@ jobs:
       - name: Install tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends shellcheck desktop-file-utils appstream libxml2-utils python3-yaml
+          sudo apt-get install -y --no-install-recommends shellcheck desktop-file-utils appstream libxml2-utils
           curl -fsSL "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz" \
             | tar -xz -C "$RUNNER_TEMP" actionlint
       - name: actionlint
@@ -35,32 +33,6 @@ jobs:
           "$RUNNER_TEMP/actionlint" -color
       - name: shellcheck
         run: shellcheck packaging/*.sh packaging/*/*.sh
-      # Rehearse the release job's asset directory: manifest, checksums, check. Then make sure the
-      # check actually fails on a directory without the manifest and on a wrong manifest.
-      - name: Launcher release manifest
-        run: |
-          set -euo pipefail
-          d="$RUNNER_TEMP/release-dir"; mkdir -p "$d"
-          echo installer >"$d/redrob-cad-0.0.0-linux-x86_64.tar.gz"
-          packaging/release-manifest.sh "$d"
-          (cd "$d" && sha256sum -- * >SHA256SUMS.txt)
-          packaging/check-release-dir.sh "$d"
-          [ "$(cat "$d/redrob-launcher.json")" = '{ "schema": 1, "sharedAccount": true }' ]
-          jq -e '.schema == 1 and .sharedAccount == true' "$d/redrob-launcher.json" >/dev/null
-          grep -q ' redrob-launcher.json$' "$d/SHA256SUMS.txt"
-          ls "$d"
-          # Negative cases: each must fail.
-          bad="$RUNNER_TEMP/bad"; rm -rf "$bad"; mkdir -p "$bad"; echo x >"$bad/installer"
-          ! packaging/check-release-dir.sh "$bad" || { echo "::error::check passed without redrob-launcher.json"; exit 1; }
-          printf '{ "schema": 2, "sharedAccount": true }\n' >"$bad/redrob-launcher.json"
-          ! packaging/check-release-dir.sh "$bad" || { echo "::error::check passed with schema 2"; exit 1; }
-          printf '{ "schema": 1, "sharedAccount": false }\n' >"$bad/redrob-launcher.json"
-          ! packaging/check-release-dir.sh "$bad" || { echo "::error::check passed with sharedAccount false"; exit 1; }
-          printf 'not json\n' >"$bad/redrob-launcher.json"
-          ! packaging/check-release-dir.sh "$bad" || { echo "::error::check passed with invalid JSON"; exit 1; }
-          cp "$d/redrob-launcher.json" "$bad/"; (cd "$bad" && sha256sum -- installer >SHA256SUMS.txt)
-          ! packaging/check-release-dir.sh "$bad" || { echo "::error::check passed with the manifest missing from SHA256SUMS.txt"; exit 1; }
-          echo "release manifest ok"
       - name: PowerShell
         shell: pwsh
         run: |
@@ -70,7 +42,7 @@ jobs:
             if ($errors) { $errors | ForEach-Object { Write-Output "::error file=$($f.Name)::$_" }; exit 1 }
             Write-Output "ok $($f.Name)"
           }
-      - name: XML, desktop entry, AppStream, Flatpak manifest
+      - name: XML, desktop entry, AppStream
         run: |
           xmllint --noout packaging/windows/redrob-cad.wxs packaging/macos/*.plist* packaging/linux/*.xml*
           # Windows Installer needs Icon ids ending in .ico or .exe, or shortcuts show a blank icon.
@@ -80,13 +52,3 @@ jobs:
           desktop-file-validate packaging/linux/ai.redrob.cad.desktop
           sed -e 's/@VERSION@/0.0.0/' -e 's/@DATE@/2026-01-01/' packaging/linux/ai.redrob.cad.metainfo.xml.in >"$RUNNER_TEMP/ai.redrob.cad.metainfo.xml"
           appstreamcli validate --no-net --explain "$RUNNER_TEMP/ai.redrob.cad.metainfo.xml"
-          python3 - <<'EOF'
-          import yaml
-          src = yaml.safe_load(open("packaging/linux/flatpak/ai.redrob.cad.yml"))
-          bundle = yaml.safe_load(open("packaging/linux/flatpak/ai.redrob.cad.bundle.yml"))
-          for m in (src, bundle):
-              assert m["id"] == "ai.redrob.cad" and m["command"] == "redrob-cad", m["id"]
-          for key in ("runtime", "runtime-version", "sdk", "finish-args"):
-              assert src[key] == bundle[key], f"Flatpak manifests disagree on {key}: {src[key]} vs {bundle[key]}"
-          print("Flatpak manifests ok")
-          EOF

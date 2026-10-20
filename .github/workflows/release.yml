@@ -1,12 +1,14 @@
 # Release pipeline: a `vX.Y.Z` tag pushed on `main` builds installers for every platform and
-# creates or updates the draft GitHub Release "Redrob CAD vX.Y.Z". See docs/releasing.md.
+# publishes the GitHub Release "Redrob CAD vX.Y.Z" through the shared redrob-labs/.github
+# release-publish workflow (checksums, launcher manifest, published as latest). See docs/releasing.md.
 #
 # The tag must equal the Cargo.toml version; the version job fails otherwise. The jobs that sign
-# (macOS, Windows) and the one that drafts the GitHub Release run in the `release` environment.
-# Signing secrets are the redrob-labs organization's (Apple Developer ID certificate + App Store
-# Connect API key for notarization). Every secret is optional: missing ones produce unsigned
-# artifacts and a warning, never a failed build. A manual dispatch is a dry run: it builds every
-# job and drafts nothing.
+# (macOS, Windows) and the publish job run in the `release` environment. Signing secrets are the
+# redrob-labs organization's (Apple Developer ID certificate + App Store Connect API key for
+# notarization; Azure Artifact Signing over the job's OpenID Connect login for Windows, through
+# the shared redrob-labs/.github/actions/sign-windows action). Every secret is optional: missing
+# ones produce unsigned artifacts and a warning, never a failed build. A manual dispatch is a dry
+# run: it builds and signs every job and publishes nothing.
 name: Release
 
 on:
@@ -65,6 +67,18 @@ jobs:
             echo "prerelease=$pre"
           } >>"$GITHUB_OUTPUT"
           echo "### Redrob CAD v$v (\`${GITHUB_SHA::9}\`)" >>"$GITHUB_STEP_SUMMARY"
+      # The launcher icon: the 512 px app icon as one more release asset, named in
+      # redrob-launcher.json (`icon`) by the shared publish job so Redrob Launcher's catalog shows
+      # this release's own logo. Uploaded under the `release-*` prefix the publish job collects.
+      - name: Launcher icon
+        run: |
+          mkdir -p "$RUNNER_TEMP/launcher-icon"
+          cp assets/app-icon/redrob-cad-512.png "$RUNNER_TEMP/launcher-icon/redrob-cad.png"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-launcher-icon
+          path: ${{ runner.temp }}/launcher-icon/redrob-cad.png
+          if-no-files-found: error
 
   macos:
     name: macOS universal
@@ -121,7 +135,13 @@ jobs:
     name: Windows ${{ matrix.arch }}
     needs: version
     runs-on: windows-latest
+    # `release` is the environment the organization's federated credential names
+    # (repo:redrob-labs@<org id>/<repo>@<id>:environment:release); any other name is refused.
     environment: release
+    permissions:
+      contents: read
+      # The OIDC token `azure/login` exchanges for the Artifact Signing credential.
+      id-token: write
     strategy:
       fail-fast: false
       matrix:
@@ -133,6 +153,8 @@ jobs:
     env:
       CADCRAFT_VERSION: ${{ needs.version.outputs.version }}
       CADCRAFT_BUILD_DATE: ${{ needs.version.outputs.date }}
+      # Plain IDs (not credentials); here so the login step can be skipped when signing is not set up.
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -148,18 +170,60 @@ jobs:
       - name: Install WiX
         shell: pwsh
         run: dotnet tool install --global wix --version 5.0.2
-      - name: Build, sign, package
+      - name: Build and stage
         shell: pwsh
-        env:
-          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
-          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-          AZURE_SIGNING_ENDPOINT: ${{ secrets.AZURE_SIGNING_ENDPOINT }}
-          AZURE_SIGNING_ACCOUNT: ${{ secrets.AZURE_SIGNING_ACCOUNT }}
-          AZURE_CERT_PROFILE: ${{ secrets.AZURE_CERT_PROFILE }}
-        run: ./packaging/windows/package.ps1 -Arch ${{ matrix.arch }}
+        run: ./packaging/windows/package.ps1 -Arch ${{ matrix.arch }} -BuildOnly
+
+      # The login comes after the build on purpose: the OpenID Connect token is short-lived and a
+      # long build left signtool without a usable credential (it then waited on a browser).
+      - name: Log in to Azure (OIDC)
+        if: env.AZURE_CLIENT_ID != ''
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # Three signing passes, because two packagers sit between the files: the app, CLI and
+      # uninstaller executables go into the MSI, and the MSI goes into the branded setup.
+      - name: Sign the executables
+        uses: redrob-labs/.github/actions/sign-windows@main
+        with:
+          files: target/windows-package/${{ matrix.arch }}/*.exe
+          description: Redrob CAD
+          url: https://github.com/redrob-labs/redrob-cad
+          endpoint: ${{ secrets.ARTIFACT_SIGNING_ENDPOINT }}
+          account: ${{ secrets.ARTIFACT_SIGNING_ACCOUNT }}
+          cert-profile: ${{ secrets.ARTIFACT_SIGNING_CERT_PROFILE }}
+
+      - name: Package (MSI, portable zip)
+        shell: pwsh
+        run: ./packaging/windows/package.ps1 -Arch ${{ matrix.arch }} -SkipBuild
+
+      - name: Sign the MSI
+        uses: redrob-labs/.github/actions/sign-windows@main
+        with:
+          files: dist/release/*.msi
+          description: Redrob CAD
+          url: https://github.com/redrob-labs/redrob-cad
+          endpoint: ${{ secrets.ARTIFACT_SIGNING_ENDPOINT }}
+          account: ${{ secrets.ARTIFACT_SIGNING_ACCOUNT }}
+          cert-profile: ${{ secrets.ARTIFACT_SIGNING_CERT_PROFILE }}
+
+      - name: Build the setup (wraps the signed MSI)
+        shell: pwsh
+        run: ./packaging/windows/package.ps1 -Arch ${{ matrix.arch }} -SetupOnly
+
+      - name: Sign the setup
+        uses: redrob-labs/.github/actions/sign-windows@main
+        with:
+          files: dist/release/*-setup.exe
+          description: Redrob CAD
+          url: https://github.com/redrob-labs/redrob-cad
+          endpoint: ${{ secrets.ARTIFACT_SIGNING_ENDPOINT }}
+          account: ${{ secrets.ARTIFACT_SIGNING_ACCOUNT }}
+          cert-profile: ${{ secrets.ARTIFACT_SIGNING_CERT_PROFILE }}
+
       # The branded setup's screens, and a real per-user MSI install and removal. x64 only: the
       # runner cannot run the arm64 build, and x86 installs the same MSI layout.
       - name: Check the installers
@@ -207,7 +271,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             libxkbcommon-dev libwayland-dev libx11-dev libxrandr-dev libxi-dev libgl1-mesa-dev \
-            desktop-file-utils appstream python3-yaml zsync
+            desktop-file-utils appstream zsync
           curl -fsSL -o "$RUNNER_TEMP/nfpm.deb" \
             "https://github.com/goreleaser/nfpm/releases/download/v${NFPM_VERSION}/nfpm_${NFPM_VERSION}_${{ matrix.deb }}.deb"
           sudo dpkg -i "$RUNNER_TEMP/nfpm.deb"
@@ -225,7 +289,6 @@ jobs:
           dpkg-deb --info dist/release/*.deb
           dpkg-deb --contents dist/release/*.deb | grep -E 'usr/bin/redrob-cad$|metainfo|applications'
           ldd target/release/redrob-cad
-          python3 -c "import yaml; m = yaml.safe_load(open('packaging/linux/flatpak/ai.redrob.cad.yml')); assert m['id'] == 'ai.redrob.cad'"
           for appimage in dist/release/*.AppImage; do
             chmod +x "$appimage"
             APPIMAGE_EXTRACT_AND_RUN=1 "$appimage" --version
@@ -241,186 +304,17 @@ jobs:
           path: dist/release/*
           if-no-files-found: error
 
-  flatpak:
-    name: Flatpak ${{ matrix.arch }}
-    needs: [version, linux]
-    # Repackages the Linux job's tarball (the same binaries as the AppImage/deb/rpm); no Rust
-    # build here. 24.04 for a newer flatpak-builder (1.4) than 22.04 ships.
-    runs-on: ${{ matrix.runner }}
-    # No `environment: release`: this job signs nothing, so it gets no release secrets.
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { arch: x86_64, runner: ubuntu-24.04 }
-          - { arch: aarch64, runner: ubuntu-24.04-arm }
-    env:
-      CADCRAFT_VERSION: ${{ needs.version.outputs.version }}
-      CADCRAFT_BUILD_DATE: ${{ needs.version.outputs.date }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          name: release-linux-${{ matrix.arch }}
-          path: dist/linux
-      - name: Install flatpak-builder
-        run: |
-          sudo apt-get update
-          # librsvg2-common: the SVG pixbuf loader that the host's `appstreamcli compose` (run by
-          # flatpak-builder) needs for any scalable icon.
-          sudo apt-get install -y --no-install-recommends flatpak flatpak-builder librsvg2-common
-          # Ubuntu 24.04's AppArmor blocks the unprivileged user namespaces bubblewrap needs.
-          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
-      - name: Build the Flatpak bundle
-        run: packaging/linux/flatpak-bundle.sh "dist/linux/redrob-cad-$CADCRAFT_VERSION-linux-${{ matrix.arch }}.tar.gz"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: release-flatpak-${{ matrix.arch }}
-          path: dist/release/*.flatpak
-          if-no-files-found: error
-
-  web:
-    name: Web (wasm)
-    needs: version
-    runs-on: ubuntu-latest
-    # No `environment: release`: this job signs nothing, so it gets no release secrets.
-    env:
-      CADCRAFT_VERSION: ${{ needs.version.outputs.version }}
-      CADCRAFT_BUILD_DATE: ${{ needs.version.outputs.date }}
-      TRUNK_VERSION: 0.21.14
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: wasm32-unknown-unknown
-      - uses: Swatinem/rust-cache@v2
-        with:
-          key: release-web
-      - name: Install trunk
-        run: |
-          curl -fsSL "https://github.com/trunk-rs/trunk/releases/download/v${TRUNK_VERSION}/trunk-x86_64-unknown-linux-gnu.tar.gz" \
-            | tar -xz -C "$HOME/.cargo/bin" trunk
-          trunk --version
-      - name: Apply version override
-        if: inputs.version != ''
-        run: cargo xtask version set "$CADCRAFT_VERSION"
-      - name: Build and zip
-        run: packaging/web/package.sh
-      - uses: actions/upload-artifact@v4
-        with:
-          name: release-web
-          path: dist/release/*
-          if-no-files-found: error
-
-  freebsd:
-    name: FreeBSD x86_64
-    needs: version
-    # GitHub has no FreeBSD runners: build inside a FreeBSD VM on a Linux runner.
-    runs-on: ubuntu-latest
-    # No `environment: release`: this job signs nothing, so it gets no release secrets.
-    timeout-minutes: 300
-    env:
-      CADCRAFT_VERSION: ${{ needs.version.outputs.version }}
-      CADCRAFT_BUILD_DATE: ${{ needs.version.outputs.date }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Build and package in a FreeBSD VM
-        uses: vmactions/freebsd-vm@c46abacb49f09938ca4e1702d15d836285d694cc # v1
-        with:
-          release: "14.3"
-          usesh: true
-          # The runners this private repository gets give KVM 2 cpus and refuse more than ~5 GB
-          # of guest memory ("cannot set up guest memory 'pc.ram'"); 4/12288 failed every release.
-          cpu: 2
-          mem: 5120
-          envs: "CADCRAFT_VERSION CADCRAFT_BUILD_DATE CADCRAFT_BUILD_SHA INPUT_VERSION"
-          copyback: true
-          prepare: |
-            pkg install -y git curl pkgconf cmake python3 libxkbcommon wayland libX11 libXcursor libXrandr libXi libxcb mesa-libs vulkan-loader gtk3 fontconfig freetype2 alsa-lib
-            curl -fsSL https://sh.rustup.rs | sh -s -- -y --profile minimal
-          run: |
-            set -e
-            . "$HOME/.cargo/env"
-            git config --global --add safe.directory "*"
-            if [ -n "$INPUT_VERSION" ]; then cargo xtask version set "$CADCRAFT_VERSION"; fi
-            cargo build --release --locked -p cadcraft -p cadcraft-cli
-            name="redrob-cad-$CADCRAFT_VERSION-freebsd-x86_64"
-            mkdir -p "dist/release/$name"
-            cp target/release/redrob-cad target/release/redrob-cad-cli README.md LICENSE-MIT LICENSE-APACHE NOTICE ATTRIBUTION.md "dist/release/$name/"
-            mkdir -p "dist/release/$name/icons"
-            cp -R assets/app-icon/hicolor "dist/release/$name/icons/" 2>/dev/null || true
-            (cd dist/release && tar -czf "$name.tar.gz" "$name" && rm -rf "$name")
-            # Keep the copy back to the runner small.
-            rm -rf target
-      - uses: actions/upload-artifact@v4
-        with:
-          name: release-freebsd
-          path: dist/release/*
-          if-no-files-found: error
-
-  release:
-    name: Draft GitHub Release
-    needs: [version, macos, windows, linux, flatpak, web, freebsd]
-    # Only a version tag publishes; a manual dispatch stops before this job. FreeBSD does not hold
-    # the release back: its VM action has failed to boot on the hosted runners (v0.0.1), and a
-    # release without the FreeBSD archive beats no release. Every other platform must succeed.
-    if: >-
-      always() && github.ref_type == 'tag' &&
-      needs.version.result == 'success' && needs.macos.result == 'success' &&
-      needs.windows.result == 'success' && needs.linux.result == 'success' &&
-      needs.flatpak.result == 'success' && needs.web.result == 'success'
-    runs-on: ubuntu-latest
-    environment: release
+  publish:
+    needs: [version, macos, windows, linux]
+    # Only a version tag publishes; a manual dispatch stops here. Every build job must have
+    # succeeded: a missing platform is not a release.
+    if: always() && github.ref_type == 'tag' && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') && !contains(needs.*.result, 'skipped')
+    uses: redrob-labs/.github/.github/workflows/release-publish.yml@main
     permissions:
       contents: write
-    env:
-      VERSION: ${{ needs.version.outputs.version }}
-      PRERELEASE: ${{ needs.version.outputs.prerelease }}
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      GH_REPO: ${{ github.repository }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          sparse-checkout: packaging
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: release-*
-          path: artifacts
-          merge-multiple: true
-      # Redrob Launcher reads this file from the release to learn that it uses the shared sign-in.
-      # It must exist before the checksums so SHA256SUMS.txt lists it.
-      - name: Launcher release manifest
-        run: packaging/release-manifest.sh artifacts
-      - name: Checksums
-        working-directory: artifacts
-        run: |
-          sha256sum -- * | tee SHA256SUMS.txt
-      - name: Check release assets
-        run: packaging/check-release-dir.sh artifacts
-      - name: Create or update the draft release
-        working-directory: artifacts
-        run: |
-          tag="v$VERSION"
-          title="Redrob CAD v$VERSION"
-          pre=()
-          if [ "$PRERELEASE" = true ]; then pre=(--prerelease); fi
-          if draft="$(gh release view "$tag" --json isDraft --jq .isDraft 2>/dev/null)"; then
-            if [ "$draft" != "true" ]; then
-              echo "::error::Release $tag is already published. Bump the version (cargo xtask version set) and tag again."
-              exit 1
-            fi
-            echo "Updating draft $tag: replacing its assets"
-            gh release view "$tag" --json assets --jq '.assets[].name' | while read -r asset; do
-              gh release delete-asset "$tag" "$asset" --yes
-            done
-            gh release edit "$tag" --draft --title "$title" --target "$GITHUB_SHA" --prerelease="$PRERELEASE"
-            gh release upload "$tag" --clobber -- *
-          else
-            echo "Creating draft $tag"
-            gh release create "$tag" --draft --title "$title" --target "$GITHUB_SHA" --generate-notes "${pre[@]}" -- *
-          fi
-          {
-            echo "Draft release **$title** at \`${GITHUB_SHA::9}\`:"
-            echo
-            sed 's/^/    /' SHA256SUMS.txt
-          } >>"$GITHUB_STEP_SUMMARY"
+    with:
+      version: ${{ needs.version.outputs.version }}
+      title: Redrob CAD
+      launcher_manifest: true
+      launcher_icon: redrob-cad.png
+      publish: true
