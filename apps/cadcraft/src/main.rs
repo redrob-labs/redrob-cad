@@ -151,7 +151,8 @@ fn control_token() -> String {
 /// starts the app in the folder that holds `redrob-cad.exe`): the agent never works there.
 fn agent_cwd() -> String {
     let home = std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" }).map(std::path::PathBuf::from);
-    let exe_dir = std::env::current_exe().ok().and_then(|e| e.canonicalize().ok().or(Some(e))).and_then(|e| e.parent().map(std::path::Path::to_path_buf));
+    let exe_dir =
+        std::env::current_exe().ok().and_then(|e| e.canonicalize().ok().or(Some(e))).and_then(|e| e.parent().map(std::path::Path::to_path_buf));
     let cwd = std::env::current_dir().ok().filter(|d| d.parent().is_some()).filter(|d| !is_install_dir(d, exe_dir.as_deref(), home.as_deref()));
     cwd.or(home).map(|d| d.to_string_lossy().to_string()).unwrap_or_else(|| ".".into())
 }
