@@ -2,6 +2,7 @@
 //! AutoCAD's menu bar so the catalog doubles as the parity metric.
 
 mod annotate;
+pub(crate) mod ask;
 mod blocks;
 pub mod constraints;
 mod draw;
@@ -10,14 +11,17 @@ mod edit;
 pub mod file;
 mod gripcmds;
 mod hatch;
+mod image;
 mod inquiry;
 mod layer;
 mod layout;
+mod mledit;
 mod modify;
 mod modify2;
 mod props;
 mod qselect;
 mod settings;
+mod setup;
 mod table;
 mod utility;
 mod view;
@@ -156,14 +160,17 @@ pub fn command_specs() -> &'static [CommandSpec] {
         v.extend(annotate::specs());
         v.extend(hatch::specs());
         v.extend(blocks::specs());
+        v.extend(image::specs());
         v.extend(modify::specs());
         v.extend(modify2::specs());
+        v.extend(mledit::specs());
         v.extend(gripcmds::specs());
         v.extend(layer::specs());
         v.extend(layout::specs());
         v.extend(props::specs());
         v.extend(inquiry::specs());
         v.extend(settings::specs());
+        v.extend(setup::specs());
         v.extend(utility::specs());
         v.extend(table::specs());
         v.extend(constraints::specs());

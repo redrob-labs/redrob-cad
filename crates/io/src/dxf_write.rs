@@ -763,7 +763,23 @@ fn entity(w: &mut W, d: &Drawing, e: &Entity, owner: &str, paper: bool, cx: &Ctx
             // Status flags: 16384 = display locked.
             w.i(90, if v.locked { 16384 } else { 0 });
         }
-        // Not yet written: images, wipeouts, tables, multileaders, unknown objects.
+        EntityKind::Image(i) => {
+            // The frame as an IMAGE entity; the file path rides in our xdata (no IMAGEDEF object
+            // is written yet, so other programs show the frame only).
+            w.s(0, "IMAGE");
+            common(w, e, owner, paper, "AcDbRasterImage");
+            w.i(90, 0);
+            w.p(10, i.insert);
+            w.p(11, i.u);
+            w.p(12, i.v);
+            w.f(13, i.size.x);
+            w.f(23, i.size.y);
+            w.i(70, 7);
+            w.s(1001, dxf_ext::APP);
+            w.s(1000, "IMAGE");
+            w.s(1000, &i.path);
+        }
+        // Not yet written: wipeouts, multileaders, unknown objects.
         _ => {}
     }
 }

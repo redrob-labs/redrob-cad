@@ -266,6 +266,13 @@ fn run_set(s: &mut Session, p: &Value) -> Result<Value> {
                         dm.text = v.to_string();
                         dm.block = None;
                     }
+                    // Per-dimension overrides (Properties ▸ Primary Units / Text / Arrows).
+                    for k in ["linearFactor", "textHeight", "arrowSize"] {
+                        if let Some(x) = num(k).filter(|x| *x > 0.0) {
+                            dm.overrides.insert(k.into(), json!(x));
+                            dm.block = None;
+                        }
+                    }
                 }
                 EntityKind::Hatch(h) => {
                     if let Some(v) = str_param(p, "pattern") {
@@ -277,6 +284,9 @@ fn run_set(s: &mut Session, p: &Value) -> Result<Value> {
                     }
                     if let Some(x) = num("angle") {
                         h.angle = x.to_radians();
+                    }
+                    if let Some(o) = point_param(p, "origin") {
+                        h.origin = o;
                     }
                 }
                 _ => {}
@@ -294,6 +304,9 @@ fn run_matchprop(s: &mut Session, p: &Value) -> Result<Value> {
         .and_then(Value::as_array)
         .map(|a| a.iter().filter_map(|v| v.as_str().and_then(cadcraft_doc::Handle::parse_hex)).collect())
         .unwrap_or_default();
+    if tg.is_empty() {
+        return Err(bad("matchprop", "`targets` is required"));
+    }
     let d = s.doc_mut()?;
     let c = d.entity(src).map(|e| e.common.clone()).ok_or_else(|| bad("matchprop", "no such source"))?;
     for h in &tg {
