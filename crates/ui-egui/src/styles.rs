@@ -110,7 +110,7 @@ pub fn plot(app: &mut CadApp, ctx: &egui::Context, open: &mut bool) {
         let p = &mut app.ui.plot;
         egui::Grid::new("plot_grid").num_columns(2).spacing([12.0, 6.0]).show(ui, |ui| {
             ui.label(tr("Printer/plotter"));
-            ui.label("PDF");
+            ui.label(tr("PDF"));
             ui.end_row();
             ui.label(tr("Paper size"));
             egui::ComboBox::from_id_salt("plot_paper").selected_text(p.paper.clone()).width(260.0).show_ui(ui, |ui| {
@@ -265,7 +265,8 @@ pub fn text_style(app: &mut CadApp, ctx: &egui::Context, open: &mut bool) {
                 name.clear();
             }
             ui.data_mut(|m| m.insert_temp(new_id, name));
-            if ui.add_enabled(!sel.eq_ignore_ascii_case(&current) && !sel.eq_ignore_ascii_case("Standard"), egui::Button::new(tr("Delete"))).clicked() {
+            if ui.add_enabled(!sel.eq_ignore_ascii_case(&current) && !sel.eq_ignore_ascii_case("Standard"), egui::Button::new(tr("Delete"))).clicked()
+            {
                 action = Some(("style.delete", json!({ "name": sel })));
             }
         });
@@ -353,7 +354,8 @@ pub fn dim_style(app: &mut CadApp, ctx: &egui::Context, open: &mut bool) {
                 name.clear();
             }
             ui.data_mut(|m| m.insert_temp(new_id, name));
-            if ui.add_enabled(!sel.eq_ignore_ascii_case(&current) && !sel.eq_ignore_ascii_case("Standard"), egui::Button::new(tr("Delete"))).clicked() {
+            if ui.add_enabled(!sel.eq_ignore_ascii_case(&current) && !sel.eq_ignore_ascii_case("Standard"), egui::Button::new(tr("Delete"))).clicked()
+            {
                 action = Some(("dimstyle.delete", json!({ "name": sel })));
             }
         });

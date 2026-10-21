@@ -299,7 +299,16 @@ fn entity(kind: &str, tags: &[Tag]) -> Option<(Common, EntityKind)> {
             EntityKind::Wipeout(Wipeout { boundary: pts })
         }
         "IMAGE" => {
-            EntityKind::Image(Image { insert: t.p(10), u: t.p(11), v: t.p(12), size: Vec2::new(t.fd(13, 1.0), t.fd(23, 1.0)), path: String::new() })
+            // Our own files carry the image path in xdata (`1000 IMAGE`, `1000 <path>`).
+            let x = crate::dxf_ext::xdata(tags, crate::dxf_ext::APP);
+            let path = x
+                .iter()
+                .position(|tg| tg.code == 1000 && tg.str() == "IMAGE")
+                .and_then(|p| x.get(p + 1))
+                .filter(|tg| tg.code == 1000)
+                .map(|tg| tg.str())
+                .unwrap_or_default();
+            EntityKind::Image(Image { insert: t.p(10), u: t.p(11), v: t.p(12), size: Vec2::new(t.fd(13, 1.0), t.fd(23, 1.0)), path })
         }
         other => EntityKind::Unknown(Unknown {
             dxf_type: other.to_string(),

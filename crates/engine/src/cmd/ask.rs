@@ -202,7 +202,11 @@ impl Interactive for AskM {
                     }
                     let v = match t.parse::<f64>() {
                         Ok(f) if f.is_finite() && self.need.kind == Kind::Number => {
-                            if f.fract() == 0.0 && f.abs() < 1e15 { json!(f as i64) } else { json!(f) }
+                            if f.fract() == 0.0 && f.abs() < 1e15 {
+                                json!(f as i64)
+                            } else {
+                                json!(f)
+                            }
                         }
                         _ if self.need.kind == Kind::Number => {
                             s.echo("Requires a number.");
@@ -300,7 +304,11 @@ impl SysvarM {
         let t = text.trim();
         let typed = match t.parse::<f64>() {
             Ok(f) if f.is_finite() => {
-                if f.fract() == 0.0 && f.abs() < 1e15 && !t.contains('.') { json!(f as i64) } else { json!(f) }
+                if f.fract() == 0.0 && f.abs() < 1e15 && !t.contains('.') {
+                    json!(f as i64)
+                } else {
+                    json!(f)
+                }
             }
             _ => json!(t),
         };

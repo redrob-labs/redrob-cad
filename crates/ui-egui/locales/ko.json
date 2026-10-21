@@ -1682,5 +1682,8 @@
  "Overall scale (DIMSCALE)": "전체 축척(DIMSCALE)",
  "Specify window for printing": "인쇄할 윈도우 지정",
  "Window has no area.": "윈도우에 면적이 없어요.",
- "Plot Window": "플롯 윈도우"
+ "Plot Window": "플롯 윈도우",
+ "Decimal": "십진",
+ "DWG Reference...": "DWG 참조...",
+ "PDF": "PDF"
 }

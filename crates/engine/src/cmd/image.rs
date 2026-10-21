@@ -95,7 +95,7 @@ fn run_imageattach(s: &mut Session, p: &Value) -> Result<Value> {
     let path = str_param(p, "path").ok_or_else(|| bad("imageattach", "`path` is required"))?.trim().trim_matches('"').to_string();
     let at = point_req("imageattach", p, "at")?;
     let width = f64_or(p, "scale", 1.0);
-    if !(width > 0.0) || width > 1e12 {
+    if width.is_nan() || width <= 0.0 || width > 1e12 {
         return Err(bad("imageattach", "scale must be positive"));
     }
     let rot = f64_or(p, "rotation", 0.0).to_radians();
@@ -154,7 +154,9 @@ impl Interactive for AttachM {
             }
             (Some(path), Some(a), i) => {
                 let scale = match i {
-                    Input::Text(t) => super::machines::number(&t).filter(|f| *f > 0.0).ok_or_else(|| EngineError::Other("Requires a positive number.".into()))?,
+                    Input::Text(t) => {
+                        super::machines::number(&t).filter(|f| *f > 0.0).ok_or_else(|| EngineError::Other("Requires a positive number.".into()))?
+                    }
                     Input::Point(p) => a.dist(p).max(1e-9),
                     Input::Cancel => return Ok(Step::Cancel),
                     _ => 1.0,
@@ -169,4 +171,3 @@ impl Interactive for AttachM {
         }
     }
 }
-

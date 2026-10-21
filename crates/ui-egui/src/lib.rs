@@ -24,6 +24,7 @@ pub mod menus;
 pub mod palettes;
 pub mod parametric;
 pub mod quick;
+pub mod raster;
 pub mod styles;
 pub mod theme;
 

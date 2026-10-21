@@ -160,10 +160,12 @@ impl HatchSettings {
             gradient: g,
             associative: bool_or(p, "associative", true),
             origin: point_param(p, "origin")
-                .or_else(|| s.doc().ok().and_then(|d| match d.header.get("HPORIGIN") {
-                    Some(cadcraft_doc::HVal::Point(o)) => Some(o.xy()),
-                    _ => None,
-                }))
+                .or_else(|| {
+                    s.doc().ok().and_then(|d| match d.header.get("HPORIGIN") {
+                        Some(cadcraft_doc::HVal::Point(o)) => Some(o.xy()),
+                        _ => None,
+                    })
+                })
                 .unwrap_or(Vec2::ZERO),
         }
     }
@@ -482,7 +484,24 @@ impl Interactive for HatchEditM {
                     let ap = s.pixel_size() * s.settings.pickbox.max(1.0) * 1.5;
                     let space = s.space();
                     let h = crate::select::pick(s.doc()?, &space, p, ap);
-                    match h.filter(|h| s.doc().ok().and_then(|d| d.entity(*h)).is_some_and(|e| matches!(e.kind, EntityKind::Hatch(_)))) {
+                    let is_hatch =
+                        |s: &Session, h: &Handle| s.doc().ok().and_then(|d| d.entity(*h)).is_some_and(|e| matches!(e.kind, EntityKind::Hatch(_)));
+                    // A click inside the hatched area also finds it (its edge usually lies on
+                    // the boundary lines, which win the pick).
+                    let inside = || {
+                        let d = s.doc().ok()?;
+                        d.space(&space)?
+                            .iter()
+                            .filter(|e| d.is_visible(e))
+                            .find(|e| match &e.kind {
+                                EntityKind::Hatch(hh) => {
+                                    hh.loops.iter().any(|l| point_in_polygon(&l.vertices.iter().map(|v| v.p).collect::<Vec<_>>(), p))
+                                }
+                                _ => false,
+                            })
+                            .map(|e| e.handle)
+                    };
+                    match h.filter(|h| is_hatch(s, h)).or_else(inside) {
                         Some(h) => {
                             self.hatch = Some(h);
                             s.set_selection(vec![h]);

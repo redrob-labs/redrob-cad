@@ -149,7 +149,8 @@ fn end_hit(a: &LwPolyline, b: &LwPolyline, keep: Vec2, bounded: bool) -> Option<
                 continue;
             }
             // keep strictly between the end and x would be cut away.
-            let cuts_keep = (x - end).dot(keep - end) > 0.0 && (keep - end).len() < (x - end).len() && dist_to_seg(keep, (end, x)) < 1e-6 * (1.0 + x.dist(end));
+            let cuts_keep =
+                (x - end).dot(keep - end) > 0.0 && (keep - end).len() < (x - end).len() && dist_to_seg(keep, (end, x)) < 1e-6 * (1.0 + x.dist(end));
             if cuts_keep {
                 continue;
             }

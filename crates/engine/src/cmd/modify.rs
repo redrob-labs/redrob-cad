@@ -1414,7 +1414,8 @@ impl SelectThen {
             Op::Join => {
                 match join(s, &self.objs) {
                     Ok(Some(h)) => {
-                        let kind = s.doc().ok().and_then(|d| d.entity(h)).map(|e| if matches!(e.kind, EntityKind::Line(_)) { "line" } else { "polyline" });
+                        let kind =
+                            s.doc().ok().and_then(|d| d.entity(h)).map(|e| if matches!(e.kind, EntityKind::Line(_)) { "line" } else { "polyline" });
                         s.echo(format!("{} objects joined into 1 {}", self.objs.len(), kind.unwrap_or("polyline")));
                     }
                     Ok(None) => {}
@@ -2034,7 +2035,9 @@ impl Interactive for BreakM {
                 s.set_selection(Vec::new());
                 Ok(Step::Done)
             }
-            (Some(_), Input::Keyword(k) | Input::Text(k)) if k.trim().eq_ignore_ascii_case("f") || k.trim().eq_ignore_ascii_case("first point") || k.trim().eq_ignore_ascii_case("first") => {
+            (Some(_), Input::Keyword(k) | Input::Text(k))
+                if k.trim().eq_ignore_ascii_case("f") || k.trim().eq_ignore_ascii_case("first point") || k.trim().eq_ignore_ascii_case("first") =>
+            {
                 self.asking_first = true;
                 Ok(Step::Continue)
             }

@@ -586,15 +586,13 @@ pub(crate) fn block_from_file(s: &mut Session, path: &str, xref: bool) -> Result
     if !valid_block_name(&stem) {
         return Err(bad("insert", format!("cannot make a block name from `{path}`")));
     }
-    if !xref
-        && let Some(b) = s.doc()?.block(&stem)
-    {
+    if !xref && let Some(b) = s.doc()?.block(&stem) {
         return Ok(b.name.clone());
     }
     #[cfg(target_arch = "wasm32")]
     {
         let _ = xref;
-        return Err(bad("insert", "files are not available on the web"))
+        return Err(bad("insert", "files are not available on the web"));
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
