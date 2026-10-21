@@ -1685,5 +1685,13 @@
  "Plot Window": "플롯 윈도우",
  "Decimal": "십진",
  "DWG Reference...": "DWG 참조...",
- "PDF": "PDF"
+ "PDF": "PDF",
+ "Snap Y spacing": "스냅 Y 간격두기",
+ "Grid X spacing": "그리드 X 간격두기",
+ "Grid Y spacing": "그리드 Y 간격두기",
+ "Object Snap Tracking On (F11)": "객체 스냅 추적 켜기(F11)",
+ "Object Snap modes": "객체 스냅 모드",
+ "Clear All": "모두 지우기",
+ "To track from an Osnap point, pause over the point while in a command. A tracking vector appears when you move the cursor. To stop tracking, pause over the point again.": "객체 스냅 점에서 추적하려면 명령 중에 그 점 위에서 잠시 멈추세요. 커서를 움직이면 추적 벡터가 나타나요. 추적을 멈추려면 그 점 위에서 다시 멈추세요.",
+ "Show the Quick Properties palette on selection": "선택할 때 빠른 특성 팔레트 표시"
 }

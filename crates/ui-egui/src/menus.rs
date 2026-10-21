@@ -90,6 +90,16 @@ pub fn run_ui_command(app: &mut CadApp, id: &str, params: &Value) -> Option<Resu
             }
             Ok(Value::Null)
         }
+        // Typed OSNAP opens Drafting Settings on Object Snap (F3 and the status bar still toggle).
+        "osnap" | "os" | "ddosnap" if params.is_null() => {
+            app.ui.dsettings_tab = 1;
+            app.ui.dialog = Some("dsettings".into());
+            Ok(Value::Null)
+        }
+        "dsettings" | "ds" | "se" | "ddrmodes" if params.is_null() => {
+            app.ui.dialog = Some("dsettings".into());
+            Ok(Value::Null)
+        }
         "style" | "st" | "ddstyle" if params.is_null() => {
             app.ui.dialog = Some("textstyle".into());
             Ok(Value::Null)

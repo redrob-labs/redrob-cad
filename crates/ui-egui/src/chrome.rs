@@ -304,7 +304,12 @@ pub fn status_bar(app: &mut CadApp, ui: &mut egui::Ui) {
             rx += size + 4.0;
         }
         if let Some(c) = toggle_cmd {
-            app.start(c);
+            if c.starts_with("ui.") {
+                app.start(c);
+            } else {
+                // A toggle, not the typed command (typed OSNAP opens Drafting Settings).
+                let _ = app.run(c, json!({}));
+            }
         }
         // Transient status message.
         if let Some((msg, at)) = &app.status

@@ -32,66 +32,147 @@ pub fn show(app: &mut CadApp, ctx: &egui::Context) {
     }
 }
 
+/// Drafting Settings (DSETTINGS / DS / SE; OSNAP opens the Object Snap tab). Edits a copy;
+/// OK applies it, Cancel or closing the window drops it, as in AutoCAD.
 fn dsettings(app: &mut CadApp, ctx: &egui::Context, open: &mut bool) {
-    egui::Window::new(tr("Drafting Settings")).open(open).resizable(false).show(ctx, |ui| {
-        let s = &mut app.session.settings;
-        ui.heading(tr("Snap and Grid"));
-        ui.checkbox(&mut s.snapmode, tr("Snap On (F9)"));
+    use cadcraft_engine::snap::mode;
+    let draft_id = egui::Id::new("dsettings_draft");
+    let mut draft: cadcraft_engine::Settings = ctx.data_mut(|d| d.get_temp(draft_id)).unwrap_or_else(|| app.session.settings.clone());
+    let mut tab = app.ui.dsettings_tab.min(4);
+    let mut done: Option<bool> = None;
+    egui::Window::new(tr("Drafting Settings")).open(open).resizable(false).collapsible(false).show(ctx, |ui| {
         ui.horizontal(|ui| {
-            ui.label(tr("Snap X spacing"));
-            ui.add(egui::DragValue::new(&mut s.snapunit.x).speed(0.05).range(0.0001..=1e6));
-            ui.label(tr("Y"));
-            ui.add(egui::DragValue::new(&mut s.snapunit.y).speed(0.05).range(0.0001..=1e6));
-        });
-        ui.checkbox(&mut s.gridmode, tr("Grid On (F7)"));
-        ui.horizontal(|ui| {
-            ui.label(tr("Grid spacing"));
-            ui.add(egui::DragValue::new(&mut s.gridunit.x).speed(0.05).range(0.0001..=1e6));
-            ui.label(tr("Major line every"));
-            ui.add(egui::DragValue::new(&mut s.gridmajor).range(1..=100));
-        });
-        ui.separator();
-        ui.heading(tr("Polar Tracking"));
-        ui.checkbox(&mut s.polarmode, tr("Polar Tracking On (F10)"));
-        let mut deg = s.polarang.to_degrees();
-        ui.horizontal(|ui| {
-            ui.label(tr("Increment angle"));
-            egui::ComboBox::from_id_salt("polarang").selected_text(format!("{deg}")).show_ui(ui, |ui| {
-                for a in [90.0, 45.0, 30.0, 22.5, 18.0, 15.0, 10.0, 5.0] {
-                    ui.selectable_value(&mut deg, a, format!("{a}"));
+            for (i, l) in ["Snap and Grid", "Object Snap", "Polar Tracking", "Dynamic Input", "Quick Properties"].iter().enumerate() {
+                if ui.selectable_label(tab == i as u8, tr(l)).clicked() {
+                    tab = i as u8;
                 }
-            });
+            }
         });
-        s.polarang = deg.to_radians();
         ui.separator();
-        ui.heading(tr("Object Snap"));
-        let mut on = s.osmode & cadcraft_engine::snap::mode::OFF == 0;
-        if ui.checkbox(&mut on, tr("Object Snap On (F3)")).changed() {
-            if on {
-                s.osmode &= !cadcraft_engine::snap::mode::OFF;
-            } else {
-                s.osmode |= cadcraft_engine::snap::mode::OFF;
+        let s = &mut draft;
+        match tab {
+            0 => {
+                ui.checkbox(&mut s.snapmode, tr("Snap On (F9)"));
+                egui::Grid::new("ds_snap").num_columns(2).show(ui, |ui| {
+                    ui.label(tr("Snap X spacing"));
+                    ui.add(egui::DragValue::new(&mut s.snapunit.x).speed(0.05).range(0.0001..=1e6));
+                    ui.end_row();
+                    ui.label(tr("Snap Y spacing"));
+                    ui.add(egui::DragValue::new(&mut s.snapunit.y).speed(0.05).range(0.0001..=1e6));
+                    ui.end_row();
+                });
+                ui.separator();
+                ui.checkbox(&mut s.gridmode, tr("Grid On (F7)"));
+                egui::Grid::new("ds_grid").num_columns(2).show(ui, |ui| {
+                    ui.label(tr("Grid X spacing"));
+                    ui.add(egui::DragValue::new(&mut s.gridunit.x).speed(0.05).range(0.0001..=1e6));
+                    ui.end_row();
+                    ui.label(tr("Grid Y spacing"));
+                    ui.add(egui::DragValue::new(&mut s.gridunit.y).speed(0.05).range(0.0001..=1e6));
+                    ui.end_row();
+                    ui.label(tr("Major line every"));
+                    ui.add(egui::DragValue::new(&mut s.gridmajor).range(1..=100));
+                    ui.end_row();
+                });
+            }
+            1 => {
+                ui.horizontal(|ui| {
+                    let mut on = s.osmode & mode::OFF == 0;
+                    if ui.checkbox(&mut on, tr("Object Snap On (F3)")).changed() {
+                        if on {
+                            s.osmode &= !mode::OFF;
+                        } else {
+                            s.osmode |= mode::OFF;
+                        }
+                    }
+                    ui.add_space(40.0);
+                    ui.checkbox(&mut s.otrack, tr("Object Snap Tracking On (F11)"));
+                });
+                ui.group(|ui| {
+                    ui.label(tr("Object Snap modes"));
+                    // AutoCAD's two columns, in its order.
+                    let left = [mode::END, mode::MID, mode::CEN, mode::GCEN, mode::NOD, mode::QUA, mode::INT, mode::EXT];
+                    let right = [mode::INS, mode::PER, mode::TAN, mode::NEA, mode::APP, mode::PAR];
+                    let name = |m: u32| mode::ALL.iter().find(|(b, _)| *b == m).map(|(_, n)| *n).unwrap_or("");
+                    let snap_col = Tokens::get().snap;
+                    ui.horizontal_top(|ui| {
+                        for col in [&left[..], &right[..]] {
+                            ui.vertical(|ui| {
+                                for &m in col {
+                                    ui.horizontal(|ui| {
+                                        let (r, _) = ui.allocate_exact_size(vec2(16.0, 16.0), egui::Sense::hover());
+                                        crate::canvas::snap_glyph(ui.painter(), r.center(), m, 5.0, egui::Stroke::new(1.3, snap_col));
+                                        let mut v = s.osmode & m != 0;
+                                        if ui.checkbox(&mut v, tr(name(m))).changed() {
+                                            if v {
+                                                s.osmode |= m;
+                                            } else {
+                                                s.osmode &= !m;
+                                            }
+                                        }
+                                    });
+                                }
+                            });
+                            ui.add_space(24.0);
+                        }
+                        ui.vertical(|ui| {
+                            let all: u32 = mode::ALL.iter().map(|(b, _)| *b).fold(0, |a, b| a | b);
+                            if ui.add_sized(vec2(90.0, 22.0), egui::Button::new(tr("Select All"))).clicked() {
+                                s.osmode = (s.osmode & mode::OFF) | all;
+                            }
+                            if ui.add_sized(vec2(90.0, 22.0), egui::Button::new(tr("Clear All"))).clicked() {
+                                s.osmode &= mode::OFF;
+                            }
+                        });
+                    });
+                    ui.add_space(4.0);
+                    ui.label(tr("To track from an Osnap point, pause over the point while in a command. A tracking vector appears when you move the cursor. To stop tracking, pause over the point again."));
+                });
+            }
+            2 => {
+                ui.checkbox(&mut s.polarmode, tr("Polar Tracking On (F10)"));
+                let mut deg = s.polarang.to_degrees();
+                ui.horizontal(|ui| {
+                    ui.label(tr("Increment angle"));
+                    egui::ComboBox::from_id_salt("polarang").selected_text(format!("{deg}")).show_ui(ui, |ui| {
+                        for a in [90.0, 45.0, 30.0, 22.5, 18.0, 15.0, 10.0, 5.0] {
+                            ui.selectable_value(&mut deg, a, format!("{a}"));
+                        }
+                    });
+                });
+                s.polarang = deg.to_radians();
+                ui.checkbox(&mut s.orthomode, tr("Ortho (F8)"));
+            }
+            3 => {
+                ui.checkbox(&mut s.dynmode, tr("Enable Dynamic Input (F12)"));
+            }
+            _ => {
+                ui.checkbox(&mut s.qpmode, tr("Show the Quick Properties palette on selection"));
             }
         }
-        egui::Grid::new("osnap_grid").num_columns(2).show(ui, |ui| {
-            for (i, (bit, name)) in cadcraft_engine::snap::mode::ALL.iter().enumerate() {
-                let mut v = s.osmode & bit != 0;
-                if ui.checkbox(&mut v, *name).changed() {
-                    if v {
-                        s.osmode |= bit;
-                    } else {
-                        s.osmode &= !bit;
-                    }
-                }
-                if i % 2 == 1 {
-                    ui.end_row();
-                }
+        ui.separator();
+        ui.horizontal(|ui| {
+            if ui.add_sized(vec2(80.0, 24.0), egui::Button::new(tr("OK"))).clicked() {
+                done = Some(true);
+            }
+            if ui.add_sized(vec2(80.0, 24.0), egui::Button::new(tr("Cancel"))).clicked() {
+                done = Some(false);
             }
         });
-        ui.separator();
-        ui.checkbox(&mut s.dynmode, tr("Enable Dynamic Input (F12)"));
-        ui.checkbox(&mut s.orthomode, tr("Ortho (F8)"));
     });
+    app.ui.dsettings_tab = tab;
+    match done {
+        Some(apply) => {
+            if apply {
+                app.session.settings = draft;
+                app.session.touch();
+            }
+            ctx.data_mut(|d| d.remove::<cadcraft_engine::Settings>(draft_id));
+            *open = false;
+        }
+        None if !*open => ctx.data_mut(|d| d.remove::<cadcraft_engine::Settings>(draft_id)),
+        None => ctx.data_mut(|d| d.insert_temp(draft_id, draft)),
+    }
 }
 
 fn about(ctx: &egui::Context, open: &mut bool) {
