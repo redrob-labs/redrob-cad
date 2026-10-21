@@ -67,8 +67,13 @@ pub fn run_ui_command(app: &mut CadApp, id: &str, params: &Value) -> Option<Resu
             Ok(Value::Null)
         }
         "qsave" if no_path && app.session.state().is_ok_and(|s| s.path.is_none()) => return run_ui_command(app, "ui.saveas", &Value::Null),
-        // Ctrl+P / PLOT: ask where to write the PDF (AutoCAD PDF to a file), then plot.
-        "plot" | "exportpdf" if no_path && app.services.pick_save.is_some() => {
+        // Ctrl+P / PLOT: the Plot dialog (paper, what to plot, scale, offset).
+        "plot" | "print" if params.is_null() => {
+            app.ui.dialog = Some("plot".into());
+            Ok(Value::Null)
+        }
+        // EXPORTPDF: ask where to write the PDF, then plot with the defaults.
+        "exportpdf" if no_path && app.services.pick_save.is_some() => {
             let base = app.session.state().map(|s| s.title.clone()).unwrap_or_else(|_| "Drawing".into());
             let stem = base.rsplit_once('.').map(|(a, _)| a.to_string()).unwrap_or(base);
             let mut q = if params.is_object() { params.clone() } else { json!({}) };
@@ -83,6 +88,14 @@ pub fn run_ui_command(app: &mut CadApp, id: &str, params: &Value) -> Option<Resu
                 }
                 return Some(r);
             }
+            Ok(Value::Null)
+        }
+        "style" | "st" | "ddstyle" if params.is_null() => {
+            app.ui.dialog = Some("textstyle".into());
+            Ok(Value::Null)
+        }
+        "dimstyle" | "d" | "ddim" | "dst" | "dimsty" if params.is_null() => {
+            app.ui.dialog = Some("dimstyle".into());
             Ok(Value::Null)
         }
         "ui.sample" => {

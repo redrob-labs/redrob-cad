@@ -11,6 +11,7 @@ use crate::theme::Tokens;
 pub fn show(app: &mut CadApp, ctx: &egui::Context) {
     mtext_editor(app, ctx);
     crate::quick::quick_properties(app, ctx);
+    crate::styles::tick(app);
     let Some(d) = app.ui.dialog.clone() else { return };
     let mut open = true;
     match d.as_str() {
@@ -21,6 +22,9 @@ pub fn show(app: &mut CadApp, ctx: &egui::Context) {
         "about" => about(ctx, &mut open),
         "commands" => commands(app, ctx, &mut open),
         "blocks" => blocks(app, ctx, &mut open),
+        "plot" => crate::styles::plot(app, ctx, &mut open),
+        "textstyle" => crate::styles::text_style(app, ctx, &mut open),
+        "dimstyle" => crate::styles::dim_style(app, ctx, &mut open),
         _ => open = false,
     }
     if !open {

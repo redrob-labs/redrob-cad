@@ -306,6 +306,8 @@ pub struct Session {
     /// `W` or `C` typed at "Select objects:": the next two points make a window
     /// (`Some(false)`) or crossing (`Some(true)`) box, whatever their order.
     pub window_mode: Option<bool>,
+    /// Plot area window picked for the Plot dialog (drawing coordinates).
+    pub plot_window: Option<(Vec2, Vec2)>,
     pub untitled_counter: u32,
     /// The last dimension created (DIMCONTINUE / DIMBASELINE).
     pub last_dim: Option<Handle>,
@@ -339,6 +341,7 @@ impl Session {
             clipboard_base: Vec2::ZERO,
             pending_window: None,
             window_mode: None,
+            plot_window: None,
             untitled_counter: 0,
             last_dim: None,
         }

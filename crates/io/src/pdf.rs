@@ -35,6 +35,13 @@ pub struct PdfOptions {
     pub scale: Option<f64>,
     /// Plot object lineweights. Default: the layout's setting; on for model space.
     pub lineweights: Option<bool>,
+    /// Unprintable margins in millimetres [left, bottom, right, top]; `[0,0,0,0]` = full bleed.
+    pub margins: Option<[f64; 4]>,
+    /// Plot area "window": only this drawing-space box (two corners), fitted or scaled.
+    pub window: Option<(Vec2, Vec2)>,
+    /// Center the plot on the paper (model space always centers). `false` puts the plot area's
+    /// lower-left corner on the printable area's lower-left corner.
+    pub center: Option<bool>,
     /// Flate-compress the content stream.
     pub compress: bool,
     pub title: String,
@@ -55,6 +62,20 @@ impl PdfOptions {
             fit: v.get("fit").and_then(Value::as_bool),
             scale: num("scale").filter(|s| *s > 0.0),
             lineweights: v.get("lineweights").and_then(Value::as_bool),
+            window: v.get("window").and_then(Value::as_array).and_then(|a| {
+                let p = |i: usize| {
+                    let q = a.get(i)?.as_array()?;
+                    let pt = Vec2::new(q.first()?.as_f64()?, q.get(1)?.as_f64()?);
+                    pt.is_finite().then_some(pt)
+                };
+                let (p1, p2) = (p(0)?, p(1)?);
+                ((p1.x - p2.x).abs() > 1e-12 && (p1.y - p2.y).abs() > 1e-12).then_some((p1, p2))
+            }),
+            center: v.get("center").and_then(Value::as_bool),
+            margins: v.get("margins").and_then(Value::as_array).and_then(|a| match a.iter().map(Value::as_f64).collect::<Option<Vec<f64>>>()?[..] {
+                [l, b, r, t] if [l, b, r, t].iter().all(|m| m.is_finite() && (0.0..=1000.0).contains(m)) => Some([l, b, r, t]),
+                _ => None,
+            }),
             compress: v.get("compress").and_then(Value::as_bool).unwrap_or(true),
             title: v.get("title").and_then(Value::as_str).unwrap_or("").to_string(),
         }
@@ -96,6 +117,9 @@ pub fn page_for(d: &Drawing, space: &Space, o: &PdfOptions) -> Result<PageSetup>
     if let Some(l) = o.landscape {
         page.landscape = l;
     }
+    if let Some(m) = o.margins {
+        page.margins_mm = m;
+    }
     page.width_mm = page.width_mm.clamp(1.0, MAX_SHEET_MM);
     page.height_mm = page.height_mm.clamp(1.0, MAX_SHEET_MM);
     Ok(page)
@@ -130,20 +154,32 @@ pub fn pdf(d: &Drawing, space: &Space, o: &PdfOptions) -> Result<Vec<u8>> {
     let k = unit_mm * PT_PER_MM;
     let fit = o.fit.unwrap_or(matches!(space, Space::Model));
     // Chord tolerance: about 0.05 mm on paper.
-    let est = plot_scale(&d.extents(space), &sheet, fit, o.scale);
+    let window = o.window.map(|(a, b)| Bounds2::new(a, b));
+    let est = plot_scale(&window.unwrap_or_else(|| d.extents(space)), &sheet, fit, o.scale);
     let tol = 0.05 / unit_mm / est.max(1e-300);
     let tolerance = if tol.is_finite() && tol > 0.0 { tol } else { ropts.tolerance };
     let list = cadcraft_render::build_plot(d, space, &cadcraft_render::Options { tolerance, ..ropts });
-    let b = list.bounds;
+    let b = window.unwrap_or(list.bounds);
     let s = plot_scale(&b, &sheet, fit, o.scale);
-    let map = if fit || matches!(space, Space::Model) {
-        let from = if b.is_empty() { Vec2::ZERO } else { b.center() };
-        Map { from, s, to: sheet.printable.center(), k }
+    let centered = o.center.unwrap_or(true);
+    let map = if fit || matches!(space, Space::Model) || window.is_some() {
+        if centered || b.is_empty() {
+            let from = if b.is_empty() { Vec2::ZERO } else { b.center() };
+            Map { from, s, to: sheet.printable.center(), k }
+        } else {
+            Map { from: b.min, s, to: sheet.printable.min, k }
+        }
     } else {
         Map { from: Vec2::ZERO, s: 1.0, to: Vec2::ZERO, k }
     };
     let media = sheet.size * k;
-    let clip_pt = if fit || matches!(space, Space::Model) {
+    let clip_pt = if let Some(w) = window {
+        // Only the window: its corners on paper, inside the printable area.
+        let (a, c) = (map.pt(w.min), map.pt(w.max));
+        let pmin = sheet.printable.min * k;
+        let pmax = sheet.printable.max * k;
+        Bounds2::new(Vec2::new(a.x.max(pmin.x), a.y.max(pmin.y)), Vec2::new(c.x.min(pmax.x), c.y.min(pmax.y)))
+    } else if fit || matches!(space, Space::Model) {
         Bounds2::new(sheet.printable.min * k, sheet.printable.max * k)
     } else {
         Bounds2::new(Vec2::ZERO, media)

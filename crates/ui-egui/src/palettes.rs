@@ -820,6 +820,12 @@ fn properties_section(app: &mut CadApp, ui: &mut egui::Ui) {
                 prop_row(ui, "Dim style", |ui| {
                     value_box(ui, &dm.style, true, true);
                 });
+                // Primary Units: this dimension's own overrides over its style.
+                let style = d.dim_style(&dm.style).cloned().unwrap_or_default();
+                let ov = |k: &str, dflt: f64| dm.overrides.get(k).and_then(Value::as_f64).unwrap_or(dflt);
+                num(ui, "Linear scale factor", "linearFactor", ov("linearFactor", style.linear_factor), &mut set, &ids);
+                num(ui, "Text height", "textHeight", ov("textHeight", style.text_height), &mut set, &ids);
+                num(ui, "Arrow size", "arrowSize", ov("arrowSize", style.arrow_size), &mut set, &ids);
             }
             EntityKind::Insert(i) => {
                 prop_row(ui, "Name", |ui| {

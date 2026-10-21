@@ -62,8 +62,12 @@ pub fn specs() -> Vec<CommandSpec> {
             .menu(&["File", "Print..."])
             .key("Cmd+P")
             .alias(&["print"])
-            .params("{path? (else returns base64 `data`), layout?: current|\"Model\", paper?, landscape?, fit?: bool, scale?, lineweights?: bool}")
+            .params("{path? (else returns base64 `data`), layout?: current|\"Model\", paper?, landscape?, fit?: bool, scale?, lineweights?: bool, window?: [[x,y],[x,y]], center?: bool, margins?: [l,b,r,t] (mm; [0,0,0,0] = full bleed)}")
             .noundo(),
+        CommandSpec::new("plot.window", "Plot Window", run_plot_window)
+            .params("{p1, p2} | {} (clear) — the plot area window the Plot dialog uses")
+            .noundo()
+            .interactive(|_| Ok(Box::new(PlotWindowM::default()))),
         CommandSpec::new("exportpdf", "Export to PDF...", |s, p| run_plot(s, p, "exportpdf"))
             .menu(&["File", "Export to PDF..."])
             .params("{path? (else returns base64 `data`), layout?, paper?, landscape?, fit?, lineweights?}")
@@ -1025,5 +1029,49 @@ mod tests {
         s.execute("mspace", &json!({})).unwrap();
         s.execute("layout.set", &json!({"name": "Model"})).unwrap();
         assert!(s.state().unwrap().mspace.is_none());
+    }
+}
+
+fn run_plot_window(s: &mut Session, p: &Value) -> Result<Value> {
+    s.plot_window = match (point_param(p, "p1"), point_param(p, "p2")) {
+        (Some(a), Some(b)) => Some((a, b)),
+        _ => None,
+    };
+    Ok(json!({ "window": s.plot_window.map(|(a, b)| [[a.x, a.y], [b.x, b.y]]) }))
+}
+
+/// "Window<" in the Plot dialog: two corners of the area to plot.
+#[derive(Default)]
+struct PlotWindowM {
+    first: Option<Vec2>,
+}
+
+impl Interactive for PlotWindowM {
+    fn name(&self) -> &'static str {
+        "PLOT"
+    }
+    fn prompt(&self, _s: &Session) -> Prompt {
+        match self.first {
+            None => Prompt::new("Specify window for printing", Accept::POINT),
+            Some(p) => Prompt::new("Specify opposite corner", Accept::POINT).base(p),
+        }
+    }
+    fn input(&mut self, s: &mut Session, i: Input) -> Result<Step> {
+        match (self.first, i) {
+            (None, Input::Point(p)) => {
+                self.first = Some(p);
+                Ok(Step::Continue)
+            }
+            (Some(a), Input::Point(b)) => {
+                if (a.x - b.x).abs() < 1e-12 || (a.y - b.y).abs() < 1e-12 {
+                    s.echo("Window has no area.");
+                    return Ok(Step::Continue);
+                }
+                s.plot_window = Some((a, b));
+                Ok(Step::Done)
+            }
+            (_, Input::Enter | Input::Cancel) => Ok(Step::Cancel),
+            _ => Ok(Step::Continue),
+        }
     }
 }

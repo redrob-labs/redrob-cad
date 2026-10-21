@@ -266,6 +266,13 @@ fn run_set(s: &mut Session, p: &Value) -> Result<Value> {
                         dm.text = v.to_string();
                         dm.block = None;
                     }
+                    // Per-dimension overrides (Properties ▸ Primary Units / Text / Arrows).
+                    for k in ["linearFactor", "textHeight", "arrowSize"] {
+                        if let Some(x) = num(k).filter(|x| *x > 0.0) {
+                            dm.overrides.insert(k.into(), json!(x));
+                            dm.block = None;
+                        }
+                    }
                 }
                 EntityKind::Hatch(h) => {
                     if let Some(v) = str_param(p, "pattern") {

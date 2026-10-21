@@ -24,6 +24,7 @@ pub mod menus;
 pub mod palettes;
 pub mod parametric;
 pub mod quick;
+pub mod styles;
 pub mod theme;
 
 use std::sync::mpsc::Receiver;
@@ -58,6 +59,8 @@ pub struct UiState {
     pub history_lines: usize,
     /// Right palette tab: 0 Layers and Properties, 3 Agent.
     pub palette_tab: u8,
+    /// Plot dialog settings (paper, area, scale), kept between plots.
+    pub plot: crate::styles::PlotSettings,
 }
 
 impl Default for UiState {
@@ -80,6 +83,7 @@ impl Default for UiState {
             dialog: None,
             history_lines: 3,
             palette_tab: 0,
+            plot: crate::styles::PlotSettings::default(),
         }
     }
 }
