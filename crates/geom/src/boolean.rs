@@ -159,6 +159,50 @@ fn chain(mut pieces: Vec<Segment>, tol: f64) -> Vec<Loop> {
     loops
 }
 
+/// Join neighbours that continue one another (collinear lines, arcs of one circle), as the
+/// splitting leaves extra vertices where an edge crossed the other boundary or a circle seam.
+fn simplify(l: Loop, tol: f64) -> Loop {
+    let same = |a: &Segment, b: &Segment| -> Option<Segment> {
+        match (a, b) {
+            (Segment::Line(x), Segment::Line(y)) => {
+                let (u, v) = (x.b - x.a, y.b - y.a);
+                let (lu, lv) = (u.len(), v.len());
+                (lu > 0.0 && lv > 0.0 && (u.cross(v) / (lu * lv)).abs() < 1e-9 && u.dot(v) > 0.0).then(|| Segment::Line(Line::new(x.a, y.b)))
+            }
+            (Segment::Arc { arc: x, ccw: cx }, Segment::Arc { arc: y, ccw: cy })
+                if cx == cy && x.center.near(y.center, tol) && (x.radius - y.radius).abs() < tol && x.sweep() + y.sweep() < crate::TAU - 1e-9 =>
+            {
+                let arc = if *cx { Arc::new(x.center, x.radius, x.start, y.end) } else { Arc::new(x.center, x.radius, y.start, x.end) };
+                Some(Segment::Arc { arc, ccw: *cx })
+            }
+            _ => None,
+        }
+    };
+    let mut out: Loop = Vec::with_capacity(l.len());
+    for s in l {
+        match out.last().and_then(|p| same(p, &s)) {
+            Some(m) => {
+                out.pop();
+                out.push(m);
+            }
+            None => out.push(s),
+        }
+    }
+    // The seam between the last and the first segment.
+    while out.len() > 2 {
+        let (Some(last), Some(first)) = (out.last(), out.first()) else { break };
+        match same(last, first) {
+            Some(m) => {
+                out.pop();
+                out.remove(0);
+                out.insert(0, m);
+            }
+            None => break,
+        }
+    }
+    out
+}
+
 /// `a op b`. Every input loop is taken counter-clockwise; overlapping loops of one operand
 /// combine even-odd (a loop inside another of the same operand is a hole).
 pub fn boolean(a: &[Loop], b: &[Loop], op: BoolOp, tol: f64) -> Vec<Loop> {
@@ -190,5 +234,5 @@ pub fn boolean(a: &[Loop], b: &[Loop], op: BoolOp, tol: f64) -> Vec<Loop> {
             _ => {}
         }
     }
-    chain(keep, tol).into_iter().filter(|l| loop_area(l, ttol).abs() > tol * tol).collect()
+    chain(keep, tol).into_iter().map(|l| simplify(l, tol)).filter(|l| loop_area(l, ttol).abs() > tol * tol).collect()
 }

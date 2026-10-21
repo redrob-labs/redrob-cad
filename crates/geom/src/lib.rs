@@ -7,11 +7,11 @@
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 #![forbid(unsafe_code)]
 
+pub mod boolean;
 mod bounds;
 mod curve;
 mod intersect;
 mod mat;
-pub mod boolean;
 pub mod region;
 mod spline;
 mod vec;

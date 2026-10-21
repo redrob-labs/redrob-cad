@@ -111,7 +111,8 @@ fn loops_of(s: &Session, hs: &[Handle], tol: f64) -> Result<Vec<Loop>> {
 
 /// Replace `inputs` by the result loops, keeping the first input's properties.
 fn replace(s: &mut Session, inputs: &[Handle], result: Vec<Loop>) -> Result<Value> {
-    let common = s.doc()?.entity(*inputs.first().ok_or_else(|| EngineError::Other("nothing selected".into()))?).map(|e| e.common.clone()).unwrap_or_default();
+    let common =
+        s.doc()?.entity(*inputs.first().ok_or_else(|| EngineError::Other("nothing selected".into()))?).map(|e| e.common.clone()).unwrap_or_default();
     let space = s.space();
     let d = s.doc_mut()?;
     for h in inputs {
@@ -156,10 +157,7 @@ fn run_bool(s: &mut Session, p: &Value, op: BoolOp) -> Result<Value> {
 }
 
 fn handles(p: &Value, key: &str) -> Vec<Handle> {
-    p.get(key)
-        .and_then(Value::as_array)
-        .map(|a| a.iter().filter_map(|v| v.as_str().and_then(Handle::parse_hex)).collect())
-        .unwrap_or_default()
+    p.get(key).and_then(Value::as_array).map(|a| a.iter().filter_map(|v| v.as_str().and_then(Handle::parse_hex)).collect()).unwrap_or_default()
 }
 
 fn run_subtract(s: &mut Session, p: &Value) -> Result<Value> {

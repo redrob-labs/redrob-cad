@@ -22,15 +22,27 @@ pub fn specs() -> Vec<CommandSpec> {
             .menu(&["Tools", "Draw Order", "Send Under Objects"])
             .params("{handles?, reference: [handles]}")
             .interactive(|_| Ok(Box::new(DrawOrderM::with(Order::Under)))),
-        CommandSpec::new("texttofront", "All Annotation Objects", |s, p| run_texttofront(s, p))
+        CommandSpec::new("texttofront", "All Annotation Objects", run_texttofront)
             .menu(&["Tools", "Draw Order", "Bring Annotations to Front", "All Annotation Objects"])
             .params("{kind?: text|dimensions|leaders|all}"),
-        CommandSpec::new("texttofront.text", "Text Objects Only", |s, _| run_texttofront(s, &json!({ "kind": "text" })))
-            .menu(&["Tools", "Draw Order", "Bring Annotations to Front", "Text Objects Only"]),
-        CommandSpec::new("texttofront.dimensions", "Dimension Objects Only", |s, _| run_texttofront(s, &json!({ "kind": "dimensions" })))
-            .menu(&["Tools", "Draw Order", "Bring Annotations to Front", "Dimension Objects Only"]),
-        CommandSpec::new("texttofront.leaders", "Leaders Only", |s, _| run_texttofront(s, &json!({ "kind": "leaders" })))
-            .menu(&["Tools", "Draw Order", "Bring Annotations to Front", "Leaders Only"]),
+        CommandSpec::new("texttofront.text", "Text Objects Only", |s, _| run_texttofront(s, &json!({ "kind": "text" }))).menu(&[
+            "Tools",
+            "Draw Order",
+            "Bring Annotations to Front",
+            "Text Objects Only",
+        ]),
+        CommandSpec::new("texttofront.dimensions", "Dimension Objects Only", |s, _| run_texttofront(s, &json!({ "kind": "dimensions" }))).menu(&[
+            "Tools",
+            "Draw Order",
+            "Bring Annotations to Front",
+            "Dimension Objects Only",
+        ]),
+        CommandSpec::new("texttofront.leaders", "Leaders Only", |s, _| run_texttofront(s, &json!({ "kind": "leaders" }))).menu(&[
+            "Tools",
+            "Draw Order",
+            "Bring Annotations to Front",
+            "Leaders Only",
+        ]),
         CommandSpec::new("hatchtoback", "Send Hatches to Back", run_hatchtoback).menu(&["Tools", "Draw Order", "Send Hatches to Back"]),
         CommandSpec::new("isolateobjects", "Isolate Objects", |s, p| run_hide(s, p, true))
             .menu(&["Tools", "Isolate", "Isolate Objects"])
@@ -91,7 +103,9 @@ fn reorder(s: &mut Session, objs: &[Handle], order: Order, refs: &[Handle]) -> R
     let at = match order {
         Order::Front => rest.len(),
         Order::Back => 0,
-        Order::Above => rest.iter().rposition(|h| refs.contains(h)).map(|i| i + 1).ok_or_else(|| EngineError::Other("No reference objects.".into()))?,
+        Order::Above => {
+            rest.iter().rposition(|h| refs.contains(h)).map(|i| i + 1).ok_or_else(|| EngineError::Other("No reference objects.".into()))?
+        }
         Order::Under => rest.iter().position(|h| refs.contains(h)).ok_or_else(|| EngineError::Other("No reference objects.".into()))?,
     };
     let mut next: Vec<Handle> = rest.get(..at).unwrap_or(&[]).to_vec();
@@ -177,7 +191,9 @@ fn run_hide(s: &mut Session, p: &Value, isolate: bool) -> Result<Value> {
         }
     }
     s.set_selection(Vec::new());
-    Ok(json!({ "hidden": hide.len(), "message": format!("{} object(s) {}.", if isolate { sel.len() } else { hide.len() }, if isolate { "isolated" } else { "hidden" }) }))
+    Ok(
+        json!({ "hidden": hide.len(), "message": format!("{} object(s) {}.", if isolate { sel.len() } else { hide.len() }, if isolate { "isolated" } else { "hidden" }) }),
+    )
 }
 
 fn run_unisolate(s: &mut Session, _p: &Value) -> Result<Value> {
@@ -311,7 +327,9 @@ impl Interactive for DrawOrderM {
             return self.sel.prompt();
         }
         match self.order {
-            None => Prompt::new("Enter object ordering option", Accept::TEXT).kw(&["Above objects", "Under objects", "Front", "Back"]).default("Back"),
+            None => {
+                Prompt::new("Enter object ordering option", Accept::TEXT).kw(&["Above objects", "Under objects", "Front", "Back"]).default("Back")
+            }
             Some(_) => Prompt::new("Select reference objects", Accept::SELECT),
         }
     }
