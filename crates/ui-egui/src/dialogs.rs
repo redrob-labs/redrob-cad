@@ -170,8 +170,12 @@ fn dsettings(app: &mut CadApp, ctx: &egui::Context, open: &mut bool) {
             ctx.data_mut(|d| d.remove::<cadcraft_engine::Settings>(draft_id));
             *open = false;
         }
-        None if !*open => ctx.data_mut(|d| d.remove::<cadcraft_engine::Settings>(draft_id)),
-        None => ctx.data_mut(|d| d.insert_temp(draft_id, draft)),
+        None if !*open => {
+            ctx.data_mut(|d| d.remove::<cadcraft_engine::Settings>(draft_id));
+        }
+        None => {
+            ctx.data_mut(|d| d.insert_temp(draft_id, draft));
+        }
     }
 }
 

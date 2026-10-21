@@ -609,7 +609,11 @@ pub fn show(app: &mut CadApp, ui: &mut egui::Ui) {
         && let (Some(o), Some(hp), Some(p)) = (app.canvas.press_at, hover_pos, app.canvas.cursor)
         && o.distance(hp) > 6.0
     {
-        let r = if app.session.running.is_some() { app.session.input(Input::Point(p)) } else { app.session.idle_click(raw_world.unwrap_or(p), mods.shift) };
+        let r = if app.session.running.is_some() {
+            app.session.input(Input::Point(p))
+        } else {
+            app.session.idle_click(raw_world.unwrap_or(p), mods.shift)
+        };
         if let Err(e) = r {
             app.session.echo(e.to_string());
         }
