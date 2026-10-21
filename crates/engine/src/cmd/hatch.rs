@@ -15,7 +15,7 @@ pub fn specs() -> Vec<CommandSpec> {
         CommandSpec::new("gradient", "Gradient...", run_gradient).menu(&["Draw", "Gradient..."]).alias(&["gd"]).params("{points? | handles?, color1?, color2?, angle?}").interactive(|s| Ok(Box::new(HatchM::new(s, true)))),
         CommandSpec::new("boundary", "Boundary...", run_boundary).menu(&["Draw", "Boundary..."]).alias(&["bo", "bpoly"]).params("{points: [[x,y]]}").interactive(|_| Ok(Box::new(BoundaryM { region: false }))),
         CommandSpec::new("region", "Region", run_region).menu(&["Draw", "Region"]).alias(&["reg"]).params("{handles?}"),
-        CommandSpec::new("hatchedit", "Hatch Edit", run_hatchedit).menu(&["Modify", "Object", "Hatch..."]).alias(&["he"]).params("{handles?, pattern?, scale?, angle?}"),
+        CommandSpec::new("hatchedit", "Hatch Edit", run_hatchedit).menu(&["Modify", "Object", "Hatch..."]).alias(&["he", "-hatchedit"]).params("{handles?, pattern?, scale?, angle? (degrees), origin?: [x,y]}").interactive(|_| Ok(Box::new(HatchEditM::default()))),
     ]
 }
 
@@ -134,6 +134,8 @@ struct HatchSettings {
     angle: f64,
     gradient: Option<Gradient>,
     associative: bool,
+    /// Pattern origin (HPORIGIN): where the pattern lines start.
+    origin: Vec2,
 }
 
 impl HatchSettings {
@@ -157,6 +159,12 @@ impl HatchSettings {
             angle: p.get("angle").and_then(Value::as_f64).map(f64::to_radians).unwrap_or(hdr.2),
             gradient: g,
             associative: bool_or(p, "associative", true),
+            origin: point_param(p, "origin")
+                .or_else(|| s.doc().ok().and_then(|d| match d.header.get("HPORIGIN") {
+                    Some(cadcraft_doc::HVal::Point(o)) => Some(o.xy()),
+                    _ => None,
+                }))
+                .unwrap_or(Vec2::ZERO),
         }
     }
     fn hatch(&self, loops: Vec<HatchLoop>) -> EntityKind {
@@ -171,7 +179,7 @@ impl HatchSettings {
             style: 0,
             elevation: 0.0,
             gradient: self.gradient.clone(),
-            origin: Vec2::ZERO,
+            origin: self.origin,
             background: None,
         })
     }
@@ -255,6 +263,9 @@ fn run_hatchedit(s: &mut Session, p: &Value) -> Result<Value> {
     s.execute("properties.set", &q)
 }
 
+/// HATCH `Origin` (set origin): where the pattern starts.
+const ORIGIN_PROMPT: &str = "Specify new origin";
+
 struct HatchM {
     gradient: bool,
     settings: HatchSettings,
@@ -284,15 +295,33 @@ impl Interactive for HatchM {
     }
     fn prompt(&self, _s: &Session) -> Prompt {
         if let Some(a) = self.asking {
+            if a == ORIGIN_PROMPT {
+                return Prompt::new(a, Accept::POINT);
+            }
             return Prompt::new(a, Accept::TEXT);
         }
         if self.selecting {
             return Prompt::new("Select objects", Accept::SELECT);
         }
-        Prompt::new("Pick internal point", Accept::POINT).kw(&["Select objects", "Undo", "seTtings", "Pattern", "sCale", "Angle"])
+        Prompt::new("Pick internal point", Accept::POINT).kw(&["Select objects", "Undo", "seTtings", "Pattern", "sCale", "Angle", "Origin"])
     }
     fn input(&mut self, s: &mut Session, i: Input) -> Result<Step> {
         if let Some(a) = self.asking.take() {
+            if a == ORIGIN_PROMPT {
+                let o = match &i {
+                    Input::Point(p) => Some(*p),
+                    Input::Text(t) => crate::prompt::parse_point(t, s.last_point),
+                    _ => None,
+                };
+                match o {
+                    Some(o) => {
+                        self.settings.origin = o;
+                        s.doc_mut()?.header.set("HPORIGIN", cadcraft_doc::HVal::Point(cadcraft_geom::Vec3::new(o.x, o.y, 0.0)));
+                    }
+                    None => self.asking = Some(ORIGIN_PROMPT),
+                }
+                return Ok(Step::Continue);
+            }
             if let Input::Text(t) | Input::Keyword(t) = &i {
                 match a {
                     "Enter a pattern name" => {
@@ -353,6 +382,7 @@ impl Interactive for HatchM {
                     }
                     "Pattern" | "seTtings" => self.asking = Some("Enter a pattern name"),
                     "sCale" => self.asking = Some("Specify a scale for the hatch pattern"),
+                    "Origin" => self.asking = Some(ORIGIN_PROMPT),
                     _ => self.asking = Some("Specify an angle for the hatch pattern"),
                 }
                 Ok(Step::Continue)
@@ -400,6 +430,114 @@ impl Interactive for BoundaryM {
                 Ok(Step::Continue)
             }
             Input::Enter => Ok(Step::Done),
+            _ => Ok(Step::Continue),
+        }
+    }
+}
+
+/// HATCHEDIT at the command line: pick a hatch, then change its pattern, scale, angle or origin.
+#[derive(Default)]
+struct HatchEditM {
+    hatch: Option<Handle>,
+    asking: Option<&'static str>,
+}
+
+impl HatchEditM {
+    fn set(&self, s: &mut Session, key: &str, v: Value) -> Result<()> {
+        let Some(h) = self.hatch else { return Ok(()) };
+        let spec = find_command("properties.set").ok_or_else(|| EngineError::UnknownCommand("properties.set".into()))?;
+        let mut p = serde_json::Map::new();
+        p.insert("handles".into(), json!([h.hex()]));
+        p.insert(key.into(), v);
+        (spec.run)(s, &Value::Object(p))?;
+        Ok(())
+    }
+}
+
+impl Interactive for HatchEditM {
+    fn name(&self) -> &'static str {
+        "HATCHEDIT"
+    }
+    fn begin(&mut self, s: &mut Session) -> Result<Step> {
+        let pre = s.selection();
+        if let [h] = pre.as_slice()
+            && s.doc()?.entity(*h).is_some_and(|e| matches!(e.kind, EntityKind::Hatch(_)))
+        {
+            self.hatch = Some(*h);
+        }
+        Ok(Step::Continue)
+    }
+    fn prompt(&self, _s: &Session) -> Prompt {
+        match (self.hatch, self.asking) {
+            (None, _) => Prompt::new("Select hatch object", Accept::POINT),
+            (Some(_), Some(a)) if a == ORIGIN_PROMPT => Prompt::new(a, Accept::POINT),
+            (Some(_), Some(a)) => Prompt::new(a, Accept::TEXT),
+            (Some(_), None) => Prompt::new("Enter hatch option", Accept::TEXT).kw(&["Pattern", "sCale", "Angle", "Origin"]),
+        }
+    }
+    fn input(&mut self, s: &mut Session, i: Input) -> Result<Step> {
+        if self.hatch.is_none() {
+            return match i {
+                Input::Point(p) => {
+                    let ap = s.pixel_size() * s.settings.pickbox.max(1.0) * 1.5;
+                    let space = s.space();
+                    let h = crate::select::pick(s.doc()?, &space, p, ap);
+                    match h.filter(|h| s.doc().ok().and_then(|d| d.entity(*h)).is_some_and(|e| matches!(e.kind, EntityKind::Hatch(_)))) {
+                        Some(h) => {
+                            self.hatch = Some(h);
+                            s.set_selection(vec![h]);
+                        }
+                        None => s.echo("Not a hatch."),
+                    }
+                    Ok(Step::Continue)
+                }
+                Input::Enter | Input::Cancel => Ok(Step::Cancel),
+                _ => Ok(Step::Continue),
+            };
+        }
+        if let Some(a) = self.asking.take() {
+            match (a, i) {
+                (ORIGIN_PROMPT, Input::Point(p)) => self.set(s, "origin", json!([p.x, p.y]))?,
+                (ORIGIN_PROMPT, Input::Text(t)) => match crate::prompt::parse_point(&t, s.last_point) {
+                    Some(p) => self.set(s, "origin", json!([p.x, p.y]))?,
+                    None => s.echo("Invalid point."),
+                },
+                ("Enter a pattern name", Input::Text(t) | Input::Keyword(t)) => {
+                    let up = t.trim().to_ascii_uppercase();
+                    if cadcraft_doc::library::pattern(&up).is_some() {
+                        self.set(s, "pattern", json!(up))?;
+                    } else {
+                        s.echo(format!("Unknown pattern {up}."));
+                    }
+                }
+                ("Specify a scale for the hatch pattern", Input::Text(t)) => match super::machines::number(&t).filter(|v| *v > 0.0) {
+                    Some(v) => self.set(s, "scale", json!(v))?,
+                    None => s.echo("Requires a positive number."),
+                },
+                (_, Input::Text(t)) => match crate::units::parse_angle(&t) {
+                    Some(a) => self.set(s, "angle", json!(a.to_degrees()))?,
+                    None => s.echo("Requires an angle."),
+                },
+                _ => {}
+            }
+            return Ok(Step::Continue);
+        }
+        match i {
+            Input::Keyword(k) | Input::Text(k) => {
+                self.asking = match k.trim().to_ascii_lowercase().as_str() {
+                    "pattern" | "p" => Some("Enter a pattern name"),
+                    "scale" | "c" => Some("Specify a scale for the hatch pattern"),
+                    "angle" | "a" => Some("Specify an angle for the hatch pattern"),
+                    "origin" | "o" => Some(ORIGIN_PROMPT),
+                    _ => {
+                        s.echo("Invalid option keyword.");
+                        None
+                    }
+                };
+                Ok(Step::Continue)
+            }
+            Input::Enter => Ok(Step::Done),
+            Input::Cancel => Ok(Step::Cancel),
             _ => Ok(Step::Continue),
         }
     }

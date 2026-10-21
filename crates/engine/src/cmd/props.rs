@@ -278,6 +278,9 @@ fn run_set(s: &mut Session, p: &Value) -> Result<Value> {
                     if let Some(x) = num("angle") {
                         h.angle = x.to_radians();
                     }
+                    if let Some(o) = point_param(p, "origin") {
+                        h.origin = o;
+                    }
                 }
                 _ => {}
             }
@@ -294,6 +297,9 @@ fn run_matchprop(s: &mut Session, p: &Value) -> Result<Value> {
         .and_then(Value::as_array)
         .map(|a| a.iter().filter_map(|v| v.as_str().and_then(cadcraft_doc::Handle::parse_hex)).collect())
         .unwrap_or_default();
+    if tg.is_empty() {
+        return Err(bad("matchprop", "`targets` is required"));
+    }
     let d = s.doc_mut()?;
     let c = d.entity(src).map(|e| e.common.clone()).ok_or_else(|| bad("matchprop", "no such source"))?;
     for h in &tg {

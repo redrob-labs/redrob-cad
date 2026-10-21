@@ -316,11 +316,8 @@ fn layers_section(app: &mut CadApp, ui: &mut egui::Ui) {
         }
     });
     if let Some(c) = cmd {
-        if c.starts_with("ui.") {
-            app.start(c);
-        } else {
-            let _ = app.run(c, json!({}));
-        }
+        // Started like a typed command: tools that need objects ask for them.
+        app.start(c);
     }
     ui.add_space(4.0);
     // Current layer combo.

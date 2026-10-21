@@ -67,6 +67,24 @@ pub fn run_ui_command(app: &mut CadApp, id: &str, params: &Value) -> Option<Resu
             Ok(Value::Null)
         }
         "qsave" if no_path && app.session.state().is_ok_and(|s| s.path.is_none()) => return run_ui_command(app, "ui.saveas", &Value::Null),
+        // Ctrl+P / PLOT: ask where to write the PDF (AutoCAD PDF to a file), then plot.
+        "plot" | "exportpdf" if no_path && app.services.pick_save.is_some() => {
+            let base = app.session.state().map(|s| s.title.clone()).unwrap_or_else(|_| "Drawing".into());
+            let stem = base.rsplit_once('.').map(|(a, _)| a.to_string()).unwrap_or(base);
+            let mut q = if params.is_object() { params.clone() } else { json!({}) };
+            if let Some(p) = app.services.pick_save.as_ref().and_then(|f| f(&format!("{stem}.pdf"))) {
+                if let Some(o) = q.as_object_mut() {
+                    o.insert("path".into(), json!(p));
+                }
+                let r = app.session.execute(id, &q).map_err(|e| e.to_string());
+                match &r {
+                    Ok(v) => app.session.echo(format!("Plotted to {}", v.get("path").and_then(Value::as_str).unwrap_or(""))),
+                    Err(e) => app.session.echo(e.clone()),
+                }
+                return Some(r);
+            }
+            Ok(Value::Null)
+        }
         "ui.sample" => {
             let d = cadcraft_engine::sample::default_sample();
             app.session.open_drawing(d, "Bracket", None);
@@ -287,6 +305,7 @@ pub fn shortcuts(app: &mut CadApp, ctx: &egui::Context) {
         (sc(cmd, Key::Z), "undo"),
         (sc(cmd, Key::Y), "redo"),
         (sc(cmd, Key::N), "new"),
+        (sc(cmd, Key::P), "plot"),
         (sc(cmd, Key::O), "ui.open"),
         (sc(cmd_shift, Key::S), "ui.saveas"),
         (sc(cmd, Key::S), "qsave"),

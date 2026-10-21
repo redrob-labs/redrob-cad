@@ -72,12 +72,18 @@ fn copy_to_clip(s: &mut Session, hs: &[Handle], base: Option<Vec2>) -> Result<us
 
 fn run_copyclip(s: &mut Session, p: &Value) -> Result<Value> {
     let hs = targets(s, p)?;
+    if hs.is_empty() {
+        return Err(bad("copyclip", "nothing selected"));
+    }
     let n = copy_to_clip(s, &hs, None)?;
     Ok(json!({ "copied": n }))
 }
 
 fn run_copybase(s: &mut Session, p: &Value) -> Result<Value> {
     let hs = targets(s, p)?;
+    if hs.is_empty() {
+        return Err(bad("copybase", "nothing selected"));
+    }
     let base = point_param(p, "base");
     let n = copy_to_clip(s, &hs, base)?;
     Ok(json!({ "copied": n }))
@@ -85,6 +91,9 @@ fn run_copybase(s: &mut Session, p: &Value) -> Result<Value> {
 
 fn run_cut(s: &mut Session, p: &Value) -> Result<Value> {
     let hs = targets(s, p)?;
+    if hs.is_empty() {
+        return Err(bad("cutclip", "nothing selected"));
+    }
     let n = copy_to_clip(s, &hs, None)?;
     let d = s.doc_mut()?;
     for h in &hs {

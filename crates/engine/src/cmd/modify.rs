@@ -79,6 +79,18 @@ pub fn specs() -> Vec<CommandSpec> {
             .alias(&["x"])
             .params("{handles?}")
             .interactive(|_| Ok(Box::new(SelectThen::new(Op::Explode)))),
+        CommandSpec::new("array", "Array", |s, p| {
+            let id = match str_param(p, "type").unwrap_or("rectangular").to_ascii_lowercase().as_str() {
+                "polar" | "po" => "arraypolar",
+                "path" | "pa" => "arraypath",
+                _ => "arrayrect",
+            };
+            let spec = find_command(id).ok_or_else(|| EngineError::UnknownCommand(id.into()))?;
+            (spec.run)(s, p)
+        })
+        .alias(&["ar"])
+        .params("{type?: rectangular|polar|path, ...the chosen array command's params}")
+        .interactive(|_| Ok(Box::new(ArrayM::default()))),
         CommandSpec::new("arrayrect", "Rectangular Array", run_arrayrect)
             .menu(&["Modify", "Array", "Rectangular Array"])
             .params("{handles?, rows, cols, rowSpacing, colSpacing}")
@@ -1207,6 +1219,33 @@ pub(crate) fn join(s: &mut Session, hs: &[Handle]) -> Result<Option<Handle>> {
     if chain.len() < 2 {
         return Err(EngineError::Other("Objects are not connected.".into()));
     }
+    // Collinear lines join into one line, as in AutoCAD (not a polyline).
+    if let (Some(first), Some(last)) = (chain.first(), chain.last())
+        && chain.iter().all(|sg| matches!(sg, Segment::Line(_)))
+        && !first.start().near(last.end(), tol)
+    {
+        let (a, b) = (first.start(), last.end());
+        let dir = b - a;
+        let len = dir.len();
+        let collinear = len > tol
+            && chain.iter().all(|sg| {
+                let (p, q) = (sg.start() - a, sg.end() - a);
+                (dir.x * p.y - dir.y * p.x).abs() / len < tol && (dir.x * q.y - dir.y * q.x).abs() / len < tol
+            });
+        if collinear {
+            let space = s.space();
+            let doc = s.doc_mut()?;
+            for h in hs {
+                doc.remove_entity(*h);
+            }
+            let nh = doc.new_handle();
+            if let Some(st) = doc.space_mut(&space) {
+                st.push(Entity { handle: nh, common: common.unwrap_or_default(), kind: line(a, b) });
+            }
+            s.set_selection(Vec::new());
+            return Ok(Some(nh));
+        }
+    }
     let closed = chain.first().zip(chain.last()).is_some_and(|(a, b)| a.start().near(b.end(), tol));
     let mut vs: Vec<PolyVertex> = chain
         .iter()
@@ -1283,6 +1322,12 @@ struct SelectThen {
     objs: Vec<Handle>,
     pts: Vec<Vec2>,
     reference: bool,
+    /// Reference length (SCALE) or angle in radians (ROTATE), once given.
+    ref_val: Option<f64>,
+    /// First of two points that measure the reference.
+    ref_pt: Option<Vec2>,
+    /// STRETCH: still at "Select objects:" after the crossing window.
+    stretch_more: bool,
     copy_mode: bool,
     window: Option<cadcraft_geom::Bounds2>,
     ask_erase: bool,
@@ -1296,10 +1341,63 @@ impl SelectThen {
             objs: Vec::new(),
             pts: Vec::new(),
             reference: false,
+            ref_val: None,
+            ref_pt: None,
+            stretch_more: false,
             copy_mode: false,
             window: None,
             ask_erase: false,
         }
+    }
+    /// ROTATE/SCALE `Reference`: a reference value (typed, or measured by two points), then the
+    /// new value (typed, or measured from the base point). Applies new/ref (scale) or new-ref (angle).
+    fn reference_input(&mut self, s: &mut Session, i: Input) -> Result<Step> {
+        let base = self.pts[0];
+        let rotate = self.op == Op::Rotate;
+        let typed = |t: &str| if rotate { crate::units::parse_angle(t) } else { number(t) };
+        let value = match (self.ref_val, i) {
+            (None, Input::Enter) => Some(if rotate { 0.0 } else { 1.0 }),
+            (None, Input::Text(t)) => Some(typed(&t).ok_or_else(|| EngineError::Other("Requires a number or two points.".into()))?),
+            (None, Input::Point(p)) => match self.ref_pt {
+                None => {
+                    self.ref_pt = Some(p);
+                    return Ok(Step::Continue);
+                }
+                Some(a) => Some(if rotate { a.angle_to(p) } else { a.dist(p) }),
+            },
+            (Some(_), Input::Text(t)) => {
+                let new = typed(&t).ok_or_else(|| EngineError::Other("Requires a number or point.".into()))?;
+                return self.apply_reference(s, new);
+            }
+            (Some(_), Input::Point(p)) => {
+                let new = if rotate { base.angle_to(p) } else { base.dist(p) };
+                return self.apply_reference(s, new);
+            }
+            _ => None,
+        };
+        if let Some(v) = value {
+            if !rotate && v.abs() < 1e-12 {
+                return Err(EngineError::Other("Value must be positive and nonzero.".into()));
+            }
+            self.ref_val = Some(v);
+        }
+        Ok(Step::Continue)
+    }
+    fn apply_reference(&mut self, s: &mut Session, new: f64) -> Result<Step> {
+        let base = self.pts[0];
+        let r = self.ref_val.unwrap_or(if self.op == Op::Rotate { 0.0 } else { 1.0 });
+        let m = if self.op == Op::Rotate {
+            Mat3::rotate_about(base, new - r)
+        } else {
+            let f = new / r;
+            if !f.is_finite() || f <= 1e-12 {
+                return Err(EngineError::Other("Value must be positive and nonzero.".into()));
+            }
+            Mat3::scale_about(base, f)
+        };
+        transform_entities(s, &self.objs, &m, self.copy_mode)?;
+        s.set_selection(Vec::new());
+        Ok(Step::Done)
     }
     fn apply(&mut self, s: &mut Session) -> Result<Step> {
         // Immediate operations once selection is done.
@@ -1315,7 +1413,11 @@ impl SelectThen {
             }
             Op::Join => {
                 match join(s, &self.objs) {
-                    Ok(_) => s.echo(format!("{} objects joined into 1 polyline", self.objs.len())),
+                    Ok(Some(h)) => {
+                        let kind = s.doc().ok().and_then(|d| d.entity(h)).map(|e| if matches!(e.kind, EntityKind::Line(_)) { "line" } else { "polyline" });
+                        s.echo(format!("{} objects joined into 1 {}", self.objs.len(), kind.unwrap_or("polyline")));
+                    }
+                    Ok(None) => {}
                     Err(e) => s.echo(e.to_string()),
                 }
                 Ok(Step::Done)
@@ -1383,8 +1485,19 @@ impl Interactive for SelectThen {
         if self.ask_erase {
             return Prompt::new("Erase source objects?", Accept::TEXT).kw(&["Yes", "No"]).default("No");
         }
+        if self.op == Op::Stretch && self.stretch_more {
+            return Prompt::new("Select objects", Accept::POINT);
+        }
         let n = self.pts.len();
         let base = self.pts.first().copied();
+        if self.reference && n == 1 {
+            return match (self.op, self.ref_val) {
+                (Op::Rotate, None) => Prompt::new("Specify the reference angle", Accept::POINT_OR_NUMBER).default("0").base_opt(self.ref_pt),
+                (Op::Rotate, Some(_)) => Prompt::new("Specify the new angle", Accept::POINT_OR_NUMBER).base_opt(base),
+                (_, None) => Prompt::new("Specify reference length", Accept::POINT_OR_NUMBER).default("1.0000").base_opt(self.ref_pt),
+                (_, Some(_)) => Prompt::new("Specify new length", Accept::POINT_OR_NUMBER).base_opt(base),
+            };
+        }
         let pts_from = if self.op == Op::Stretch { 2 } else { 0 };
         let k = n.saturating_sub(pts_from);
         let bp = if self.op == Op::Stretch { self.pts.get(2).copied() } else { base };
@@ -1417,6 +1530,7 @@ impl Interactive for SelectThen {
                     if self.objs.is_empty() {
                         return Ok(Step::Done);
                     }
+                    self.stretch_more = true;
                 }
             }
             return Ok(Step::Continue);
@@ -1440,6 +1554,16 @@ impl Interactive for SelectThen {
         }
         let off = if self.op == Op::Stretch { 2 } else { 0 };
         let k = self.pts.len() - off;
+        if self.op == Op::Stretch && self.stretch_more {
+            // "Select objects:" after the crossing window; Enter goes on to the base point.
+            if matches!(i, Input::Enter) {
+                self.stretch_more = false;
+            }
+            return Ok(Step::Continue);
+        }
+        if self.reference && k == 1 && matches!(self.op, Op::Rotate | Op::Scale) {
+            return self.reference_input(s, i);
+        }
         match (self.op, k, i) {
             (_, _, Input::Keyword(kw)) if kw == "Copy" => {
                 self.copy_mode = true;
@@ -1448,7 +1572,8 @@ impl Interactive for SelectThen {
             }
             (_, _, Input::Keyword(kw)) if kw == "Reference" => {
                 self.reference = true;
-                s.echo("Reference: not available yet; enter a value.");
+                self.ref_val = None;
+                self.ref_pt = None;
                 Ok(Step::Continue)
             }
             (Op::Copy, _, Input::Keyword(kw)) if kw == "Exit" => {
@@ -1870,6 +1995,8 @@ impl Interactive for FilletM {
 #[derive(Default)]
 struct BreakM {
     obj: Option<(Handle, Vec2)>,
+    /// `F` typed: the next point replaces the first break point.
+    asking_first: bool,
 }
 
 impl Interactive for BreakM {
@@ -1879,6 +2006,7 @@ impl Interactive for BreakM {
     fn prompt(&self, _s: &Session) -> Prompt {
         match self.obj {
             None => Prompt::new("Select object", Accept::POINT),
+            Some(_) if self.asking_first => Prompt::new("Specify first break point", Accept::POINT),
             Some(_) => Prompt::new("Specify second break point", Accept::POINT).kw(&["First point"]),
         }
     }
@@ -1896,10 +2024,19 @@ impl Interactive for BreakM {
                 }
                 Ok(Step::Continue)
             }
+            (Some((h, _)), Input::Point(p1)) if self.asking_first => {
+                self.obj = Some((h, p1));
+                self.asking_first = false;
+                Ok(Step::Continue)
+            }
             (Some((h, p1)), Input::Point(p2)) => {
                 break_entity(s, h, p1, p2)?;
                 s.set_selection(Vec::new());
                 Ok(Step::Done)
+            }
+            (Some(_), Input::Keyword(k) | Input::Text(k)) if k.trim().eq_ignore_ascii_case("f") || k.trim().eq_ignore_ascii_case("first point") || k.trim().eq_ignore_ascii_case("first") => {
+                self.asking_first = true;
+                Ok(Step::Continue)
             }
             (_, Input::Enter) => Ok(Step::Done),
             _ => Ok(Step::Continue),
@@ -1908,3 +2045,80 @@ impl Interactive for BreakM {
 }
 
 pub(crate) fn _unused(_: Circle) {}
+
+/// ARRAY (classic AR): select objects, pick Rectangular / PAth / POlar, then the chosen array
+/// command runs on that selection.
+#[derive(Default)]
+pub(crate) struct ArrayM {
+    sel: SelectPhase,
+    objs: Vec<Handle>,
+    picked: bool,
+    inner: Option<Box<dyn Interactive>>,
+}
+
+impl ArrayM {
+    fn choose(&mut self, s: &mut Session, kind: &str) -> Result<Step> {
+        let k = kind.trim().to_ascii_lowercase();
+        let id = match k.as_str() {
+            "" | "r" | "rectangular" => "arrayrect",
+            "pa" | "path" => "arraypath",
+            "po" | "polar" => "arraypolar",
+            _ => {
+                s.echo("Invalid option keyword.");
+                return Ok(Step::Continue);
+            }
+        };
+        let factory = super::find_command(id).and_then(|c| c.interactive).ok_or_else(|| EngineError::UnknownCommand(id.into()))?;
+        s.set_selection(self.objs.clone());
+        let mut m = factory(s)?;
+        let step = m.begin(s)?;
+        self.inner = Some(m);
+        Ok(step)
+    }
+}
+
+impl Interactive for ArrayM {
+    fn name(&self) -> &'static str {
+        "ARRAY"
+    }
+    fn begin(&mut self, s: &mut Session) -> Result<Step> {
+        self.sel = SelectPhase::begin(s);
+        if self.sel.done {
+            self.objs = self.sel.picked.clone();
+            self.picked = true;
+        }
+        Ok(Step::Continue)
+    }
+    fn prompt(&self, s: &Session) -> Prompt {
+        match &self.inner {
+            Some(m) => m.prompt(s),
+            None if !self.picked => self.sel.prompt(),
+            None => Prompt::new("Enter array type", Accept::TEXT).kw(&["Rectangular", "PAth", "POlar"]).default("Rectangular"),
+        }
+    }
+    fn input(&mut self, s: &mut Session, i: Input) -> Result<Step> {
+        if let Some(m) = self.inner.as_mut() {
+            return m.input(s, i);
+        }
+        if !self.picked {
+            return match self.sel.feed(s, &i)? {
+                SelOutcome::More => Ok(Step::Continue),
+                SelOutcome::Empty => Ok(Step::Done),
+                SelOutcome::Done(hs) => {
+                    self.objs = hs;
+                    self.picked = true;
+                    Ok(Step::Continue)
+                }
+            };
+        }
+        match i {
+            Input::Keyword(k) | Input::Text(k) => self.choose(s, &k),
+            Input::Enter => self.choose(s, ""),
+            Input::Cancel => Ok(Step::Cancel),
+            _ => Ok(Step::Continue),
+        }
+    }
+    fn preview(&self, s: &Session, cursor: Vec2) -> Vec<EntityKind> {
+        self.inner.as_ref().map(|m| m.preview(s, cursor)).unwrap_or_default()
+    }
+}

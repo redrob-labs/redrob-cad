@@ -303,6 +303,9 @@ pub struct Session {
     pub clipboard: Vec<Entity>,
     pub clipboard_base: Vec2,
     pub pending_window: Option<PendingWindow>,
+    /// `W` or `C` typed at "Select objects:": the next two points make a window
+    /// (`Some(false)`) or crossing (`Some(true)`) box, whatever their order.
+    pub window_mode: Option<bool>,
     pub untitled_counter: u32,
     /// The last dimension created (DIMCONTINUE / DIMBASELINE).
     pub last_dim: Option<Handle>,
@@ -335,6 +338,7 @@ impl Session {
             clipboard: Vec::new(),
             clipboard_base: Vec2::ZERO,
             pending_window: None,
+            window_mode: None,
             untitled_counter: 0,
             last_dim: None,
         }
@@ -495,7 +499,24 @@ impl Session {
         };
         let lower = name.trim_start_matches(['_', '.', '-']).to_ascii_lowercase();
         let id = cmd::resolve_alias(&lower);
-        let spec = find_command(&id).ok_or_else(|| EngineError::UnknownCommand(name.to_string()))?;
+        let Some(spec) = find_command(&id) else {
+            // A system variable typed as a command: "DIMSCALE" -> "Enter new value for DIMSCALE <1.0000>:".
+            if let Some(var) = cmd::ask::sysvar_name(self, &lower)
+                && self.state().is_ok()
+            {
+                if self.running.is_some() {
+                    self.cancel();
+                }
+                let st = self.state()?;
+                let before = st.doc.clone();
+                let selection_before = st.selection.clone();
+                self.echo(format!("Command: {var}"));
+                self.running = Some(Running { id: "setvar".to_string(), machine: Box::new(cmd::ask::SysvarM::new(var)), before, selection_before });
+                self.pending_window = None;
+                return self.feed(None);
+            }
+            return Err(EngineError::UnknownCommand(name.to_string()));
+        };
         if transparent && spec.transparent && self.running.is_some() {
             // Transparent commands (zoom, pan…) run without cancelling the active one.
             if spec.interactive.is_none() {
@@ -522,7 +543,28 @@ impl Session {
                 Ok(())
             }
             None => {
-                let r = self.execute(spec.id, &Value::Null)?;
+                let r = match self.execute(spec.id, &Value::Null) {
+                    Ok(r) => r,
+                    // Typed with nothing: ask for what is missing instead of failing (AutoCAD asks).
+                    Err(e @ EngineError::BadParams { .. }) => {
+                        return match cmd::ask::AskM::for_error(spec.id, &e) {
+                            Some(machine) => {
+                                let st = self.state()?;
+                                let before = st.doc.clone();
+                                let selection_before = st.selection.clone();
+                                self.running = Some(Running { id: spec.id.to_string(), machine: Box::new(machine), before, selection_before });
+                                self.pending_window = None;
+                                self.feed(None)
+                            }
+                            // A plain message ("No isolated layers."), not a parameter error.
+                            None => {
+                                self.echo(cmd::ask::plain(&e));
+                                Ok(())
+                            }
+                        };
+                    }
+                    Err(e) => return Err(e),
+                };
                 if let Some(s) = r.as_str() {
                     self.echo(s.to_string());
                 } else if !r.is_null()
@@ -564,9 +606,14 @@ impl Session {
             Input::Point(p) => {
                 let ap = self.pixel_size() * self.settings.pickbox.max(1.0) * 1.5;
                 if let Some(pw) = self.pending_window.take() {
-                    let crossing = p.x < pw.corner.x;
+                    let crossing = self.window_mode.take().unwrap_or(p.x < pw.corner.x);
                     let hs = select::select_window(self.doc()?, &space, Bounds2::new(pw.corner, p), crossing);
                     return Ok(Some(Input::Pick(hs)));
+                }
+                if self.window_mode.is_some() {
+                    // After `W`/`C` the first point is a box corner, never a pick.
+                    self.pending_window = Some(PendingWindow { corner: p, during_command: true });
+                    return Ok(None);
                 }
                 match select::pick(self.doc()?, &space, p, ap) {
                     Some(h) => Ok(Some(Input::Pick(vec![h]))),
@@ -578,6 +625,19 @@ impl Session {
             }
             Input::Text(t) | Input::Keyword(t) => {
                 let tl = t.trim().to_ascii_lowercase();
+                match tl.as_str() {
+                    "w" | "window" => {
+                        self.window_mode = Some(false);
+                        self.pending_window = None;
+                        return Ok(None);
+                    }
+                    "c" | "crossing" => {
+                        self.window_mode = Some(true);
+                        self.pending_window = None;
+                        return Ok(None);
+                    }
+                    _ => {}
+                }
                 let d = self.doc()?;
                 let store = d.space(&space);
                 let picked = match tl.as_str() {
@@ -593,6 +653,7 @@ impl Session {
             }
             Input::Cancel => {
                 self.pending_window = None;
+                self.window_mode = None;
                 Ok(Some(Input::Cancel))
             }
             other => Ok(Some(other)),

@@ -32,7 +32,15 @@ pub fn specs() -> Vec<CommandSpec> {
             .menu(&["Modify", "Object", "Attribute", "Single..."])
             .alias(&["ate", "eattedit"])
             .params("{handle, values: {TAG: value}}"),
-        CommandSpec::new("wblock", "Write Block", run_wblock).alias(&["w"]).params("{path, name? | handles?, base?}"),
+        CommandSpec::new("wblock", "Write Block", run_wblock)
+            .alias(&["w", "-wblock"])
+            .params("{path, name? | handles?, base?}")
+            .interactive(|_| Ok(Box::new(WblockM::default()))),
+        CommandSpec::new("xattach", "Attach Reference...", run_xattach)
+            .menu(&["Insert", "DWG Reference..."])
+            .alias(&["xa", "xref", "xr"])
+            .params("{path, at: [x,y], scale?, rotation? (degrees)}")
+            .interactive(|_| Ok(Box::new(XattachM::default()))),
         CommandSpec::new("base", "Base", run_base).menu(&["Draw", "Block", "Base"]).params("{at: [x,y]}"),
         CommandSpec::new("purge", "Purge", run_purge).alias(&["pu", "-purge"]).params("{} (unused blocks, layers, linetypes, styles)"),
         CommandSpec::new("blocks.list", "List Blocks", run_list).enabled(has_doc).noundo(),
@@ -122,7 +130,16 @@ fn run_block(s: &mut Session, p: &Value) -> Result<Value> {
 }
 
 fn run_insert(s: &mut Session, p: &Value) -> Result<Value> {
-    let name = str_param(p, "name").ok_or_else(|| bad("insert", "`name` is required"))?.to_string();
+    // A drawing file (e.g. one written by WBLOCK) inserts as a block named after the file.
+    let from_file = match (str_param(p, "name"), str_param(p, "path")) {
+        (None, Some(path)) => Some(block_from_file(s, path, false)?),
+        (Some(n), _) if s.doc()?.block(n).is_none() && looks_like_file(n) => Some(block_from_file(s, n, false)?),
+        _ => None,
+    };
+    let name = match from_file {
+        Some(n) => n,
+        None => str_param(p, "name").ok_or_else(|| bad("insert", "`name` is required"))?.to_string(),
+    };
     let at = point_req("insert", p, "at")?;
     let scale = f64_or(p, "scale", 1.0);
     if scale == 0.0 {
@@ -423,6 +440,17 @@ impl Interactive for InsertM {
                     s.echo(format!("Defined blocks: {}", names.join(", ")));
                     return Ok(Step::Continue);
                 }
+                let n = if s.doc()?.block(&n).is_none() && looks_like_file(&n) {
+                    match block_from_file(s, &n, false) {
+                        Ok(name) => name,
+                        Err(e) => {
+                            s.echo(super::ask::plain(&e));
+                            return Ok(Step::Continue);
+                        }
+                    }
+                } else {
+                    n
+                };
                 let Some(b) = s.doc()?.block(&n).cloned() else {
                     s.echo(format!("Block \"{n}\" not found."));
                     return Ok(Step::Continue);
@@ -540,5 +568,201 @@ impl Interactive for AttdefM {
             }
         }
         Ok(Step::Continue)
+    }
+}
+
+/// A typed block name that is really a drawing file: has a path separator or a drawing extension.
+pub(crate) fn looks_like_file(n: &str) -> bool {
+    let l = n.trim().to_ascii_lowercase();
+    l.contains('/') || l.contains('\\') || l.ends_with(".dxf") || l.ends_with(".dwg")
+}
+
+/// Read a drawing file and define a block from its model space, named after the file (reused when
+/// that block already came from the same file). With `xref`, the block remembers its path and is
+/// reloaded from the file next time instead of being reused. Returns the block name.
+pub(crate) fn block_from_file(s: &mut Session, path: &str, xref: bool) -> Result<String> {
+    let path = path.trim().trim_matches('"');
+    let stem = std::path::Path::new(path).file_stem().and_then(|f| f.to_str()).unwrap_or("").to_string();
+    if !valid_block_name(&stem) {
+        return Err(bad("insert", format!("cannot make a block name from `{path}`")));
+    }
+    if !xref
+        && let Some(b) = s.doc()?.block(&stem)
+    {
+        return Ok(b.name.clone());
+    }
+    #[cfg(target_arch = "wasm32")]
+    {
+        let _ = xref;
+        return Err(bad("insert", "files are not available on the web"))
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let bytes = std::fs::read(path).map_err(|e| bad("insert", format!("{path}: {e}")))?;
+        // Drawings are small next to memory; still, refuse something absurd.
+        if bytes.len() > 512 * 1024 * 1024 {
+            return Err(bad("insert", format!("{path}: file is too large")));
+        }
+        let hooks = super::file::io().ok_or_else(|| bad("insert", "file formats are not available in this build"))?;
+        let src = (hooks.read)(&bytes, path).map_err(|e| bad("insert", e))?;
+        let base = match src.header.get("INSBASE") {
+            Some(cadcraft_doc::HVal::Point(p)) => *p,
+            _ => Vec3::ZERO,
+        };
+        let doc = s.doc_mut()?;
+        for l in &src.layers {
+            if doc.layer(&l.name).is_none() {
+                doc.layers.push(l.clone());
+            }
+        }
+        for (k, b) in &src.blocks {
+            if !b.anonymous && !doc.blocks.contains_key(k) {
+                doc.blocks.insert(k.clone(), b.clone());
+            }
+        }
+        let mut b = Block::new(&stem);
+        b.base = base;
+        b.xref_path = xref.then(|| path.to_string());
+        for e in src.model.iter() {
+            let mut e = (**e).clone();
+            e.handle = doc.new_handle();
+            b.entities.push(e);
+        }
+        doc.blocks.insert(stem.clone(), Arc::new(b));
+        Ok(stem)
+    }
+}
+
+/// XATTACH / XREF: attach a drawing file as an external reference (a block that keeps its path).
+fn run_xattach(s: &mut Session, p: &Value) -> Result<Value> {
+    let path = str_param(p, "path").ok_or_else(|| bad("xattach", "`path` is required"))?.to_string();
+    let at = point_req("xattach", p, "at")?;
+    let scale = f64_or(p, "scale", 1.0);
+    if scale == 0.0 {
+        return Err(bad("xattach", "scale cannot be 0"));
+    }
+    let rot = f64_or(p, "rotation", 0.0).to_radians();
+    let name = block_from_file(s, &path, true)?;
+    let h = insert(s, &name, at, scale, rot, &serde_json::Map::new())?;
+    Ok(json!({ "handle": h.hex(), "block": name }))
+}
+
+/// File name with `.dxf` added when it has no extension.
+fn with_ext(t: &str) -> String {
+    let t = t.trim().trim_matches('"');
+    if std::path::Path::new(t).extension().is_some() { t.to_string() } else { format!("{t}.dxf") }
+}
+
+/// WBLOCK at the command line: file name, base point, objects.
+#[derive(Default)]
+struct WblockM {
+    path: Option<String>,
+    base: Option<Vec2>,
+    sel: SelectPhase,
+}
+
+impl Interactive for WblockM {
+    fn name(&self) -> &'static str {
+        "WBLOCK"
+    }
+    fn prompt(&self, _s: &Session) -> Prompt {
+        match (&self.path, self.base) {
+            (None, _) => Prompt::new("Enter file name", Accept::TEXT),
+            (Some(_), None) => Prompt::new("Specify insertion base point", Accept::POINT).default("0,0"),
+            _ => self.sel.prompt(),
+        }
+    }
+    fn input(&mut self, s: &mut Session, i: Input) -> Result<Step> {
+        if self.path.is_none() {
+            return match i {
+                Input::Text(t) | Input::Keyword(t) if !t.trim().is_empty() => {
+                    self.path = Some(with_ext(&t));
+                    Ok(Step::Continue)
+                }
+                Input::Cancel | Input::Enter => Ok(Step::Cancel),
+                _ => Ok(Step::Continue),
+            };
+        }
+        if self.base.is_none() {
+            return match i {
+                Input::Point(p) => {
+                    self.base = Some(p);
+                    self.sel = SelectPhase::begin(s);
+                    if self.sel.done {
+                        let hs = self.sel.picked.clone();
+                        return self.write(s, hs);
+                    }
+                    Ok(Step::Continue)
+                }
+                Input::Enter => {
+                    self.base = Some(Vec2::ZERO);
+                    Ok(Step::Continue)
+                }
+                Input::Cancel => Ok(Step::Cancel),
+                _ => Ok(Step::Continue),
+            };
+        }
+        match self.sel.feed(s, &i)? {
+            SelOutcome::More => Ok(Step::Continue),
+            SelOutcome::Empty => Ok(Step::Cancel),
+            SelOutcome::Done(hs) => self.write(s, hs),
+        }
+    }
+}
+
+impl WblockM {
+    fn write(&mut self, s: &mut Session, hs: Vec<Handle>) -> Result<Step> {
+        let path = self.path.clone().unwrap_or_default();
+        let base = self.base.unwrap_or(Vec2::ZERO);
+        let r = run_wblock(s, &json!({ "path": path, "base": [base.x, base.y], "handles": hs.iter().map(|h| h.hex()).collect::<Vec<_>>() }))?;
+        let n = r.get("entities").and_then(Value::as_u64).unwrap_or(0);
+        s.echo(format!("{n} objects written to {path}"));
+        s.set_selection(Vec::new());
+        Ok(Step::Done)
+    }
+}
+
+/// XATTACH at the command line: file name, insertion point, scale.
+#[derive(Default)]
+struct XattachM {
+    path: Option<String>,
+    at: Option<Vec2>,
+}
+
+impl Interactive for XattachM {
+    fn name(&self) -> &'static str {
+        "XATTACH"
+    }
+    fn prompt(&self, _s: &Session) -> Prompt {
+        match (&self.path, self.at) {
+            (None, _) => Prompt::new("Enter name of file to attach", Accept::TEXT),
+            (Some(_), None) => Prompt::new("Specify insertion point", Accept::POINT),
+            (Some(_), Some(a)) => Prompt::new("Enter scale factor", Accept::POINT_OR_NUMBER).default("1").base(a),
+        }
+    }
+    fn input(&mut self, s: &mut Session, i: Input) -> Result<Step> {
+        match (&self.path, self.at, i) {
+            (None, _, Input::Text(t) | Input::Keyword(t)) if !t.trim().is_empty() => {
+                self.path = Some(with_ext(&t));
+                Ok(Step::Continue)
+            }
+            (Some(_), None, Input::Point(p)) => {
+                self.at = Some(p);
+                Ok(Step::Continue)
+            }
+            (Some(path), Some(a), i) => {
+                let scale = match i {
+                    Input::Text(t) => number(&t).filter(|f| *f != 0.0).ok_or_else(|| EngineError::Other("Requires a nonzero number.".into()))?,
+                    Input::Point(p) => a.dist(p).max(1e-9),
+                    Input::Cancel => return Ok(Step::Cancel),
+                    _ => 1.0,
+                };
+                let path = path.clone();
+                run_xattach(s, &json!({ "path": path, "at": [a.x, a.y], "scale": scale }))?;
+                Ok(Step::Done)
+            }
+            (_, _, Input::Cancel | Input::Enter) => Ok(Step::Cancel),
+            _ => Ok(Step::Continue),
+        }
     }
 }
