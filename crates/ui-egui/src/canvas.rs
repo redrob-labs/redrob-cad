@@ -107,6 +107,8 @@ pub struct CanvasState {
     hover_at: Option<Pos2>,
     /// Constraint glyphs for the parametric overlay (cached per drawing revision).
     pub param: crate::parametric::Cache,
+    /// Raster image textures (IMAGEATTACH), by file path.
+    pub images: crate::raster::Cache,
 }
 
 fn color32(c: Rgb) -> Color32 {
@@ -632,6 +634,9 @@ pub fn show(app: &mut CadApp, ui: &mut egui::Ui) {
         }
     };
     let sel = app.session.selection();
+    // Raster images sit under the linework.
+    let ctx = ui.ctx().clone();
+    crate::raster::draw(app, &ctx, &painter, &xf_paper);
     if app.canvas.gpu.is_some() {
         draw_list_gpu(&mut app.canvas, &painter, &xf_paper, bg, app.session.settings.lwdisplay);
     } else if let Some(list) = &app.canvas.list {

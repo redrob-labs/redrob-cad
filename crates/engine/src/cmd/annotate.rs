@@ -69,7 +69,10 @@ pub fn specs() -> Vec<CommandSpec> {
             .alias(&["mld"])
             .params("{points: [[arrow], ..., [landing]], text}")
             .interactive(|_| Ok(Box::new(MLeaderM::default()))),
-        CommandSpec::new("leader", "Leader", run_leader).alias(&["lead"]).params("{points: [[x,y]...], text?}"),
+        CommandSpec::new("leader", "Leader", run_leader)
+            .alias(&["lead", "le", "qleader", "ql"])
+            .params("{points: [[x,y]...], text?}")
+            .interactive(|_| Ok(Box::new(LeaderM::default()))),
         CommandSpec::new("dimstyle.update", "Update", run_update).menu(&["Dimension", "Update"]).params("{handles?}"),
         CommandSpec::new("dimoverride", "Override", run_override)
             .menu(&["Dimension", "Override"])
@@ -1257,3 +1260,65 @@ impl Interactive for MLeaderM {
 #[cfg(test)]
 #[path = "annotate_tests.rs"]
 mod tests;
+
+/// LEADER / QLEADER: the arrow point, then more points until Enter, then the annotation text.
+#[derive(Default)]
+struct LeaderM {
+    pts: Vec<Vec2>,
+    /// Points done; now asking for the text.
+    text: bool,
+}
+
+impl LeaderM {
+    fn make(&self, s: &mut Session, text: Option<&str>) -> Result<Step> {
+        let pts: Vec<Value> = self.pts.iter().map(|p| json!([p.x, p.y])).collect();
+        let mut p = json!({ "points": pts });
+        if let (Some(t), Some(o)) = (text.filter(|t| !t.trim().is_empty()), p.as_object_mut()) {
+            o.insert("text".into(), json!(t));
+        }
+        run_leader(s, &p)?;
+        Ok(Step::Done)
+    }
+}
+
+impl Interactive for LeaderM {
+    fn name(&self) -> &'static str {
+        "LEADER"
+    }
+    fn prompt(&self, _s: &Session) -> Prompt {
+        match (self.text, self.pts.last()) {
+            (true, _) => Prompt::new("Enter first line of annotation text", Accept::TEXT),
+            (false, None) => Prompt::new("Specify first leader point", Accept::POINT),
+            (false, Some(p)) => Prompt::new("Specify next point", Accept::POINT).base(*p),
+        }
+    }
+    fn input(&mut self, s: &mut Session, i: Input) -> Result<Step> {
+        if self.text {
+            return match i {
+                Input::Text(t) | Input::Keyword(t) => self.make(s, Some(&t)),
+                Input::Enter => self.make(s, None),
+                Input::Cancel => Ok(Step::Cancel),
+                _ => Ok(Step::Continue),
+            };
+        }
+        match i {
+            Input::Point(p) => {
+                self.pts.push(p);
+                Ok(Step::Continue)
+            }
+            Input::Enter if self.pts.len() >= 2 => {
+                self.text = true;
+                Ok(Step::Continue)
+            }
+            Input::Enter => Ok(Step::Cancel),
+            Input::Cancel => Ok(Step::Cancel),
+            _ => Ok(Step::Continue),
+        }
+    }
+    fn preview(&self, _s: &Session, cursor: Vec2) -> Vec<EntityKind> {
+        match (self.text, self.pts.last()) {
+            (false, Some(p)) => vec![EntityKind::Line(cadcraft_doc::Line { a: v3(*p), b: v3(cursor) })],
+            _ => Vec::new(),
+        }
+    }
+}
