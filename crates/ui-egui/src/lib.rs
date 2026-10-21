@@ -62,6 +62,9 @@ pub struct UiState {
     pub palette_tab: u8,
     /// Plot dialog settings (paper, area, scale), kept between plots.
     pub plot: crate::styles::PlotSettings,
+    /// Drafting Settings tab: 0 Snap and Grid, 1 Object Snap, 2 Polar Tracking, 3 Dynamic Input,
+    /// 4 Quick Properties.
+    pub dsettings_tab: u8,
 }
 
 impl Default for UiState {
@@ -85,6 +88,7 @@ impl Default for UiState {
             history_lines: 3,
             palette_tab: 0,
             plot: crate::styles::PlotSettings::default(),
+            dsettings_tab: 1,
         }
     }
 }

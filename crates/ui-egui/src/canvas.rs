@@ -107,6 +107,8 @@ pub struct CanvasState {
     hover_at: Option<Pos2>,
     /// Constraint glyphs for the parametric overlay (cached per drawing revision).
     pub param: crate::parametric::Cache,
+    /// Where the primary button went down (drag-release finishes a selection window).
+    pub press_at: Option<Pos2>,
     /// Raster image textures (IMAGEATTACH), by file path.
     pub images: crate::raster::Cache,
 }
@@ -355,12 +357,10 @@ fn draw_highlight(p: &egui::Painter, xf: &Xf, list: &DisplayList, handles: &[Han
     p.extend(shapes);
 }
 
-fn draw_snap_marker(p: &egui::Painter, at: Pos2, hit: &SnapHit) {
-    let t = Tokens::get();
-    let s = 5.5;
-    let st = Stroke::new(2.0, t.snap);
+/// The marker AutoCAD draws for an object snap mode (also the icons in Drafting Settings).
+pub(crate) fn snap_glyph(p: &egui::Painter, at: Pos2, m: u32, s: f32, st: Stroke) {
     use snap::mode;
-    match hit.mode {
+    match m {
         mode::END => {
             p.rect_stroke(Rect::from_center_size(at, vec2(2.0 * s, 2.0 * s)), 0.0, st, egui::StrokeKind::Middle);
         }
@@ -404,12 +404,27 @@ fn draw_snap_marker(p: &egui::Painter, at: Pos2, hit: &SnapHit) {
                 st,
             );
         }
+        mode::EXT => {
+            for k in 0..3 {
+                let x = -s + k as f32 * s * 0.8;
+                p.line_segment([at + vec2(x, 0.0), at + vec2(x + s * 0.45, 0.0)], st);
+            }
+            p.circle_filled(at + vec2(s, 0.0), 1.2, st.color);
+        }
+        mode::PAR => {
+            p.line_segment([at + vec2(-s, s), at + vec2(-s * 0.1, -s)], st);
+            p.line_segment([at + vec2(s * 0.1, s), at + vec2(s, -s)], st);
+        }
         _ => {
             p.line(vec![at + vec2(-s, -s), at + vec2(s, -s), at + vec2(-s, s), at + vec2(s, s), at + vec2(-s, -s)], st);
         }
     }
-    p.text(at + vec2(12.0, 12.0), egui::Align2::LEFT_TOP, hit.name, crate::theme::small(), Color32::BLACK);
-    let galley = p.layout_no_wrap(hit.name.to_string(), crate::theme::small(), Color32::BLACK);
+}
+
+fn draw_snap_marker(p: &egui::Painter, at: Pos2, hit: &SnapHit) {
+    let t = Tokens::get();
+    snap_glyph(p, at, hit.mode, 5.5, Stroke::new(2.0, t.snap));
+    let galley = p.layout_no_wrap(tr(hit.name).to_string(), crate::theme::small(), Color32::BLACK);
     let r = Rect::from_min_size(at + vec2(10.0, 10.0), galley.size() + vec2(6.0, 2.0));
     p.rect_filled(r, 2.0, Color32::from_rgb(0xff, 0xff, 0xe1));
     p.galley(r.min + vec2(3.0, 1.0), galley, Color32::BLACK);
@@ -469,16 +484,19 @@ pub fn show(app: &mut CadApp, ui: &mut egui::Ui) {
     app.canvas.xf = Some(xf);
 
     // ---------- input ----------
-    let (hover_pos, scroll, mods, middle_down, pressed_primary, pressed_secondary, dbl_middle, dbl_primary) = ui.input(|i| {
+    // Points are taken on button PRESS, as in AutoCAD. A "click" (egui's press + release without
+    // moving) is lost whenever the mouse moves a few pixels or the button is held a moment.
+    let (hover_pos, scroll, mods, middle_down, pressed_primary, pressed_secondary, dbl_middle, dbl_primary, released_primary) = ui.input(|i| {
         (
             i.pointer.hover_pos(),
             i.smooth_scroll_delta.y,
             i.modifiers,
             i.pointer.middle_down(),
-            i.pointer.primary_clicked(),
-            i.pointer.secondary_clicked(),
+            i.pointer.button_pressed(egui::PointerButton::Primary),
+            i.pointer.button_pressed(egui::PointerButton::Secondary),
             i.pointer.button_double_clicked(egui::PointerButton::Middle),
             i.pointer.button_double_clicked(egui::PointerButton::Primary),
+            i.pointer.button_released(egui::PointerButton::Primary),
         )
     });
     let inside = hover_pos.is_some_and(|p| rect.contains(p)) && resp.hovered();
@@ -561,6 +579,9 @@ pub fn show(app: &mut CadApp, ui: &mut egui::Ui) {
     }
 
     // Clicks.
+    if pressed_primary {
+        app.canvas.press_at = hover_pos.filter(|_| inside);
+    }
     if inside
         && pressed_primary
         && !middle_down
@@ -577,6 +598,23 @@ pub fn show(app: &mut CadApp, ui: &mut egui::Ui) {
             app.canvas.hot_grip = Some(g);
             app.session.echo(g.label());
         } else if let Err(e) = app.session.idle_click(raw_world.unwrap_or(p), mods.shift) {
+            app.session.echo(e.to_string());
+        }
+    }
+    // Press, drag, release: the release is the window's second corner.
+    if inside
+        && released_primary
+        && !pressed_primary
+        && app.session.pending_window.is_some()
+        && let (Some(o), Some(hp), Some(p)) = (app.canvas.press_at, hover_pos, app.canvas.cursor)
+        && o.distance(hp) > 6.0
+    {
+        let r = if app.session.running.is_some() {
+            app.session.input(Input::Point(p))
+        } else {
+            app.session.idle_click(raw_world.unwrap_or(p), mods.shift)
+        };
+        if let Err(e) = r {
             app.session.echo(e.to_string());
         }
     }

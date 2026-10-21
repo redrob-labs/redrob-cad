@@ -243,7 +243,9 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Settings {
-            osmode: 4133,
+            // Endpoint, Midpoint, Center, Node, Quadrant, Intersection, Perpendicular, Extension:
+            // the set drafters keep on (AutoCAD ships 4133, without Midpoint).
+            osmode: 4287,
             orthomode: false,
             polarmode: true,
             polarang: std::f64::consts::FRAC_PI_2,
@@ -350,7 +352,10 @@ impl Session {
         self.untitled_counter += 1;
         let d = if metric { Drawing::new_metric() } else { Drawing::new_imperial() };
         let mut st = DocState::new(d, &format!("Drawing{}", self.untitled_counter), None);
-        st.set_view_quiet(if metric { View { center: Vec2::new(210.0, 148.5), height: 297.0 } } else { View::default() });
+        // A new metric drawing opens showing 1200 mm across (a room-sized area, not an A3 sheet).
+        let aspect = self.viewport_px.1 / self.viewport_px.0.max(1.0);
+        let metric_view = View { center: Vec2::new(600.0, 600.0 * aspect), height: (1200.0 * aspect).max(1.0) };
+        st.set_view_quiet(if metric { metric_view } else { View::default() });
         self.docs.push(st);
         self.active = self.docs.len() - 1;
         self.active
@@ -380,7 +385,12 @@ impl Session {
     }
     /// Copy-on-write access to the drawing.
     pub fn doc_mut(&mut self) -> Result<&mut Drawing> {
-        Ok(Arc::make_mut(&mut self.state_mut()?.doc))
+        // Every edit bumps the revision, so the canvas redraws edits made in the middle of a
+        // command (LINE segments, OFFSET/COPY results, TRIM cuts) at once, not at the command's end:
+        // after the first edit the drawing is no longer shared, so its pointer stops changing.
+        let st = self.state_mut()?;
+        st.revision = st.revision.wrapping_add(1);
+        Ok(Arc::make_mut(&mut st.doc))
     }
     /// The space commands act on (model space while working inside a layout viewport).
     pub fn space(&self) -> Space {
