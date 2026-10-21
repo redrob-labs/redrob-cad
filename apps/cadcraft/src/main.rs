@@ -17,6 +17,7 @@ mod control_server;
 mod device;
 #[cfg(target_os = "macos")]
 mod native_menu;
+mod work_area;
 
 use cadcraft_engine::Session;
 use cadcraft_ui_egui::{CadApp, Services};
@@ -36,6 +37,9 @@ impl eframe::App for App {
                 m.poll(&mut self.0, ctx);
             }
         }
+        // Once: a window bigger than its monitor is maximized into the work area, so its title
+        // bar can be reached.
+        work_area::fit_window(ctx);
         self.0.logic(ctx);
         if self.0.quit_requested {
             ctx.send_viewport_cmd(egui::ViewportCommand::Close);
@@ -143,11 +147,34 @@ fn control_token() -> String {
 }
 
 /// Where the agent works: the launch directory, or the home directory when launched from a
-/// desktop shell (whose working directory is `/`).
+/// desktop shell (whose working directory is `/`) or from the install folder (a Windows shortcut
+/// starts the app in the folder that holds `redrob-cad.exe`): the agent never works there.
 fn agent_cwd() -> String {
     let home = std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" }).map(std::path::PathBuf::from);
-    let cwd = std::env::current_dir().ok().filter(|d| d.parent().is_some());
+    let exe_dir = std::env::current_exe().ok().and_then(|e| e.canonicalize().ok().or(Some(e))).and_then(|e| e.parent().map(std::path::Path::to_path_buf));
+    let cwd = std::env::current_dir().ok().filter(|d| d.parent().is_some()).filter(|d| !is_install_dir(d, exe_dir.as_deref(), home.as_deref()));
     cwd.or(home).map(|d| d.to_string_lossy().to_string()).unwrap_or_else(|| ".".into())
+}
+
+/// Whether `dir` is the folder holding the executable, or one of its parents below the home
+/// directory or the drive root (`…\Redrob CAD\bin` → `…\Redrob CAD`, `…\Programs`).
+fn is_install_dir(dir: &std::path::Path, exe_dir: Option<&std::path::Path>, home: Option<&std::path::Path>) -> bool {
+    let Some(exe_dir) = exe_dir else { return false };
+    let dir = dir.canonicalize().unwrap_or_else(|_| dir.to_path_buf());
+    let home = home.map(|h| h.canonicalize().unwrap_or_else(|_| h.to_path_buf()));
+    exe_dir.ancestors().take_while(|a| a.parent().is_some() && Some(*a) != home.as_deref()).any(|a| a == dir)
+}
+
+/// Whether eframe's saved state (`ui.ron`) holds a window position from an earlier session. The
+/// window entry is a RON string inside the file, so a text match is enough; eframe restores the
+/// inner position on macOS and the outer one elsewhere.
+fn has_saved_position(path: Option<&std::path::Path>) -> bool {
+    let Some(text) = path.and_then(|p| std::fs::read_to_string(p).ok()) else {
+        return false;
+    };
+    let key = if cfg!(target_os = "macos") { "inner_position_pixels:Some(" } else { "outer_position_pixels:Some(" };
+    let compact: String = text.chars().filter(|c| !c.is_whitespace()).collect();
+    compact.contains(key)
 }
 
 /// `redrob-cad mcp --connect <addr>`: the MCP server the built-in agent runs.
@@ -211,6 +238,9 @@ fn main() -> eframe::Result {
     if let Some(icon) = app_icon() {
         options.viewport = options.viewport.with_icon(icon);
     }
+    // Centre only a window with no saved position; the first frame then maximizes one that
+    // doesn't fit its monitor (`work_area::fit_window`).
+    options.centered = !has_saved_position(options.persistence_path.as_deref());
     eframe::run_native(
         "Redrob CAD",
         options,
