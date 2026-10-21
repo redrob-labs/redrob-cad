@@ -56,8 +56,11 @@ pub fn title_and_toolbar(app: &mut CadApp, ui: &mut egui::Ui) {
             // Allow dragging the window by the title row.
             let tr_v = Rect::from_min_size(r.min, vec2(r.width(), title_h));
             let resp = ui.interact(tr_v, ui.id().with("titledrag"), Sense::click_and_drag());
-            if resp.drag_started() {
+            if resp.drag_started_by(egui::PointerButton::Primary) {
                 ui.ctx().send_viewport_cmd(egui::ViewportCommand::StartDrag);
+                // The OS moves the window from here; egui never sees the release, so its drag
+                // would otherwise stay live and swallow the next click.
+                ui.ctx().stop_dragging();
             }
             if resp.double_clicked() {
                 let max = ui.ctx().input(|i| i.viewport().maximized.unwrap_or(false));
