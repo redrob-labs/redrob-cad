@@ -4,6 +4,8 @@
 mod annotate;
 pub(crate) mod ask;
 mod blocks;
+mod booleans;
+mod display;
 pub mod constraints;
 mod draw;
 mod draw2;
@@ -163,6 +165,8 @@ pub fn command_specs() -> &'static [CommandSpec] {
         v.extend(image::specs());
         v.extend(modify::specs());
         v.extend(modify2::specs());
+        v.extend(booleans::specs());
+        v.extend(display::specs());
         v.extend(mledit::specs());
         v.extend(gripcmds::specs());
         v.extend(layer::specs());

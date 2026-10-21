@@ -95,6 +95,8 @@ pub struct DocState {
     pub views: Vec<(Space, View)>,
     pub view_history: Vec<View>,
     pub uid: u64,
+    /// Objects hidden by ISOLATEOBJECTS / HIDEOBJECTS, shown again by UNISOLATEOBJECTS.
+    pub isolated: Vec<Handle>,
 }
 
 static NEXT_UID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
@@ -117,6 +119,7 @@ impl DocState {
             views: Vec::new(),
             view_history: Vec::new(),
             uid: NEXT_UID.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+            isolated: Vec::new(),
         }
     }
     pub fn is_dirty(&self) -> bool {
