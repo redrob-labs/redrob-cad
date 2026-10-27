@@ -16,12 +16,12 @@ mod tables;
 
 use std::collections::BTreeMap;
 
-pub use redrob_cad_color as color;
-pub use redrob_cad_geom as geom;
 pub use constraint::*;
 pub use entity::*;
 pub use extents::{MAX_BLOCK_DEPTH, entity_bounds};
 pub use header::{HVal, Header};
+pub use redrob_cad_color as color;
+pub use redrob_cad_geom as geom;
 pub use store::EntityStore;
 pub use tables::*;
 

@@ -2,13 +2,13 @@
 //! markers, crosshair cursor, ViewCube, UCS icon and mouse handling.
 
 use crate::i18n::tr;
+use egui::{Color32, Pos2, Rect, Sense, Shape, Stroke, pos2, vec2};
 use redrob_cad_color::{Rgb, display_rgb};
 use redrob_cad_doc::Handle;
 use redrob_cad_engine::Input;
 use redrob_cad_engine::snap::{self, SnapHit};
 use redrob_cad_geom::{Bounds2, Vec2};
 use redrob_cad_render::{DisplayList, Kind};
-use egui::{Color32, Pos2, Rect, Sense, Shape, Stroke, pos2, vec2};
 
 use crate::CadApp;
 use crate::theme::Tokens;
@@ -692,7 +692,8 @@ pub fn show(app: &mut CadApp, ui: &mut egui::Ui) {
             hs.extend(app.canvas.hover.filter(|h| !sel.contains(h)));
             let ents: Vec<_> = hs.iter().filter_map(|h| st.doc.model.get(*h)).map(|e| e.as_ref()).collect();
             if !ents.is_empty() {
-                let list = redrob_cad_render::build_entities(&st.doc, ents, &redrob_cad_render::Options { tolerance: 0.5 / scale, ..Default::default() });
+                let list =
+                    redrob_cad_render::build_entities(&st.doc, ents, &redrob_cad_render::Options { tolerance: 0.5 / scale, ..Default::default() });
                 let clipped = painter.with_clip_rect(r.intersect(rect));
                 if let Some(h) = app.canvas.hover
                     && !sel.contains(&h)
@@ -812,7 +813,8 @@ pub fn show(app: &mut CadApp, ui: &mut egui::Ui) {
         let far = base + Vec2::from_angle(a) * (view.height * 4.0);
         let pts = [xf.to_screen(base), xf.to_screen(far)];
         painter.extend(Shape::dashed_line(&pts, Stroke::new(1.0, Color32::from_rgb(0x4c, 0xd1, 0x37)), 3.0, 3.0));
-        let tip = format!("{}: {} < {}°", tr("Polar"), redrob_cad_engine::units::format_distance(base.dist(c), 2, 4), (a.to_degrees().round() as i64));
+        let tip =
+            format!("{}: {} < {}°", tr("Polar"), redrob_cad_engine::units::format_distance(base.dist(c), 2, 4), (a.to_degrees().round() as i64));
         tooltip(&painter, xf.to_screen(c) + vec2(16.0, 18.0), &tip);
     }
     if let (Some(hit), Some(_)) = (app.canvas.snap, app.canvas.cursor) {

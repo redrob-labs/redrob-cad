@@ -349,7 +349,8 @@ mod tests {
         let l = |a: (f64, f64), b: (f64, f64)| EntityKind::Line(Line { a: Vec3::new(a.0, a.1, 0.0), b: Vec3::new(b.0, b.1, 0.0) });
         d.add(&Space::Model, Common::default(), l((0.0, 0.0), (10.0, 0.0))).unwrap();
         d.add(&Space::Model, Common::default(), l((5.0, -5.0), (5.0, 5.0))).unwrap();
-        d.add(&Space::Model, Common::default(), EntityKind::Circle(redrob_cad_doc::Circle { center: Vec3::new(20.0, 0.0, 0.0), radius: 2.0 })).unwrap();
+        d.add(&Space::Model, Common::default(), EntityKind::Circle(redrob_cad_doc::Circle { center: Vec3::new(20.0, 0.0, 0.0), radius: 2.0 }))
+            .unwrap();
         d
     }
 

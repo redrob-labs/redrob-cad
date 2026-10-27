@@ -2,8 +2,8 @@
 //! palette shown near the cursor while objects are selected and QPMODE is on.
 
 use crate::i18n::{tr, trf};
-use redrob_cad_doc::{EntityKind, Handle};
 use egui::{Pos2, RichText, vec2};
+use redrob_cad_doc::{EntityKind, Handle};
 use serde_json::{Value, json};
 
 use crate::CadApp;

@@ -297,8 +297,11 @@ fn run_set(s: &mut Session, p: &Value) -> Result<Value> {
 }
 
 fn run_matchprop(s: &mut Session, p: &Value) -> Result<Value> {
-    let src =
-        p.get("source").and_then(Value::as_str).and_then(redrob_cad_doc::Handle::parse_hex).ok_or_else(|| bad("matchprop", "`source` is required"))?;
+    let src = p
+        .get("source")
+        .and_then(Value::as_str)
+        .and_then(redrob_cad_doc::Handle::parse_hex)
+        .ok_or_else(|| bad("matchprop", "`source` is required"))?;
     let tg: Vec<redrob_cad_doc::Handle> = p
         .get("targets")
         .and_then(Value::as_array)
@@ -531,8 +534,8 @@ fn run_style_rename(s: &mut Session, p: &Value) -> Result<Value> {
     }
     d.dim_styles.iter_mut().for_each(|x| fix(&mut x.text_style));
     d.mleader_styles.iter_mut().for_each(|x| fix(&mut x.text_style));
-    for space in
-        std::iter::once(redrob_cad_doc::Space::Model).chain(d.layouts.iter().map(|l| redrob_cad_doc::Space::Paper(l.name.clone())).collect::<Vec<_>>())
+    for space in std::iter::once(redrob_cad_doc::Space::Model)
+        .chain(d.layouts.iter().map(|l| redrob_cad_doc::Space::Paper(l.name.clone())).collect::<Vec<_>>())
     {
         let hs: Vec<redrob_cad_doc::Handle> = d.space(&space).map(|st| st.handles()).unwrap_or_default();
         for h in hs {

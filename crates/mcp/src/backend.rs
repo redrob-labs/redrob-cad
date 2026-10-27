@@ -173,8 +173,8 @@ impl Backend for Headless {
                     let v = st.view();
                     redrob_cad_render::raster::View { center: v.center, scale: f64::from(h) / v.height.max(1e-12), width: w, height: h }
                 };
-                let png =
-                    redrob_cad_render::raster::render_png(&list, &view, &redrob_cad_render::raster::RasterOptions::default()).ok_or("render failed")?;
+                let png = redrob_cad_render::raster::render_png(&list, &view, &redrob_cad_render::raster::RasterOptions::default())
+                    .ok_or("render failed")?;
                 if let Some(path) = str_p("path") {
                     std::fs::write(&path, &png).map_err(|e| format!("{path}: {e}"))?;
                 }

@@ -4,9 +4,9 @@
 //! `linetype`).
 
 use crate::i18n::{tr, trf};
+use egui::{Color32, Rect, RichText, Sense, Stroke, pos2, vec2};
 use redrob_cad_color::{Color, aci_rgb};
 use redrob_cad_doc::{Handle, Layer, Lineweight};
-use egui::{Color32, Rect, RichText, Sense, Stroke, pos2, vec2};
 use serde_json::{Value, json};
 
 use crate::CadApp;
@@ -225,7 +225,8 @@ pub fn dialog(app: &mut CadApp, ctx: &egui::Context, open: &mut bool) {
     let used = used_layers(d);
     let vp: Option<(Handle, redrob_cad_doc::Viewport)> = dst.active_viewport();
     let linetypes: Vec<redrob_cad_doc::Linetype> = d.linetypes.clone();
-    let library: Vec<String> = redrob_cad_doc::library::standard_linetypes().into_iter().map(|l| l.name).filter(|n| d.linetype(n).is_none()).collect();
+    let library: Vec<String> =
+        redrob_cad_doc::library::standard_linetypes().into_iter().map(|l| l.name).filter(|n| d.linetype(n).is_none()).collect();
     let states: Vec<String> = d.layer_states.iter().map(|s| s.name.clone()).collect();
     let mut layers: Vec<Layer> = d.layers.clone();
     layers.sort_by_key(|l| natural_lower(&l.name));

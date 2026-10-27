@@ -96,7 +96,10 @@ pub fn install_io() {
     });
 }
 
-fn services(agent: Option<redrob_cad_ui_egui::agent::AgentFactory>, account: Option<Box<dyn redrob_cad_ui_egui::account::AccountService>>) -> Services {
+fn services(
+    agent: Option<redrob_cad_ui_egui::agent::AgentFactory>,
+    account: Option<Box<dyn redrob_cad_ui_egui::account::AccountService>>,
+) -> Services {
     Services {
         agent,
         account,

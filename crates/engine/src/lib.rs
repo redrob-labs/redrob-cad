@@ -26,11 +26,11 @@ use redrob_cad_geom::{Bounds2, Vec2};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+pub use cmd::{CommandInfo, CommandSpec, command_specs, find_command};
+pub use prompt::{Accept, Input, Interactive, Prompt, Step};
 pub use redrob_cad_doc as doc;
 pub use redrob_cad_geom as geom;
 pub use redrob_cad_render as render;
-pub use cmd::{CommandInfo, CommandSpec, command_specs, find_command};
-pub use prompt::{Accept, Input, Interactive, Prompt, Step};
 
 #[derive(Debug, thiserror::Error)]
 pub enum EngineError {

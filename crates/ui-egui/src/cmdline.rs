@@ -2,8 +2,8 @@
 //! (keyboard focus stays on the drawing — typing anywhere goes here) and AutoComplete.
 
 use crate::i18n::tr;
-use redrob_cad_engine::Input;
 use egui::{Color32, Key, Pos2, Rect, Sense, Stroke, pos2, vec2};
+use redrob_cad_engine::Input;
 
 use crate::CadApp;
 use crate::theme::Tokens;

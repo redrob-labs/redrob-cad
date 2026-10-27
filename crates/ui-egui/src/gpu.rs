@@ -15,11 +15,11 @@
 
 use std::sync::{Arc, Mutex};
 
+use egui_wgpu::wgpu;
+use egui_wgpu::wgpu::util::DeviceExt;
 use redrob_cad_color::{Rgb, display_rgb};
 use redrob_cad_geom::{Bounds2, Vec2};
 use redrob_cad_render::{DisplayList, Kind};
-use egui_wgpu::wgpu;
-use egui_wgpu::wgpu::util::DeviceExt;
 
 /// Line/triangle vertex: position (2 × f32, relative to the origin) + sRGB colour (4 × u8).
 const VERTEX_SIZE: usize = 12;

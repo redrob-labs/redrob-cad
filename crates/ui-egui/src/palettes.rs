@@ -1,9 +1,9 @@
 //! Tool Sets (left) and the Layers / Properties palettes (right).
 
 use crate::i18n::{tr, trf};
+use egui::{Color32, Rect, Sense, Stroke, pos2, vec2};
 use redrob_cad_color::Color;
 use redrob_cad_doc::EntityKind;
-use egui::{Color32, Rect, Sense, Stroke, pos2, vec2};
 use serde_json::{Value, json};
 
 use crate::CadApp;

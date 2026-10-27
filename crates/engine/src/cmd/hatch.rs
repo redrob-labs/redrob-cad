@@ -87,7 +87,8 @@ pub(crate) fn loops_at(s: &Session, p: Vec2) -> Result<Vec<HatchLoop>> {
     let ext = d.extents(&space);
     let tol = ((ext.width() + ext.height()) * 1e-9).max(1e-9);
     let polys = outlines(d, &space, None);
-    let outer = redrob_cad_geom::region::enclosing_loop(&polys, p, tol).ok_or_else(|| EngineError::Other("Valid hatch boundary not found.".into()))?;
+    let outer =
+        redrob_cad_geom::region::enclosing_loop(&polys, p, tol).ok_or_else(|| EngineError::Other("Valid hatch boundary not found.".into()))?;
     let ob = Bounds2::from_points(outer.iter().copied());
     let mut loops = vec![HatchLoop { vertices: outer.iter().map(|q| PolyVertex::new(*q)).collect(), outer: true }];
     // Islands: closed objects entirely inside the outer loop that don't contain the pick point.

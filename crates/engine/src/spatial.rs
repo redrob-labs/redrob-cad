@@ -440,7 +440,8 @@ mod tests {
         assert!(!Arc::ptr_eq(&first, &second));
         assert_eq!(select::pick(&d, &Space::Model, Vec2::new(500.5, 500.0), 0.1), Some(h));
         // A new entity is found too.
-        let nh = d.add(&Space::Model, Common::default(), EntityKind::Circle(redrob_cad_doc::Circle { center: v3(-300.0, 0.0), radius: 1.0 })).unwrap();
+        let nh =
+            d.add(&Space::Model, Common::default(), EntityKind::Circle(redrob_cad_doc::Circle { center: v3(-300.0, 0.0), radius: 1.0 })).unwrap();
         assert_eq!(select::pick(&d, &Space::Model, Vec2::new(-299.0, 0.0), 0.1), Some(nh));
         // Redefining the block changes insert bounds: the index is rebuilt.
         let before = index(&d, &Space::Model).unwrap();
