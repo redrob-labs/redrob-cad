@@ -2,8 +2,8 @@
 //! DIMORDINATE, DIMCONTINUE, DIMBASELINE, QDIM, DIM (smart), MLEADER, LEADER, DIMOVERRIDE,
 //! DIMREASSOCIATE / DIMDISASSOCIATE, DIMTEDIT, DIMSPACE.
 
-use cadcraft_doc::{AssocSnap, DimAssoc, DimKind, Dimension, EntityKind, Handle, MLeader, MText, Prim};
-use cadcraft_geom::{Segment, Vec2, Vec3};
+use redrob_cad_doc::{AssocSnap, DimAssoc, DimKind, Dimension, EntityKind, Handle, MLeader, MText, Prim};
+use redrob_cad_geom::{Segment, Vec2, Vec3};
 use serde_json::{Value, json};
 
 use super::helpers::v3;
@@ -179,7 +179,7 @@ fn angular_from_lines(s: &Session, h1: Handle, h2: Handle, at: Vec2) -> Option<E
         _ => None,
     };
     let ((a1, a2), (b1, b2)) = (line(h1)?, line(h2)?);
-    let (v, _, _) = cadcraft_geom::line_line_infinite(a1, a2, b1, b2)?;
+    let (v, _, _) = redrob_cad_geom::line_line_infinite(a1, a2, b1, b2)?;
     // Use the leg ends on the side of the picked arc location (the quadrant the user meant).
     let pick = |p: Vec2, q: Vec2, snap_p: AssocSnap, snap_q: AssocSnap| {
         let dir = if (p - v).len() > (q - v).len() { (p, snap_p) } else { (q, snap_q) };
@@ -272,7 +272,7 @@ fn run_angular(s: &mut Session, p: &Value) -> Result<Value> {
             Some(EntityKind::Arc(a)) => a,
             _ => return Err(bad("dimangular", "object is not an arc")),
         };
-        let g = cadcraft_geom::Arc::new(a.center.xy(), a.radius, a.start, a.end);
+        let g = redrob_cad_geom::Arc::new(a.center.xy(), a.radius, a.start, a.end);
         let k = dim(s, DimKind::Angular3P, at, g.start_point(), g.end_point(), g.center, Vec2::ZERO, "");
         return Ok(json!({ "handle": add_dim(s, k)?.hex() }));
     }
@@ -291,7 +291,7 @@ fn run_arclen(s: &mut Session, p: &Value) -> Result<Value> {
         Some(EntityKind::Arc(a)) => a,
         _ => return Err(bad("dimarc", "object is not an arc")),
     };
-    let ga = cadcraft_geom::Arc::new(a.center.xy(), a.radius, a.start, a.end);
+    let ga = redrob_cad_geom::Arc::new(a.center.xy(), a.radius, a.start, a.end);
     let k = dim(s, DimKind::ArcLength, at, ga.start_point(), ga.end_point(), ga.center, Vec2::ZERO, "");
     Ok(json!({ "handle": add_dim(s, k)?.hex() }))
 }
@@ -439,7 +439,7 @@ fn run_leader(s: &mut Session, p: &Value) -> Result<Value> {
         return Err(bad("leader", "need 2+ points"));
     }
     let st = style(s);
-    let h = s.add_entity(EntityKind::Leader(cadcraft_doc::Leader {
+    let h = s.add_entity(EntityKind::Leader(redrob_cad_doc::Leader {
         vertices: pts.iter().map(|q| v3(*q)).collect(),
         arrow: true,
         spline: false,
@@ -759,7 +759,7 @@ impl Interactive for OverrideM {
                 if t.eq_ignore_ascii_case("c") {
                     self.clear = true;
                     self.selecting = Some(super::machines::SelectPhase::default());
-                } else if cadcraft_doc::DimStyle::field_name(&t).is_some() {
+                } else if redrob_cad_doc::DimStyle::field_name(&t).is_some() {
                     self.var = Some(t);
                 } else {
                     s.echo(format!("Unknown dimension variable \"{t}\"."));
@@ -876,7 +876,7 @@ impl Interactive for LinearM {
                 add_dim(s, k)?;
                 if let Some(EntityKind::Dimension(d)) = s.last_dim.and_then(|h| s.doc().ok()?.entity(h).map(|e| e.kind.clone())) {
                     let st = s.doc()?.dim_style(&d.style).cloned().unwrap_or_default();
-                    let g = cadcraft_render::dimension_geometry(&d, &st, 1.0);
+                    let g = redrob_cad_render::dimension_geometry(&d, &st, 1.0);
                     s.echo(format!("Dimension text = {}", g.value));
                 }
                 Ok(Step::Done)
@@ -973,7 +973,7 @@ impl AngularM {
             return Some((*v, *a, *b));
         }
         let ((a1, a2), (b1, b2)) = (self.first?, self.second?);
-        let (v, _, _) = cadcraft_geom::line_line_infinite(a1, a2, b1, b2)?;
+        let (v, _, _) = redrob_cad_geom::line_line_infinite(a1, a2, b1, b2)?;
         let far = |p: Vec2, q: Vec2| if p.dist(v) > q.dist(v) { p } else { q };
         Some((v, far(a1, a2), far(b1, b2)))
     }
@@ -1038,7 +1038,7 @@ impl Interactive for AngularM {
                 let kind = s.doc()?.entity(h).map(|e| e.kind.clone());
                 match kind {
                     Some(EntityKind::Arc(a)) if self.first.is_none() => {
-                        let g = cadcraft_geom::Arc::new(a.center.xy(), a.radius, a.start, a.end);
+                        let g = redrob_cad_geom::Arc::new(a.center.xy(), a.radius, a.start, a.end);
                         self.arc = Some((g.center, g.start_point(), g.end_point()));
                     }
                     Some(EntityKind::Line(l)) => {
@@ -1065,7 +1065,7 @@ impl Interactive for AngularM {
 
 #[derive(Default)]
 struct ArcLenM {
-    arc: Option<cadcraft_geom::Arc>,
+    arc: Option<redrob_cad_geom::Arc>,
 }
 
 impl Interactive for ArcLenM {
@@ -1082,7 +1082,7 @@ impl Interactive for ArcLenM {
         match (self.arc, i) {
             (None, Input::Point(p)) => {
                 if let Some(EntityKind::Arc(a)) = pick_at(s, p).and_then(|h| s.doc().ok()?.entity(h).map(|e| e.kind.clone())) {
-                    self.arc = Some(cadcraft_geom::Arc::new(a.center.xy(), a.radius, a.start, a.end));
+                    self.arc = Some(redrob_cad_geom::Arc::new(a.center.xy(), a.radius, a.start, a.end));
                 } else {
                     s.echo("Select an arc.");
                 }
@@ -1317,7 +1317,7 @@ impl Interactive for LeaderM {
     }
     fn preview(&self, _s: &Session, cursor: Vec2) -> Vec<EntityKind> {
         match (self.text, self.pts.last()) {
-            (false, Some(p)) => vec![EntityKind::Line(cadcraft_doc::Line { a: v3(*p), b: v3(cursor) })],
+            (false, Some(p)) => vec![EntityKind::Line(redrob_cad_doc::Line { a: v3(*p), b: v3(cursor) })],
             _ => Vec::new(),
         }
     }

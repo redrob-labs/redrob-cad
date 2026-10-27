@@ -539,184 +539,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc652a48c352aef3ea3aed32080501cf3ef6ed5da78602a020c991775b0aff04"
 
 [[package]]
-name = "cadcraft"
-version = "0.0.8"
-dependencies = [
- "cadcraft-engine",
- "cadcraft-io",
- "cadcraft-mcp",
- "cadcraft-ui-egui",
- "eframe",
- "egui",
- "log",
- "muda",
- "rfd",
- "serde_json",
- "sys-locale",
- "ureq",
- "winresource",
-]
-
-[[package]]
-name = "cadcraft-cli"
-version = "0.0.8"
-dependencies = [
- "cadcraft-engine",
- "cadcraft-io",
- "cadcraft-mcp",
- "cadcraft-render",
- "serde_json",
-]
-
-[[package]]
-name = "cadcraft-color"
-version = "0.0.8"
-dependencies = [
- "serde",
-]
-
-[[package]]
-name = "cadcraft-constraints"
-version = "0.0.8"
-dependencies = [
- "cadcraft-doc",
- "cadcraft-geom",
- "serde",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "cadcraft-doc"
-version = "0.0.8"
-dependencies = [
- "cadcraft-color",
- "cadcraft-geom",
- "serde",
- "serde_json",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "cadcraft-dwg"
-version = "0.0.8"
-dependencies = [
- "acadrust",
-]
-
-[[package]]
-name = "cadcraft-dxf"
-version = "0.0.8"
-dependencies = [
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "cadcraft-engine"
-version = "0.0.8"
-dependencies = [
- "cadcraft-color",
- "cadcraft-constraints",
- "cadcraft-doc",
- "cadcraft-fonts",
- "cadcraft-geom",
- "cadcraft-render",
- "log",
- "rstar",
- "serde",
- "serde_json",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "cadcraft-fonts"
-version = "0.0.8"
-dependencies = [
- "cadcraft-geom",
- "skrifa 0.47.0",
-]
-
-[[package]]
-name = "cadcraft-geom"
-version = "0.0.8"
-dependencies = [
- "serde",
-]
-
-[[package]]
-name = "cadcraft-io"
-version = "0.0.8"
-dependencies = [
- "cadcraft-color",
- "cadcraft-doc",
- "cadcraft-dwg",
- "cadcraft-dxf",
- "cadcraft-geom",
- "cadcraft-render",
- "miniz_oxide 0.8.9",
- "serde",
- "serde_json",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "cadcraft-mcp"
-version = "0.0.8"
-dependencies = [
- "cadcraft-engine",
- "cadcraft-io",
- "cadcraft-render",
- "log",
- "serde_json",
-]
-
-[[package]]
-name = "cadcraft-render"
-version = "0.0.8"
-dependencies = [
- "cadcraft-color",
- "cadcraft-doc",
- "cadcraft-fonts",
- "cadcraft-geom",
- "serde_json",
- "tiny-skia",
-]
-
-[[package]]
-name = "cadcraft-ui-egui"
-version = "0.0.8"
-dependencies = [
- "cadcraft-color",
- "cadcraft-doc",
- "cadcraft-engine",
- "cadcraft-geom",
- "cadcraft-render",
- "egui",
- "egui-wgpu",
- "image",
- "log",
- "naga",
- "serde",
- "serde_json",
- "toml",
-]
-
-[[package]]
-name = "cadcraft-web"
-version = "0.0.8"
-dependencies = [
- "cadcraft-engine",
- "cadcraft-io",
- "cadcraft-ui-egui",
- "eframe",
- "egui",
- "log",
- "serde_json",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
-]
-
-[[package]]
 name = "calloop"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2956,6 +2778,168 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "737970939a87c6fa31e7acad13307bccbb017a073b695b6089a2c484f929e20e"
 dependencies = [
  "bitflags 2.13.2",
+]
+
+[[package]]
+name = "redrob-cad"
+version = "0.0.8"
+dependencies = [
+ "eframe",
+ "egui",
+ "log",
+ "muda",
+ "redrob-cad-engine",
+ "redrob-cad-io",
+ "redrob-cad-mcp",
+ "redrob-cad-ui-egui",
+ "rfd",
+ "serde_json",
+ "sys-locale",
+ "ureq",
+ "winresource",
+]
+
+[[package]]
+name = "redrob-cad-cli"
+version = "0.0.8"
+dependencies = [
+ "redrob-cad-engine",
+ "redrob-cad-io",
+ "redrob-cad-mcp",
+ "redrob-cad-render",
+ "serde_json",
+]
+
+[[package]]
+name = "redrob-cad-color"
+version = "0.0.8"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "redrob-cad-constraints"
+version = "0.0.8"
+dependencies = [
+ "redrob-cad-doc",
+ "redrob-cad-geom",
+ "serde",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "redrob-cad-doc"
+version = "0.0.8"
+dependencies = [
+ "redrob-cad-color",
+ "redrob-cad-geom",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "redrob-cad-dwg"
+version = "0.0.8"
+dependencies = [
+ "acadrust",
+]
+
+[[package]]
+name = "redrob-cad-dxf"
+version = "0.0.8"
+dependencies = [
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "redrob-cad-engine"
+version = "0.0.8"
+dependencies = [
+ "log",
+ "redrob-cad-color",
+ "redrob-cad-constraints",
+ "redrob-cad-doc",
+ "redrob-cad-fonts",
+ "redrob-cad-geom",
+ "redrob-cad-render",
+ "rstar",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "redrob-cad-fonts"
+version = "0.0.8"
+dependencies = [
+ "redrob-cad-geom",
+ "skrifa 0.47.0",
+]
+
+[[package]]
+name = "redrob-cad-geom"
+version = "0.0.8"
+dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "redrob-cad-io"
+version = "0.0.8"
+dependencies = [
+ "miniz_oxide 0.8.9",
+ "redrob-cad-color",
+ "redrob-cad-doc",
+ "redrob-cad-dwg",
+ "redrob-cad-dxf",
+ "redrob-cad-geom",
+ "redrob-cad-render",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "redrob-cad-mcp"
+version = "0.0.8"
+dependencies = [
+ "log",
+ "redrob-cad-engine",
+ "redrob-cad-io",
+ "redrob-cad-render",
+ "serde_json",
+]
+
+[[package]]
+name = "redrob-cad-render"
+version = "0.0.8"
+dependencies = [
+ "redrob-cad-color",
+ "redrob-cad-doc",
+ "redrob-cad-fonts",
+ "redrob-cad-geom",
+ "serde_json",
+ "tiny-skia",
+]
+
+[[package]]
+name = "redrob-cad-ui-egui"
+version = "0.0.8"
+dependencies = [
+ "egui",
+ "egui-wgpu",
+ "image",
+ "log",
+ "naga",
+ "redrob-cad-color",
+ "redrob-cad-doc",
+ "redrob-cad-engine",
+ "redrob-cad-geom",
+ "redrob-cad-render",
+ "serde",
+ "serde_json",
+ "toml",
 ]
 
 [[package]]

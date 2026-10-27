@@ -1,6 +1,6 @@
 //! Building blocks for interactive commands: object selection and simple point sequences.
 
-use cadcraft_doc::Handle;
+use redrob_cad_doc::Handle;
 
 use crate::{Accept, Input, Prompt, Result, Session};
 

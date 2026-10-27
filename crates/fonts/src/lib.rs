@@ -1,7 +1,7 @@
-//! CADCraft text layout.
+//! Redrob CAD text layout.
 //!
 //! Turns TEXT and MTEXT into stroke polylines with the built-in single-stroke font
-//! ("CADCraft Stroke"). Handles the `%%` control codes, alignment modes, width factor,
+//! ("Redrob CAD Stroke"). Handles the `%%` control codes, alignment modes, width factor,
 //! obliquing, MTEXT inline formatting (paragraphs, stacking, height changes), word wrap and
 //! attachment points.
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
@@ -13,12 +13,16 @@ pub mod ttf;
 
 use std::sync::Arc;
 
-use cadcraft_geom::{Bounds2, Vec2};
+use redrob_cad_geom::{Bounds2, Vec2};
 
 pub use mtext::{MTextColor, MTextLayout, MTextParams, MTextPiece, layout_mtext, layout_mtext_with, plain_mtext};
 
 /// Name of the built-in font.
-pub const BUILTIN_FONT: &str = "CADCraft Stroke";
+pub const BUILTIN_FONT: &str = "Redrob CAD Stroke";
+
+/// legacy: the built-in font's name before the rename. Drawings and styles saved by earlier builds
+/// may carry it, so it still resolves to the built-in font.
+pub const LEGACY_BUILTIN_FONT: &str = "CADCraft Stroke";
 
 /// One laid-out run of text: strokes in local coordinates (baseline at y = 0, x from 0).
 #[derive(Clone, Debug, Default, PartialEq)]

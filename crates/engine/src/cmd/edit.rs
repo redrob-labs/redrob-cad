@@ -1,7 +1,7 @@
 //! Edit menu: undo/redo, clipboard, selection.
 
-use cadcraft_doc::{Entity, Handle, entity_bounds};
-use cadcraft_geom::{Bounds2, Mat3, Vec2};
+use redrob_cad_doc::{Entity, Handle, entity_bounds};
+use redrob_cad_geom::{Bounds2, Mat3, Vec2};
 use serde_json::{Value, json};
 
 use super::*;
@@ -222,7 +222,7 @@ impl Interactive for PasteM {
             _ => Ok(Step::Continue),
         }
     }
-    fn preview(&self, s: &Session, c: Vec2) -> Vec<cadcraft_doc::EntityKind> {
+    fn preview(&self, s: &Session, c: Vec2) -> Vec<redrob_cad_doc::EntityKind> {
         let m = Mat3::translate(c - s.clipboard_base);
         s.clipboard
             .iter()

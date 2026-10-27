@@ -2,7 +2,7 @@
 //! typed with nothing open these; JSON calls still run the commands directly.
 //! Every change goes through a command (`plot`, `style`, `dimstyle`), so the dialogs stay thin.
 
-use cadcraft_geom::Vec2;
+use redrob_cad_geom::Vec2;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
@@ -13,7 +13,7 @@ use crate::i18n::tr;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct PlotSettings {
-    /// A paper name from `cadcraft_render::PAPER_SIZES`.
+    /// A paper name from `redrob_cad_render::PAPER_SIZES`.
     pub paper: String,
     pub landscape: bool,
     /// Zero margins (ISO full bleed).
@@ -62,7 +62,7 @@ pub fn tick(app: &mut CadApp) {
 
 fn header_pt(app: &CadApp, k: &str) -> Option<Vec2> {
     match app.session.doc().ok()?.header.get(k)? {
-        cadcraft_doc::HVal::Point(p) => Some(p.xy()),
+        redrob_cad_doc::HVal::Point(p) => Some(p.xy()),
         _ => None,
     }
 }
@@ -114,7 +114,7 @@ pub fn plot(app: &mut CadApp, ctx: &egui::Context, open: &mut bool) {
             ui.end_row();
             ui.label(tr("Paper size"));
             egui::ComboBox::from_id_salt("plot_paper").selected_text(p.paper.clone()).width(260.0).show_ui(ui, |ui| {
-                for ps in cadcraft_render::PAPER_SIZES {
+                for ps in redrob_cad_render::PAPER_SIZES {
                     ui.selectable_value(&mut p.paper, ps.name.to_string(), ps.name);
                 }
             });

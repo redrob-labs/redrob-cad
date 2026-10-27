@@ -1,7 +1,7 @@
 //! Utilities: CAL (expression calculator), FIND (find and replace text), MASSPROP, MEASUREGEOM.
 
-use cadcraft_doc::{EntityKind, Handle};
-use cadcraft_geom::{Polyline, Vec2};
+use redrob_cad_doc::{EntityKind, Handle};
+use redrob_cad_geom::{Polyline, Vec2};
 use serde_json::{Value, json};
 
 use super::*;
@@ -335,7 +335,7 @@ fn closed_points(k: &EntityKind) -> Option<Vec<Vec2>> {
     match k {
         EntityKind::Circle(c) => {
             let mut v = Vec::new();
-            cadcraft_geom::Circle::new(c.center.xy(), c.radius).tessellate(c.radius * 1e-5, &mut v);
+            redrob_cad_geom::Circle::new(c.center.xy(), c.radius).tessellate(c.radius * 1e-5, &mut v);
             v.pop();
             Some(v)
         }
@@ -391,11 +391,11 @@ fn run_angle(s: &mut Session, p: &Value) -> Result<Value> {
         };
         let ((a1, a2), (b1, b2)) =
             (line(h1).ok_or_else(|| bad("angle.measure", "h1 is not a line"))?, line(h2).ok_or_else(|| bad("angle.measure", "h2 is not a line"))?);
-        let (x, _, _) = cadcraft_geom::line_line_infinite(a1, a2, b1, b2).ok_or_else(|| bad("angle.measure", "lines are parallel"))?;
+        let (x, _, _) = redrob_cad_geom::line_line_infinite(a1, a2, b1, b2).ok_or_else(|| bad("angle.measure", "lines are parallel"))?;
         let far = |p: Vec2, q: Vec2| if p.dist(x) > q.dist(x) { p } else { q };
         (x, far(a1, a2), far(b1, b2))
     };
-    let mut ang = (cadcraft_geom::norm_angle(v.angle_to(b) - v.angle_to(a))).to_degrees();
+    let mut ang = (redrob_cad_geom::norm_angle(v.angle_to(b) - v.angle_to(a))).to_degrees();
     if ang > 180.0 {
         ang = 360.0 - ang;
     }

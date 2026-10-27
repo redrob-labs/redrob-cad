@@ -35,9 +35,9 @@ pub fn show(app: &mut CadApp, ctx: &egui::Context) {
 /// Drafting Settings (DSETTINGS / DS / SE; OSNAP opens the Object Snap tab). Edits a copy;
 /// OK applies it, Cancel or closing the window drops it, as in AutoCAD.
 fn dsettings(app: &mut CadApp, ctx: &egui::Context, open: &mut bool) {
-    use cadcraft_engine::snap::mode;
+    use redrob_cad_engine::snap::mode;
     let draft_id = egui::Id::new("dsettings_draft");
-    let mut draft: cadcraft_engine::Settings = ctx.data_mut(|d| d.get_temp(draft_id)).unwrap_or_else(|| app.session.settings.clone());
+    let mut draft: redrob_cad_engine::Settings = ctx.data_mut(|d| d.get_temp(draft_id)).unwrap_or_else(|| app.session.settings.clone());
     let mut tab = app.ui.dsettings_tab.min(4);
     let mut done: Option<bool> = None;
     egui::Window::new(tr("Drafting Settings")).open(open).resizable(false).collapsible(false).show(ctx, |ui| {
@@ -167,11 +167,11 @@ fn dsettings(app: &mut CadApp, ctx: &egui::Context, open: &mut bool) {
                 app.session.settings = draft;
                 app.session.touch();
             }
-            ctx.data_mut(|d| d.remove::<cadcraft_engine::Settings>(draft_id));
+            ctx.data_mut(|d| d.remove::<redrob_cad_engine::Settings>(draft_id));
             *open = false;
         }
         None if !*open => {
-            ctx.data_mut(|d| d.remove::<cadcraft_engine::Settings>(draft_id));
+            ctx.data_mut(|d| d.remove::<redrob_cad_engine::Settings>(draft_id));
         }
         None => {
             ctx.data_mut(|d| d.insert_temp(draft_id, draft));
@@ -201,7 +201,7 @@ fn about(ctx: &egui::Context, open: &mut bool) {
                 ui.label(trf("Version {version}", &[("version", env!("CARGO_PKG_VERSION"))]));
                 ui.label(tr("Computer-aided design and drafting: an open-source, clean-room CAD application written in pure Rust."));
                 ui.add_space(6.0);
-                ui.label(RichText::new(tr("Made by Redrob. Built on CADCraft by the ArtCraft team and contributors.")).color(t.text_dim));
+                ui.label(RichText::new(tr("Made by Redrob and contributors. See NOTICE for where the code came from.")).color(t.text_dim));
                 ui.hyperlink_to(tr("github.com/redrob-labs/redrob-cad"), "https://github.com/redrob-labs/redrob-cad");
                 ui.hyperlink_to(tr("Report an issue"), "https://github.com/redrob-labs/redrob-cad/issues");
                 ui.add_space(6.0);
@@ -224,7 +224,7 @@ fn commands(app: &mut CadApp, ctx: &egui::Context, open: &mut bool) {
         let f = filter.to_ascii_lowercase();
         egui::ScrollArea::vertical().show(ui, |ui| {
             egui::Grid::new("cmdref").striped(true).num_columns(3).show(ui, |ui| {
-                for c in cadcraft_engine::command_specs() {
+                for c in redrob_cad_engine::command_specs() {
                     if !f.is_empty() && !c.id.contains(&f) && !c.label.to_ascii_lowercase().contains(&f) {
                         continue;
                     }
@@ -311,7 +311,7 @@ fn mtext_editor(app: &mut CadApp, ctx: &egui::Context) {
     ctx.data_mut(|d| d.insert_temp(id, buf));
     if let Some(t) = submit {
         ctx.data_mut(|d| d.remove::<String>(id));
-        let _ = app.session.input(cadcraft_engine::Input::Text(t));
+        let _ = app.session.input(redrob_cad_engine::Input::Text(t));
     } else if cancel {
         ctx.data_mut(|d| d.remove::<String>(id));
         app.session.cancel();

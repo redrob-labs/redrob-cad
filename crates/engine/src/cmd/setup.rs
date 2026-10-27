@@ -43,8 +43,8 @@ fn run_mvsetup(s: &mut Session, p: &Value) -> Result<Value> {
     let (bw, bh) = (w * scale, h * scale);
     {
         let d = s.doc_mut()?;
-        d.header.set("LIMMIN", cadcraft_doc::HVal::Point(cadcraft_geom::Vec3::new(0.0, 0.0, 0.0)));
-        d.header.set("LIMMAX", cadcraft_doc::HVal::Point(cadcraft_geom::Vec3::new(bw, bh, 0.0)));
+        d.header.set("LIMMIN", redrob_cad_doc::HVal::Point(redrob_cad_geom::Vec3::new(0.0, 0.0, 0.0)));
+        d.header.set("LIMMAX", redrob_cad_doc::HVal::Point(redrob_cad_geom::Vec3::new(bw, bh, 0.0)));
     }
     let mut border = Value::Null;
     if bool_or(p, "border", true) {

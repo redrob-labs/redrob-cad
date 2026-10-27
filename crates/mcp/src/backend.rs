@@ -4,11 +4,11 @@ use std::io::{BufRead, BufReader, Write};
 use std::net::{TcpStream, ToSocketAddrs};
 use std::time::Duration;
 
-use cadcraft_engine::Session;
+use redrob_cad_engine::Session;
 use serde_json::{Value, json};
 
 /// Something that answers control-channel methods (`engine.execute`, `cmdline.input`,
-/// `drawing.inspect`, `ui.render`…). See `cadcraft_ui_egui::control` for the full list.
+/// `drawing.inspect`, `ui.render`…). See `redrob_cad_ui_egui::control` for the full list.
 pub trait Backend {
     fn call(&mut self, method: &str, params: Value) -> Result<Value, String>;
     /// True when a real UI is attached (`ui.screenshot` works).
@@ -16,7 +16,7 @@ pub trait Backend {
     fn describe(&self) -> String;
 }
 
-/// A running CADCraft app reached through its loopback control port.
+/// A running Redrob CAD app reached through its loopback control port.
 pub struct Remote {
     addr: String,
     conn: Option<(BufReader<TcpStream>, TcpStream)>,
@@ -152,33 +152,33 @@ impl Backend for Headless {
                 if str_p("key").is_some_and(|k| k.eq_ignore_ascii_case("escape") || k.eq_ignore_ascii_case("esc")) {
                     s.cancel();
                 } else {
-                    s.input(cadcraft_engine::Input::Enter).map_err(|e| e.to_string())?;
+                    s.input(redrob_cad_engine::Input::Enter).map_err(|e| e.to_string())?;
                 }
                 Ok(state(s))
             }
             "cmdline.state" => Ok(state(s)),
             "engine.commands" => {
-                Ok(Value::Array(cadcraft_engine::command_specs().iter().map(|c| serde_json::to_value(c.info(s)).unwrap_or_default()).collect()))
+                Ok(Value::Array(redrob_cad_engine::command_specs().iter().map(|c| serde_json::to_value(c.info(s)).unwrap_or_default()).collect()))
             }
             "drawing.inspect" | "document.inspect" => s.execute("drawing.inspect", &p).map_err(|e| e.to_string()),
             "ui.render" => {
                 let w = p.get("width").and_then(Value::as_f64).unwrap_or(1600.0).clamp(16.0, 8192.0) as u32;
                 let h = p.get("height").and_then(Value::as_f64).unwrap_or(1000.0).clamp(16.0, 8192.0) as u32;
                 let st = s.state().map_err(|e| e.to_string())?;
-                let list = cadcraft_render::build(&st.doc, &st.space, &cadcraft_render::Options::default());
+                let list = redrob_cad_render::build(&st.doc, &st.space, &redrob_cad_render::Options::default());
                 let fit = p.get("fit").and_then(Value::as_bool).unwrap_or(true);
                 let view = if fit {
-                    cadcraft_render::raster::View::fit(&list.bounds, w, h, 0.05)
+                    redrob_cad_render::raster::View::fit(&list.bounds, w, h, 0.05)
                 } else {
                     let v = st.view();
-                    cadcraft_render::raster::View { center: v.center, scale: f64::from(h) / v.height.max(1e-12), width: w, height: h }
+                    redrob_cad_render::raster::View { center: v.center, scale: f64::from(h) / v.height.max(1e-12), width: w, height: h }
                 };
-                let png =
-                    cadcraft_render::raster::render_png(&list, &view, &cadcraft_render::raster::RasterOptions::default()).ok_or("render failed")?;
+                let png = redrob_cad_render::raster::render_png(&list, &view, &redrob_cad_render::raster::RasterOptions::default())
+                    .ok_or("render failed")?;
                 if let Some(path) = str_p("path") {
                     std::fs::write(&path, &png).map_err(|e| format!("{path}: {e}"))?;
                 }
-                Ok(json!({"pngBase64": cadcraft_engine::cmd::file::base64_encode(&png), "width": w, "height": h}))
+                Ok(json!({"pngBase64": redrob_cad_engine::cmd::file::base64_encode(&png), "width": w, "height": h}))
             }
             "app.open" => s.execute("open", &json!({"path": str_p("path")})).map_err(|e| e.to_string()),
             "app.save" => {

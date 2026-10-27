@@ -1,14 +1,14 @@
-//! macOS: CADCraft's menu tree as the native system menu bar. Items dispatch through the same
+//! macOS: Redrob CAD's menu tree as the native system menu bar. Items dispatch through the same
 //! command path as the in-window menus; enablement is refreshed a few times per second.
 
 use std::collections::HashMap;
 use std::str::FromStr;
 
-use cadcraft_ui_egui::CadApp;
-use cadcraft_ui_egui::i18n::{tr, tr_label};
-use cadcraft_ui_egui::menus::{self, Entry};
 use muda::accelerator::Accelerator;
 use muda::{Menu, MenuEvent, MenuItem, PredefinedMenuItem, Submenu};
+use redrob_cad_ui_egui::CadApp;
+use redrob_cad_ui_egui::i18n::{tr, tr_label};
+use redrob_cad_ui_egui::menus::{self, Entry};
 
 pub struct NativeMenu {
     _menu: Menu,
@@ -67,13 +67,13 @@ impl NativeMenu {
                 ctx.request_repaint();
             }
         }
-        let now = cadcraft_ui_egui::now_ms();
+        let now = redrob_cad_ui_egui::now_ms();
         if now - self.last_refresh < 300.0 {
             return;
         }
         self.last_refresh = now;
         for (cmd, item) in self.items.values() {
-            let en = cadcraft_engine::find_command(cmd).is_none_or(|c| (c.enabled)(&app.session).is_ok());
+            let en = redrob_cad_engine::find_command(cmd).is_none_or(|c| (c.enabled)(&app.session).is_ok());
             item.set_enabled(en);
         }
     }

@@ -1,7 +1,7 @@
 //! Hit testing and window/crossing selection.
 
-use cadcraft_doc::{Drawing, Entity, EntityKind, Handle, Prim, Space, entity_bounds};
-use cadcraft_geom::{Bounds2, Line, Vec2};
+use redrob_cad_doc::{Drawing, Entity, EntityKind, Handle, Prim, Space, entity_bounds};
+use redrob_cad_geom::{Bounds2, Line, Vec2};
 
 use crate::spatial::{self, SpatialIndex};
 
@@ -24,10 +24,10 @@ pub fn hit_polylines(d: &Drawing, e: &Entity, tol: f64) -> Vec<Vec<Vec2>> {
             let c = b.corners();
             let mut v = vec![vec![c[0], c[1], c[2], c[3], c[0]]];
             if matches!(e.kind, EntityKind::Dimension(_) | EntityKind::Insert(_) | EntityKind::MLeader(_)) {
-                let list = cadcraft_render::build_entities(
+                let list = redrob_cad_render::build_entities(
                     d,
                     std::iter::once(e),
-                    &cadcraft_render::Options { tolerance: tol, text: false, ..Default::default() },
+                    &redrob_cad_render::Options { tolerance: tol, text: false, ..Default::default() },
                 );
                 v = list.prims.iter().map(|p| list.points(p).to_vec()).collect();
                 v.push(vec![c[0], c[1], c[2], c[3], c[0]]);
@@ -154,7 +154,7 @@ fn seg_hits_box(a: Vec2, b: Vec2, bx: &Bounds2) -> bool {
         return true;
     }
     let c = bx.corners();
-    (0..4).any(|i| cadcraft_geom::line_line(&Line::new(a, b), &Line::new(c[i], c[(i + 1) % 4])).is_some())
+    (0..4).any(|i| redrob_cad_geom::line_line(&Line::new(a, b), &Line::new(c[i], c[(i + 1) % 4])).is_some())
 }
 
 /// Window selection (entirely inside) or crossing selection (inside or touching).
@@ -217,7 +217,7 @@ pub(crate) fn select_fence_with(d: &Drawing, space: &Space, ix: &Option<std::syn
             let (Some(a), Some(b)) = (f.first(), f.get(1)) else { return false };
             let fl = Line::new(*a, *b);
             polys.iter().any(|pl| {
-                pl.windows(2).any(|w| w.first().zip(w.get(1)).is_some_and(|(p, q)| cadcraft_geom::line_line(&fl, &Line::new(*p, *q)).is_some()))
+                pl.windows(2).any(|w| w.first().zip(w.get(1)).is_some_and(|(p, q)| redrob_cad_geom::line_line(&fl, &Line::new(*p, *q)).is_some()))
             })
         });
         if hit {

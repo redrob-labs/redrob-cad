@@ -1,16 +1,16 @@
 use crate::raster::{RasterOptions, View, render};
 use crate::*;
-use cadcraft_doc::{Common, Drawing, EntityKind, Hatch, HatchLoop, Space};
-use cadcraft_geom::{PolyVertex, Vec3};
+use redrob_cad_doc::{Common, Drawing, EntityKind, Hatch, HatchLoop, Space};
+use redrob_cad_geom::{PolyVertex, Vec3};
 
 fn sample() -> Drawing {
     let mut d = Drawing::new_imperial();
-    d.add(&Space::Model, Common::default(), EntityKind::Line(cadcraft_doc::Line { a: Vec3::new(0.0, 0.0, 0.0), b: Vec3::new(10.0, 0.0, 0.0) }))
+    d.add(&Space::Model, Common::default(), EntityKind::Line(redrob_cad_doc::Line { a: Vec3::new(0.0, 0.0, 0.0), b: Vec3::new(10.0, 0.0, 0.0) }))
         .unwrap();
     d.add(
         &Space::Model,
         Common { color: Color::Index(1), ..Default::default() },
-        EntityKind::Circle(cadcraft_doc::Circle { center: Vec3::new(5.0, 5.0, 0.0), radius: 3.0 }),
+        EntityKind::Circle(redrob_cad_doc::Circle { center: Vec3::new(5.0, 5.0, 0.0), radius: 3.0 }),
     )
     .unwrap();
     d
@@ -28,7 +28,7 @@ fn builds_lines_and_circles() {
 #[test]
 fn linetype_dashes_line() {
     let mut d = sample();
-    d.linetypes.extend(cadcraft_doc::library::standard_linetypes());
+    d.linetypes.extend(redrob_cad_doc::library::standard_linetypes());
     d.layer_mut("0").unwrap().linetype = "DASHED".into();
     let l = build(&d, &Space::Model, &Options::default());
     assert!(l.prims.len() > 10);
@@ -47,7 +47,7 @@ fn text_produces_strokes() {
     d.add(
         &Space::Model,
         Common::default(),
-        EntityKind::Text(cadcraft_doc::Text {
+        EntityKind::Text(redrob_cad_doc::Text {
             insert: Vec3::ZERO,
             align_pt: None,
             height: 1.0,
@@ -116,15 +116,15 @@ fn raster_rejects_bad_size() {
     assert!(render(&l, &View { center: Vec2::ZERO, scale: 1.0, width: 0, height: 10 }, &RasterOptions::default()).is_none());
 }
 
-fn layout_with_viewport(vp: cadcraft_doc::Viewport) -> Drawing {
+fn layout_with_viewport(vp: redrob_cad_doc::Viewport) -> Drawing {
     let mut d = sample(); // line (0,0)-(10,0) and red circle at (5,5) r3
     let paper = Space::Paper("Layout1".into());
     d.add(&paper, Common::default(), EntityKind::Viewport(vp)).unwrap();
     d
 }
 
-fn vp(center: Vec2, w: f64, h: f64, view_center: Vec2, view_height: f64, id: u32) -> cadcraft_doc::Viewport {
-    cadcraft_doc::Viewport {
+fn vp(center: Vec2, w: f64, h: f64, view_center: Vec2, view_height: f64, id: u32) -> redrob_cad_doc::Viewport {
+    redrob_cad_doc::Viewport {
         center: center.to3(0.0),
         width: w,
         height: h,
@@ -196,11 +196,11 @@ fn hostile_viewports_do_not_panic() {
 
 fn text_doc(style_font: &str, value: &str) -> Drawing {
     let mut d = Drawing::new_imperial();
-    d.text_styles.push(cadcraft_doc::TextStyle { name: "TT".into(), font: style_font.into(), ..Default::default() });
+    d.text_styles.push(redrob_cad_doc::TextStyle { name: "TT".into(), font: style_font.into(), ..Default::default() });
     d.add(
         &Space::Model,
         Common::default(),
-        EntityKind::Text(cadcraft_doc::Text {
+        EntityKind::Text(redrob_cad_doc::Text {
             insert: Vec3::ZERO,
             align_pt: None,
             height: 1.0,
@@ -219,7 +219,7 @@ fn text_doc(style_font: &str, value: &str) -> Drawing {
 
 /// The first common system TrueType font, if any is installed (tests skip otherwise).
 fn system_font() -> Option<&'static str> {
-    ["Arial", "Helvetica", "DejaVuSans", "Verdana", "LiberationSans-Regular"].into_iter().find(|n| cadcraft_fonts::ttf::find(n).is_some())
+    ["Arial", "Helvetica", "DejaVuSans", "Verdana", "LiberationSans-Regular"].into_iter().find(|n| redrob_cad_fonts::ttf::find(n).is_some())
 }
 
 #[test]
@@ -252,7 +252,7 @@ fn missing_font_falls_back_to_stroke() {
 
 #[test]
 fn backwards_and_upside_down_mirror_text() {
-    let mut d = text_doc("CADCraft Stroke", "ABC");
+    let mut d = text_doc("Redrob CAD Stroke", "ABC");
     let normal = build(&d, &Space::Model, &Options::default()).bounds;
     assert!(normal.min.x >= -1e-9 && normal.min.y >= -1e-9);
     d.text_styles.iter_mut().for_each(|s| s.backwards = true);
@@ -274,7 +274,7 @@ fn truetype_mtext_and_dimension_text() {
     d.add(
         &Space::Model,
         Common::default(),
-        EntityKind::MText(cadcraft_doc::MText {
+        EntityKind::MText(redrob_cad_doc::MText {
             insert: Vec3::ZERO,
             height: 1.0,
             width: 0.0,
@@ -296,9 +296,9 @@ fn truetype_mtext_and_dimension_text() {
     assert!(l.prims.iter().filter(|p| p.kind == Kind::Tris).count() > 2, "arrows plus filled glyphs");
 }
 
-fn lin_dim() -> cadcraft_doc::Dimension {
-    cadcraft_doc::Dimension {
-        kind: cadcraft_doc::DimKind::Linear { rotation: 0.0 },
+fn lin_dim() -> redrob_cad_doc::Dimension {
+    redrob_cad_doc::Dimension {
+        kind: redrob_cad_doc::DimKind::Linear { rotation: 0.0 },
         defpt: Vec3::new(0.0, 2.0, 0.0),
         text_mid: Vec3::ZERO,
         p13: Vec3::ZERO,
@@ -340,10 +340,10 @@ fn dimension_colours_by_role() {
 #[test]
 fn table_title_is_centred_and_merged() {
     let mut d = Drawing::new_imperial();
-    let cell = |t: &str| cadcraft_doc::TableCell { text: t.into(), merged: None };
+    let cell = |t: &str| redrob_cad_doc::TableCell { text: t.into(), merged: None };
     let mut title = vec![cell("TITLE"), cell(""), cell("")];
     title[0].merged = Some((1, 3));
-    let t = cadcraft_doc::Table {
+    let t = redrob_cad_doc::Table {
         insert: Vec3::new(0.0, 0.0, 0.0),
         col_widths: vec![2.0, 2.0, 2.0],
         row_heights: vec![1.0, 1.0],

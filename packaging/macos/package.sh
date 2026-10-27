@@ -70,7 +70,7 @@ echo "==> Redrob CAD $VERSION for macOS ($ARCH), identity: $IDENTITY, notarize: 
 if [ "$SKIP_BUILD" = 0 ]; then
   args=()
   for t in "${TARGETS[@]}"; do args+=(--target "$t"); done
-  (cd "$ROOT" && cargo build --release --locked -p cadcraft -p cadcraft-cli "${args[@]}")
+  (cd "$ROOT" && cargo build --release --locked -p redrob-cad -p redrob-cad-cli "${args[@]}")
 fi
 
 rm -rf "$WORK"
@@ -115,10 +115,10 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 # Executable and icon carry the display name (CFBundleExecutable / CFBundleIconFile).
 cp "$WORK/bin/redrob-cad" "$APP/Contents/MacOS/Redrob CAD"
 cp "$ROOT/assets/app-icon/redrob-cad.icns" "$APP/Contents/Resources/Redrob CAD.icns"
-# Licences of the embedded craft-fonts fonts (only when built with CRAFT_FONTS_DIR).
+# Licences of the embedded font-collection fonts (only when built with REDROB_CAD_FONTS_DIR).
 copy_font_licences "$APP/Contents/Resources"
 sed -e "s/@VERSION@/$VERSION/g" -e "s/@SHORT_VERSION@/$SHORT_VERSION/g" \
-  -e "s/@BUILD_SHA@/${CADCRAFT_BUILD_SHA:-unknown}/g" \
+  -e "s/@BUILD_SHA@/${REDROB_CAD_BUILD_SHA:-unknown}/g" \
   "$HERE/Info.plist.in" >"$APP/Contents/Info.plist"
 plutil -lint "$APP/Contents/Info.plist"
 printf 'APPL????' >"$APP/Contents/PkgInfo"

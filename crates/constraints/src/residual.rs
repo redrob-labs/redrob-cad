@@ -1,7 +1,7 @@
 //! Residual equations for each constraint type.
 
-use cadcraft_doc::{Constraint, ConstraintKind, DistAxis, GeomRef};
-use cadcraft_geom::Vec2;
+use redrob_cad_doc::{Constraint, ConstraintKind, DistAxis, GeomRef};
+use redrob_cad_geom::Vec2;
 
 use crate::model::Model;
 

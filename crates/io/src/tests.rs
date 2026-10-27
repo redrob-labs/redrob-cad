@@ -1,6 +1,6 @@
-use cadcraft_color::Color;
-use cadcraft_doc::*;
-use cadcraft_geom::{PolyVertex, Vec2, Vec3};
+use redrob_cad_color::Color;
+use redrob_cad_doc::*;
+use redrob_cad_geom::{PolyVertex, Vec2, Vec3};
 
 use crate::*;
 
@@ -70,7 +70,7 @@ fn sample() -> Drawing {
     d.add(
         &Space::Model,
         c("0"),
-        EntityKind::Spline(cadcraft_geom::Spline::from_fit_points(&[Vec2::ZERO, Vec2::new(1.0, 2.0), Vec2::new(3.0, 1.0), Vec2::new(4.0, 3.0)])),
+        EntityKind::Spline(redrob_cad_geom::Spline::from_fit_points(&[Vec2::ZERO, Vec2::new(1.0, 2.0), Vec2::new(3.0, 1.0), Vec2::new(4.0, 3.0)])),
     )
     .unwrap();
     d.add(
@@ -207,7 +207,7 @@ fn hostile_dxf_does_not_panic() {
         "0\nSECTION\n2\nENTITIES\n0\nLWPOLYLINE\n42\n5\n20\n1\n0\nENDSEC\n0\nEOF\n",
     ] {
         if let Ok(d) = read(t.as_bytes(), "x.dxf") {
-            let _ = cadcraft_render::build(&d, &Space::Model, &cadcraft_render::Options::default());
+            let _ = redrob_cad_render::build(&d, &Space::Model, &redrob_cad_render::Options::default());
             let _ = d.extents(&Space::Model);
         }
     }
@@ -346,7 +346,7 @@ fn pdf_hostile_options_and_empty() {
 #[test]
 fn dxf_roundtrips_page_setup() {
     let mut d = sample();
-    let a3 = cadcraft_render::paper_size("A3").unwrap();
+    let a3 = redrob_cad_render::paper_size("A3").unwrap();
     {
         let p = &mut d.layouts[0].page;
         p.paper = a3.name.into();
@@ -558,9 +558,9 @@ fn dimension_associativity_roundtrips() {
     assert_eq!(back.model.len(), d.model.len());
     assert!(back.layouts.iter().all(|l| l.entities.is_empty()));
 
-    // Without CADCraft's xdata (a file from another writer), the standard DIMASSOC objects
+    // Without Redrob CAD's xdata (a file from another writer), the standard DIMASSOC objects
     // still give the extension-line links.
-    let tags = cadcraft_dxf::parse(text.as_bytes()).unwrap();
+    let tags = redrob_cad_dxf::parse(text.as_bytes()).unwrap();
     let mut stripped = Vec::new();
     let mut skipping = false;
     for t in tags {
@@ -573,13 +573,13 @@ fn dimension_associativity_roundtrips() {
             stripped.push(t);
         }
     }
-    let foreign = read_dxf(cadcraft_dxf::write_ascii(&stripped).as_bytes()).unwrap();
+    let foreign = read_dxf(redrob_cad_dxf::write_ascii(&stripped).as_bytes()).unwrap();
     assert_eq!(assoc_of(&foreign, hl), lin.assoc);
     let fa = assoc_of(&foreign, ha);
     assert_eq!(fa.len(), 2);
     assert_eq!(fa[1], ali.assoc[1]);
     assert!(matches!(fa[0].snap, AssocSnap::OnCircle { angle } if angle.abs() < 1e-9));
-    assert!(assoc_of(&foreign, hr).is_empty(), "radial links are CADCraft-only");
+    assert!(assoc_of(&foreign, hr).is_empty(), "radial links are Redrob CAD-only");
 }
 
 fn parametric_sample(d: &mut Drawing) -> (Vec<Constraint>, Parametric) {
@@ -756,7 +756,7 @@ fn hostile_extension_data_never_panics() {
     ];
     for t in &cases {
         if let Ok(d) = read(t.as_bytes(), "x.dxf") {
-            let _ = cadcraft_render::build(&d, &Space::Model, &cadcraft_render::Options::default());
+            let _ = redrob_cad_render::build(&d, &Space::Model, &redrob_cad_render::Options::default());
             let _ = write_dxf(&d);
         }
     }
@@ -803,7 +803,7 @@ fn extension_sample() -> Drawing {
 fn extension_sample_roundtrips_and_can_be_exported() {
     let d = extension_sample();
     let text = write_dxf(&d);
-    if let Ok(path) = std::env::var("CADCRAFT_DXF_OUT") {
+    if let Ok(path) = std::env::var("REDROB_CAD_DXF_OUT") {
         std::fs::write(path, &text).unwrap();
     }
     let back = read_dxf(text.as_bytes()).unwrap();
@@ -842,7 +842,7 @@ fn dwg_roundtrip_keeps_extension_data() {
 #[test]
 fn mleader_is_written_as_leader_and_mtext() {
     let mut d = Drawing::new_metric();
-    let text = cadcraft_doc::MText {
+    let text = redrob_cad_doc::MText {
         insert: Vec3::new(12.0, 5.0, 0.0),
         height: 2.5,
         width: 0.0,
@@ -852,7 +852,7 @@ fn mleader_is_written_as_leader_and_mtext() {
         style: "Standard".into(),
         line_spacing: 1.0,
     };
-    let m = cadcraft_doc::MLeader {
+    let m = redrob_cad_doc::MLeader {
         leaders: vec![vec![Vec3::new(0.0, 0.0, 0.0)]],
         landing: Vec3::new(10.0, 5.0, 0.0),
         dogleg: 2.0,

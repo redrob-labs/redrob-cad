@@ -1,4 +1,4 @@
-//! The CADCraft drawing database.
+//! The Redrob CAD drawing database.
 //!
 //! A [`Drawing`] holds the header variables, symbol tables (layers, linetypes, styles), block
 //! definitions, model space and paper-space layouts. Entity collections are copy-on-write
@@ -16,12 +16,12 @@ mod tables;
 
 use std::collections::BTreeMap;
 
-pub use cadcraft_color as color;
-pub use cadcraft_geom as geom;
 pub use constraint::*;
 pub use entity::*;
 pub use extents::{MAX_BLOCK_DEPTH, entity_bounds};
 pub use header::{HVal, Header};
+pub use redrob_cad_color as color;
+pub use redrob_cad_geom as geom;
 pub use store::EntityStore;
 pub use tables::*;
 
@@ -211,8 +211,8 @@ impl Drawing {
     }
 
     /// Bounds of all visible entities in a space.
-    pub fn extents(&self, space: &Space) -> cadcraft_geom::Bounds2 {
-        let mut b = cadcraft_geom::Bounds2::EMPTY;
+    pub fn extents(&self, space: &Space) -> redrob_cad_geom::Bounds2 {
+        let mut b = redrob_cad_geom::Bounds2::EMPTY;
         if let Some(store) = self.space(space) {
             for e in store.iter() {
                 if self.is_visible(e) {

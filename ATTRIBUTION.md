@@ -4,9 +4,9 @@ Every non-code asset in this repository (images, icons, fonts, example drawings,
 here with its author, source and licence. `cargo xtask assets` (part of `cargo xtask ci`) fails if
 an asset file is missing from this table.
 
-**Policy (mandatory):** CADCraft contains **no Autodesk, Adobe or Avid iconography, images,
+**Policy (mandatory):** Redrob CAD contains **no Autodesk, Adobe or Avid iconography, images,
 artwork, fonts, hatch patterns, linetypes, templates or presets.** Every asset is original work by
-CADCraft contributors or third-party material under an open licence (OSI open source, public domain
+Redrob CAD or CADCraft contributors or third-party material under an open licence (OSI open source, public domain
 / CC0, or Creative Commons that allows redistribution). Screenshots of Autodesk software are never
 committed. Font files are not added here: shared fonts live in
 [storytold/craft-fonts](https://github.com/storytold/craft-fonts), an optional build input. The one
@@ -25,7 +25,7 @@ system: the setup and DMG backgrounds and the Redrob CAD lockup.
 
 Generated-in-code assets are original and have no file to list:
 - the UI icon set (`crates/ui-egui/src/icons.rs`);
-- the "CADCraft Stroke" single-stroke drafting font (`crates/fonts/src/stroke.rs`);
+- the "Redrob CAD Stroke" (formerly "CADCraft Stroke") single-stroke drafting font (`crates/fonts/src/stroke.rs`);
 - the standard linetype and hatch-pattern libraries (`crates/doc/src/library.rs`; industry-common
   names, our own dash/spacing values);
 - the colour index palette, generated from its structure (`crates/color/src/lib.rs`);
@@ -58,7 +58,7 @@ Generated-in-code assets are original and have no file to list:
 | `assets/brand/README.md` | Redrob CAD contributors | written for this repository | MIT OR Apache-2.0 | Rules for the brand sources |
 | `assets/brand/SHA256SUMS` | Redrob CAD contributors | written for this repository | MIT OR Apache-2.0 | Checksums of the brand sources |
 | `assets/brand/redrob-cad-icon-web.svg` | Redrob | `@redrob-labs/ui@1.8.0` `dist/brand/app-icons/redrob-cad/redrob-cad-icon-web.svg`, verbatim | Redrob brand, all rights reserved | Pinned by `assets/brand/SHA256SUMS` |
-| `examples/apartment.dxf` | CADCraft contributors | sample drawing made with cadcraft-cli commands | MIT OR Apache-2.0 | Original |
+| `examples/apartment.dxf` | CADCraft contributors | sample drawing made with redrob-cad-cli commands | MIT OR Apache-2.0 | Original |
 | `docs/images/ui-apartment.png` | CADCraft contributors | screenshot of CADCraft itself (examples/apartment.dxf) | MIT OR Apache-2.0 | Original; no Autodesk UI |
 | `docs/images/ui-layout.png` | CADCraft contributors | screenshot of CADCraft itself (a layout of examples/apartment.dxf) | MIT OR Apache-2.0 | Original; no Autodesk UI |
 | `docs/images/ui-bracket.png` | CADCraft contributors | screenshot of CADCraft itself (sample drawing generated in code) | MIT OR Apache-2.0 | Original; no Autodesk UI |

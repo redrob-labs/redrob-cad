@@ -1,19 +1,19 @@
-//! `cadcraft-cli`: headless CADCraft.
+//! `redrob-cad-cli`: headless Redrob CAD.
 //!
 //! ```text
-//! cadcraft-cli info FILE.dxf                       summary as JSON
-//! cadcraft-cli convert IN.dxf OUT.(dxf|svg|png)    convert / export
-//! cadcraft-cli run [FILE|--sample|--metric] [--script TEXT|--script-file F.scr] [--cmd 'id {json}']... [--save OUT] [--export OUT.png]
-//! cadcraft-cli commands [FILTER]                   command catalog (JSON)
-//! cadcraft-cli mcp [--connect HOST:PORT]           MCP server on stdio (headless or bridged to the app)
-//! cadcraft-cli perf [N]                            timing table on a synthetic N-entity drawing
-//! cadcraft-cli sample (bracket|floorplan) OUT       write a built-in sample drawing
+//! redrob-cad-cli info FILE.dxf                       summary as JSON
+//! redrob-cad-cli convert IN.dxf OUT.(dxf|svg|png)    convert / export
+//! redrob-cad-cli run [FILE|--sample|--metric] [--script TEXT|--script-file F.scr] [--cmd 'id {json}']... [--save OUT] [--export OUT.png]
+//! redrob-cad-cli commands [FILTER]                   command catalog (JSON)
+//! redrob-cad-cli mcp [--connect HOST:PORT]           MCP server on stdio (headless or bridged to the app)
+//! redrob-cad-cli perf [N]                            timing table on a synthetic N-entity drawing
+//! redrob-cad-cli sample (bracket|floorplan) OUT       write a built-in sample drawing
 //! ```
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
 use std::process::ExitCode;
 
-use cadcraft_engine::Session;
+use redrob_cad_engine::Session;
 use serde_json::{Value, json};
 
 const USAGE: &str = "usage:
@@ -27,10 +27,10 @@ const USAGE: &str = "usage:
   redrob-cad-cli --version";
 
 fn install_io() {
-    cadcraft_engine::cmd::file::set_io(cadcraft_engine::cmd::file::IoHooks {
-        read: |b, name| cadcraft_io::read(b, name).map_err(|e| e.to_string()),
-        write: |d, name| cadcraft_io::write(d, name).map_err(|e| e.to_string()),
-        plot: Some(|d, space, opts| cadcraft_io::plot(d, space, opts).map_err(|e| e.to_string())),
+    redrob_cad_engine::cmd::file::set_io(redrob_cad_engine::cmd::file::IoHooks {
+        read: |b, name| redrob_cad_io::read(b, name).map_err(|e| e.to_string()),
+        write: |d, name| redrob_cad_io::write(d, name).map_err(|e| e.to_string()),
+        plot: Some(|d, space, opts| redrob_cad_io::plot(d, space, opts).map_err(|e| e.to_string())),
     });
 }
 
@@ -48,7 +48,7 @@ fn info(path: &str) -> Result<(), String> {
 
 fn export(s: &Session, out: &str) -> Result<(), String> {
     let d = s.doc().map_err(|e| e.to_string())?;
-    let bytes = cadcraft_io::write(d, out).map_err(|e| e.to_string())?;
+    let bytes = redrob_cad_io::write(d, out).map_err(|e| e.to_string())?;
     std::fs::write(out, &bytes).map_err(|e| format!("{out}: {e}"))?;
     eprintln!("wrote {out} ({} bytes)", bytes.len());
     Ok(())
@@ -57,11 +57,11 @@ fn export(s: &Session, out: &str) -> Result<(), String> {
 fn sample(args: &[String]) -> Result<(), String> {
     let (Some(which), Some(out)) = (args.first(), args.get(1)) else { return Err(USAGE.into()) };
     let d = match which.as_str() {
-        "bracket" => cadcraft_engine::sample::bracket(),
-        "floorplan" | "floor" => cadcraft_engine::sample::floor_plan(),
+        "bracket" => redrob_cad_engine::sample::bracket(),
+        "floorplan" | "floor" => redrob_cad_engine::sample::floor_plan(),
         other => return Err(format!("unknown sample `{other}` (bracket, floorplan)")),
     };
-    let bytes = cadcraft_io::write(&d, out).map_err(|e| e.to_string())?;
+    let bytes = redrob_cad_io::write(&d, out).map_err(|e| e.to_string())?;
     std::fs::write(out, &bytes).map_err(|e| format!("{out}: {e}"))?;
     eprintln!("wrote {out} ({} bytes)", bytes.len());
     Ok(())
@@ -76,7 +76,7 @@ fn run(args: &[String]) -> Result<(), String> {
     while let Some(a) = it.next() {
         match a.as_str() {
             "--sample" => {
-                s.open_drawing(cadcraft_engine::sample::default_sample(), "Bracket", None);
+                s.open_drawing(redrob_cad_engine::sample::default_sample(), "Bracket", None);
             }
             "--metric" => {
                 s.new_drawing(true);
@@ -138,9 +138,9 @@ impl Rng {
 
 /// A synthetic drawing with `n` mixed entities (lines, circles, arcs, polylines, text) spread
 /// over a square whose side grows with sqrt(n), so density stays constant.
-fn synthetic(n: usize, side: f64) -> Result<cadcraft_engine::doc::Drawing, String> {
-    use cadcraft_engine::doc::{self as d, Common, EntityKind, Space};
-    use cadcraft_engine::geom::{PolyVertex, Vec2, Vec3};
+fn synthetic(n: usize, side: f64) -> Result<redrob_cad_engine::doc::Drawing, String> {
+    use redrob_cad_engine::doc::{self as d, Common, EntityKind, Space};
+    use redrob_cad_engine::geom::{PolyVertex, Vec2, Vec3};
     let mut dr = d::Drawing::new_imperial();
     let mut r = Rng(0x9E37_79B9_7F4A_7C15);
     let v3 = |x: f64, y: f64| Vec3::new(x, y, 0.0);
@@ -184,9 +184,9 @@ fn synthetic(n: usize, side: f64) -> Result<cadcraft_engine::doc::Drawing, Strin
 }
 
 fn perf(args: &[String]) -> Result<(), String> {
-    use cadcraft_engine::doc::Space;
-    use cadcraft_engine::geom::{Bounds2, Vec2};
-    use cadcraft_engine::{select, snap};
+    use redrob_cad_engine::doc::Space;
+    use redrob_cad_engine::geom::{Bounds2, Vec2};
+    use redrob_cad_engine::{select, snap};
     use std::time::Instant;
     let n: usize = match args.first() {
         Some(a) => a.parse().map_err(|_| format!("perf: bad entity count {a}"))?,
@@ -203,9 +203,9 @@ fn perf(args: &[String]) -> Result<(), String> {
 
     // Display list at a 1600 px wide "zoom extents" view (tolerance = half a pixel).
     let px = side / 1600.0;
-    let opts = cadcraft_engine::render::Options { tolerance: px * 0.5, min_dash: px * 2.0, ..Default::default() };
+    let opts = redrob_cad_engine::render::Options { tolerance: px * 0.5, min_dash: px * 2.0, ..Default::default() };
     let t = Instant::now();
-    let list = cadcraft_engine::render::build(&d, &Space::Model, &opts);
+    let list = redrob_cad_engine::render::build(&d, &Space::Model, &opts);
     rows.push(("display list build".into(), ms(t), format!("{} prims, {} segments", list.prims.len(), list.segment_count())));
 
     // Hit testing on a zoomed-in view (aperture = 5 px at 0.02 units/px).
@@ -250,10 +250,10 @@ fn perf(args: &[String]) -> Result<(), String> {
     rows.push(("osnap x1000".into(), total, format!("{snaps} hits, {:.3} ms/query", total / 1000.0)));
 
     let t = Instant::now();
-    let bytes = cadcraft_io::write(&d, "perf.dxf").map_err(|e| e.to_string())?;
+    let bytes = redrob_cad_io::write(&d, "perf.dxf").map_err(|e| e.to_string())?;
     rows.push(("DXF write".into(), ms(t), format!("{:.1} MB", bytes.len() as f64 / 1e6)));
     let t = Instant::now();
-    let back = cadcraft_io::read(&bytes, "perf.dxf").map_err(|e| e.to_string())?;
+    let back = redrob_cad_io::read(&bytes, "perf.dxf").map_err(|e| e.to_string())?;
     rows.push(("DXF read".into(), ms(t), format!("{} entities", back.entity_count())));
 
     println!("{:<40} {:>12}  notes", "operation", "ms");
@@ -283,7 +283,7 @@ fn main() -> ExitCode {
         Some("commands") => {
             let s = Session::new();
             let f = rest.first().map(|x| x.to_ascii_lowercase());
-            let v: Vec<Value> = cadcraft_engine::command_specs()
+            let v: Vec<Value> = redrob_cad_engine::command_specs()
                 .iter()
                 .filter(|c| f.as_ref().is_none_or(|f| c.id.contains(f.as_str()) || c.label.to_ascii_lowercase().contains(f.as_str())))
                 .map(|c| serde_json::to_value(c.info(&s)).unwrap_or_default())
@@ -292,19 +292,19 @@ fn main() -> ExitCode {
             Ok(())
         }
         Some("mcp") => {
-            let backend: Box<dyn cadcraft_mcp::Backend> = match rest.iter().position(|a| a == "--connect").and_then(|i| rest.get(i + 1)) {
-                Some(addr) => match cadcraft_mcp::Remote::connect(addr) {
+            let backend: Box<dyn redrob_cad_mcp::Backend> = match rest.iter().position(|a| a == "--connect").and_then(|i| rest.get(i + 1)) {
+                Some(addr) => match redrob_cad_mcp::Remote::connect(addr) {
                     Ok(r) => Box::new(r),
                     Err(e) => {
                         eprintln!("redrob-cad-cli: cannot connect to {addr}: {e}");
                         return ExitCode::FAILURE;
                     }
                 },
-                None => Box::new(cadcraft_mcp::Headless::default()),
+                None => Box::new(redrob_cad_mcp::Headless::default()),
             };
             let stdin = std::io::stdin();
             let stdout = std::io::stdout();
-            cadcraft_mcp::Server::new(backend).serve(stdin.lock(), stdout.lock()).map_err(|e| e.to_string())
+            redrob_cad_mcp::Server::new(backend).serve(stdin.lock(), stdout.lock()).map_err(|e| e.to_string())
         }
         Some("--version" | "-V") => {
             println!("redrob-cad-cli {}", env!("CARGO_PKG_VERSION"));

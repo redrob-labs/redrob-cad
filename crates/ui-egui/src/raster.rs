@@ -4,9 +4,9 @@
 
 use std::collections::HashMap;
 
-use cadcraft_doc::EntityKind;
-use cadcraft_geom::Vec2;
 use egui::{Color32, Mesh, Pos2, TextureHandle, TextureOptions};
+use redrob_cad_doc::EntityKind;
+use redrob_cad_geom::Vec2;
 
 use crate::CadApp;
 use crate::canvas::Xf;

@@ -1,4 +1,4 @@
-//! The CADCraft engine.
+//! The Redrob CAD engine.
 //!
 //! Every user-visible action is a command with a stable id (AutoCAD's command names in lower
 //! case: `line`, `circle`, `zoom`, `layer`…, plus dotted ids for UI operations). Commands run two
@@ -21,16 +21,16 @@ pub mod units;
 
 use std::sync::Arc;
 
-use cadcraft_doc::{Common, Drawing, Entity, EntityKind, Handle, Space};
-use cadcraft_geom::{Bounds2, Vec2};
+use redrob_cad_doc::{Common, Drawing, Entity, EntityKind, Handle, Space};
+use redrob_cad_geom::{Bounds2, Vec2};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-pub use cadcraft_doc as doc;
-pub use cadcraft_geom as geom;
-pub use cadcraft_render as render;
 pub use cmd::{CommandInfo, CommandSpec, command_specs, find_command};
 pub use prompt::{Accept, Input, Interactive, Prompt, Step};
+pub use redrob_cad_doc as doc;
+pub use redrob_cad_geom as geom;
+pub use redrob_cad_render as render;
 
 #[derive(Debug, thiserror::Error)]
 pub enum EngineError {
@@ -49,8 +49,8 @@ pub enum EngineError {
     Internal(String, String),
 }
 
-impl From<cadcraft_doc::DocError> for EngineError {
-    fn from(e: cadcraft_doc::DocError) -> Self {
+impl From<redrob_cad_doc::DocError> for EngineError {
+    fn from(e: redrob_cad_doc::DocError) -> Self {
         EngineError::Other(e.to_string())
     }
 }
@@ -130,11 +130,11 @@ impl DocState {
         if self.active_viewport().is_some() { Space::Model } else { self.space.clone() }
     }
     /// The active MSPACE viewport, if it still exists in the current layout.
-    pub fn active_viewport(&self) -> Option<(Handle, cadcraft_doc::Viewport)> {
+    pub fn active_viewport(&self) -> Option<(Handle, redrob_cad_doc::Viewport)> {
         let h = self.mspace?;
         let e = self.doc.space(&self.space)?.get(h)?;
         match &e.kind {
-            cadcraft_doc::EntityKind::Viewport(v) if v.height > 1e-12 && v.view_height > 1e-12 => Some((h, v.clone())),
+            redrob_cad_doc::EntityKind::Viewport(v) if v.height > 1e-12 && v.view_height > 1e-12 => Some((h, v.clone())),
             _ => None,
         }
     }
@@ -169,7 +169,7 @@ impl DocState {
                 let doc = Arc::make_mut(&mut self.doc);
                 if let Some(store) = doc.space_mut(&self.space.clone()) {
                     store.modify(h, |e| {
-                        if let cadcraft_doc::EntityKind::Viewport(x) = &mut e.kind {
+                        if let redrob_cad_doc::EntityKind::Viewport(x) = &mut e.kind {
                             x.view_center = center;
                             x.view_height = height;
                         }
@@ -429,9 +429,9 @@ impl Session {
         let h = &d.header;
         Common {
             layer: h.str("CLAYER", "0"),
-            color: cadcraft_color::Color::from_aci(h.i64("CECOLOR", 256) as i16),
+            color: redrob_cad_color::Color::from_aci(h.i64("CECOLOR", 256) as i16),
             linetype: h.str("CELTYPE", "ByLayer"),
-            lineweight: cadcraft_doc::Lineweight::from_dxf(h.i64("CELWEIGHT", -1) as i16),
+            lineweight: redrob_cad_doc::Lineweight::from_dxf(h.i64("CELWEIGHT", -1) as i16),
             ltscale: h.f64("CELTSCALE", 1.0),
             ..Common::default()
         }
@@ -444,7 +444,7 @@ impl Session {
         let true_color = self.doc()?.header.get("CECOLOR_RGB").and_then(|v| v.as_i64());
         let mut common = common;
         if let Some(rgb) = true_color {
-            common.color = cadcraft_color::Color::True(cadcraft_color::Rgb::from_u32(rgb as u32));
+            common.color = redrob_cad_color::Color::True(redrob_cad_color::Rgb::from_u32(rgb as u32));
         }
         let h = self.doc_mut()?.add(&space, common, kind)?;
         Ok(h)

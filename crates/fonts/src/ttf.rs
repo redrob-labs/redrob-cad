@@ -4,7 +4,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 
-use cadcraft_geom::Vec2;
+use redrob_cad_geom::Vec2;
 use skrifa::instance::{LocationRef, Size};
 use skrifa::outline::{DrawSettings, OutlinePen};
 use skrifa::{FontRef, MetadataProvider};
@@ -92,7 +92,14 @@ fn key(name: &str) -> String {
 /// Bytes of a font by name, if installed. Stroke-font names (".shx", empty) return `None`.
 pub fn find(name: &str) -> Option<Arc<Vec<u8>>> {
     let k = key(name);
-    if k.is_empty() || k.ends_with(".shx") || k == crate::BUILTIN_FONT.to_ascii_lowercase() || k == "txt" || k == "simplex" || k == "romans" {
+    if k.is_empty()
+        || k.ends_with(".shx")
+        || k == crate::BUILTIN_FONT.to_ascii_lowercase()
+        || k == crate::LEGACY_BUILTIN_FONT.to_ascii_lowercase()
+        || k == "txt"
+        || k == "simplex"
+        || k == "romans"
+    {
         return None;
     }
     let mut g = db().lock().unwrap_or_else(PoisonError::into_inner);

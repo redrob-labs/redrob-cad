@@ -3,9 +3,9 @@
 //! (DIMTSZ, DIMDLE), text placement (DIMTAD, DIMJUST, DIMTIH/DIMTOH, DIMGAP) and text
 //! formatting (DIMLUNIT, DIMDEC, DIMZIN, DIMRND, DIMPOST, DIMTOL/DIMLIM, DIMALT).
 
-use cadcraft_doc::{DimKind, DimStyle, Dimension};
-use cadcraft_fonts::{MTextParams, TextFont};
-use cadcraft_geom::{Arc, Vec2, ccw_sweep};
+use redrob_cad_doc::{DimKind, DimStyle, Dimension};
+use redrob_cad_fonts::{MTextParams, TextFont};
+use redrob_cad_geom::{Arc, Vec2, ccw_sweep};
 
 use crate::units::{NumFormat, format_angle, format_decimal, format_linear};
 
@@ -148,14 +148,14 @@ pub struct ArrowGeom {
 }
 
 fn circle_pts(c: Vec2, r: f64) -> Vec<Vec2> {
-    (0..=24).map(|i| c + Vec2::from_angle(f64::from(i) * cadcraft_geom::TAU / 24.0) * r).collect()
+    (0..=24).map(|i| c + Vec2::from_angle(f64::from(i) * redrob_cad_geom::TAU / 24.0) * r).collect()
 }
 
 fn disc(c: Vec2, r: f64) -> Vec<Vec2> {
     let mut t = Vec::with_capacity(72);
     for i in 0..24 {
-        let a0 = f64::from(i) * cadcraft_geom::TAU / 24.0;
-        let a1 = f64::from(i + 1) * cadcraft_geom::TAU / 24.0;
+        let a0 = f64::from(i) * redrob_cad_geom::TAU / 24.0;
+        let a1 = f64::from(i + 1) * redrob_cad_geom::TAU / 24.0;
         t.extend_from_slice(&[c, c + Vec2::from_angle(a0) * r, c + Vec2::from_angle(a1) * r]);
     }
     t
@@ -338,7 +338,7 @@ fn ext_line(origin: Vec2, foot: Vec2, st: &DimStyle, k: f64) -> Option<Vec<Vec2>
 
 /// An angle reduced to the readable range (text never upside down).
 fn readable(a: f64) -> f64 {
-    let mut a = cadcraft_geom::norm_angle(a);
+    let mut a = redrob_cad_geom::norm_angle(a);
     if a > std::f64::consts::FRAC_PI_2 + 1e-9 && a <= 3.0 * std::f64::consts::FRAC_PI_2 + 1e-9 {
         a -= std::f64::consts::PI;
     }
@@ -386,7 +386,7 @@ pub fn dimension_geometry_with(d: &Dimension, st: &DimStyle, dimscale: f64, font
         if text.is_empty() {
             return (0.0, 0.0);
         }
-        let l = cadcraft_fonts::layout_mtext_with(text, &params(Vec2::ZERO, 0.0));
+        let l = redrob_cad_fonts::layout_mtext_with(text, &params(Vec2::ZERO, 0.0));
         (l.bounds.width(), l.bounds.height())
     };
     let mut text_angle = 0.0;
@@ -576,14 +576,14 @@ pub fn dimension_geometry_with(d: &Dimension, st: &DimStyle, dimscale: f64, font
             let (vertex, a1, a2, arc_pt) = if matches!(d.kind, DimKind::Angular3P) {
                 (d.p15.xy(), d.p13.xy(), d.p14.xy(), d.defpt.xy())
             } else {
-                let v = cadcraft_geom::line_line_infinite(d.p13.xy(), d.p14.xy(), d.defpt.xy(), d.p15.xy()).map(|x| x.0).unwrap_or(d.p14.xy());
+                let v = redrob_cad_geom::line_line_infinite(d.p13.xy(), d.p14.xy(), d.defpt.xy(), d.p15.xy()).map(|x| x.0).unwrap_or(d.p14.xy());
                 (v, d.p14.xy(), d.p15.xy(), d.p16.xy())
             };
             let r = vertex.dist(arc_pt).max(1e-9);
             let s = vertex.angle_to(a1);
             let e = vertex.angle_to(a2);
             let arc =
-                if cadcraft_geom::angle_in_sweep(vertex.angle_to(arc_pt), s, e) { Arc::new(vertex, r, s, e) } else { Arc::new(vertex, r, e, s) };
+                if redrob_cad_geom::angle_in_sweep(vertex.angle_to(arc_pt), s, e) { Arc::new(vertex, r, s, e) } else { Arc::new(vertex, r, e, s) };
             let sweep = ccw_sweep(arc.start, arc.end);
             let txt = format_angle(sweep, st.angular_unit, st.angular_decimals, st.zero_suppression & 12);
             g.mtext = apply_override(&post(&st.post, &txt), d);
@@ -655,9 +655,9 @@ pub fn dimension_geometry_with(d: &Dimension, st: &DimStyle, dimscale: f64, font
     if d.text_rotation != 0.0 && d.text_rotation.is_finite() {
         text_angle = d.text_rotation;
     }
-    g.value = decode_value(&cadcraft_fonts::plain_mtext(&g.mtext));
+    g.value = decode_value(&redrob_cad_fonts::plain_mtext(&g.mtext));
     if !g.mtext.is_empty() {
-        let l = cadcraft_fonts::layout_mtext_with(&g.mtext, &params(text_mid, text_angle));
+        let l = redrob_cad_fonts::layout_mtext_with(&g.mtext, &params(text_mid, text_angle));
         for p in l.pieces {
             g.text.extend(p.shaped.strokes);
             g.text_glyphs.extend(p.shaped.glyphs);
@@ -670,13 +670,13 @@ pub fn dimension_geometry_with(d: &Dimension, st: &DimStyle, dimscale: f64, font
 
 /// `%%` codes in the plain value become their characters (`%%c` → ⌀, `%%p` → ±, `%%d` → °).
 fn decode_value(s: &str) -> String {
-    cadcraft_fonts::decode_controls(s).into_iter().map(|(c, _, _)| c).collect()
+    redrob_cad_fonts::decode_controls(s).into_iter().map(|(c, _, _)| c).collect()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cadcraft_geom::Vec3;
+    use redrob_cad_geom::Vec3;
 
     fn lin(p1: (f64, f64), p2: (f64, f64), on: (f64, f64), rot: f64) -> Dimension {
         Dimension {
@@ -704,8 +704,8 @@ mod tests {
         s
     }
 
-    fn bbox(pts: &[Vec<Vec2>]) -> cadcraft_geom::Bounds2 {
-        cadcraft_geom::Bounds2::from_points(pts.iter().flatten().copied())
+    fn bbox(pts: &[Vec<Vec2>]) -> redrob_cad_geom::Bounds2 {
+        redrob_cad_geom::Bounds2::from_points(pts.iter().flatten().copied())
     }
 
     #[test]

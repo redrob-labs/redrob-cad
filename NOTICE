@@ -4,7 +4,12 @@ Copyright (c) 2026 Janghoon Lee (Redrob) and contributors.
 Licensed under the MIT License or the Apache License, Version 2.0, at your option
 (LICENSE-MIT, LICENSE-APACHE).
 
-Redrob CAD is a fork of CADCraft (https://github.com/storytold/cadcraft); see UPSTREAM.md.
+Code origin
+
+Redrob CAD started from the source of CADCraft (https://github.com/storytold/cadcraft) at its
+release tag v0.3.0, commit 59631c8d4f9ffe6c08c5c2065ea17504e53bf821 (2026-10-08), whose copyright
+notice is kept above and in LICENSE-MIT. It is no longer synced with that project: since the cut
+the code is developed here independently, and all names in it are Redrob CAD's own.
 
 The ArtCraft name, wordmark and logos are trademarks of the ArtCraft Team. Redrob CAD does not
 use or ship them. The Redrob name and mark (assets/brand/, assets/app-icon/) belong to Redrob and
@@ -26,9 +31,9 @@ The Windows setup also embeds Wanted Sans SemiBold and Pretendard SemiBold
 SIL Open Font License, Version 1.1 (Pretendard-OFL.txt beside it).
 
 
-None: every other bundled asset is original to CADCraft (icons, drafting font, hatch patterns and
+None: every other bundled asset is original to CADCraft and Redrob CAD (icons, drafting font, hatch patterns and
 linetypes are drawn or defined in code). The per-file list is in ATTRIBUTION.md. Builds made with
-the optional craft-fonts input (CRAFT_FONTS_DIR) embed the fonts listed in its ATTRIBUTION.md,
+the optional font collection input (REDROB_CAD_FONTS_DIR, from storytold/craft-fonts) embed the fonts listed in its ATTRIBUTION.md,
 each under the SIL Open Font License 1.1.
 
 Redrob CAD and CADCraft are independent projects and are not affiliated with, sponsored by or endorsed by

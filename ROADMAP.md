@@ -1,8 +1,8 @@
-# CADCraft roadmap
+# Redrob CAD roadmap
 
-Status as of **2026-10-07**. CADCraft targets full parity with AutoCAD (2D drafting first, then
+Status as of **2026-10-07**. Redrob CAD targets full parity with AutoCAD (2D drafting first, then
 annotation, layouts and plotting, DWG, parametrics and 3D), plus things AutoCAD doesn't have:
-agent control over MCP, a scriptable CLI, a web build and a free licence.
+agent control over MCP, a scriptable CLI and a free licence.
 
 ## At a glance
 
@@ -15,10 +15,10 @@ agent control over MCP, a scriptable CLI, a web build and a free licence.
 
 ### What "alpha" means here
 
-A person can do real 2D drafting work in CADCraft and trust it with their files:
+A person can do real 2D drafting work in Redrob CAD and trust it with their files:
 
-- Installable, signed builds for macOS, Windows, Linux and the web from the release pipeline.
-- Drawings from AutoCAD open correctly, and CADCraft's DXF/DWG files open cleanly in AutoCAD and other readers.
+- Installable, signed builds for macOS, Windows and Linux from the release pipeline.
+- Drawings from AutoCAD open correctly, and Redrob CAD's DXF/DWG files open cleanly in AutoCAD and other readers.
 - Every common 2D draw, modify, annotate, layer, block, layout and plot command works, both with the mouse and at the command line.
 - No crashes and no lost work: autosave and recovery, plus undo that always works.
 
@@ -39,7 +39,7 @@ A person can do real 2D drafting work in CADCraft and trust it with their files:
 | Plot preview | missing | 4 |
 | Scripted smoke test of all 290 commands through the UI, then fixing what it finds | not started | 12 |
 | Release pipeline: first green signed build on every platform | workflows written; first run being started | 6 |
-| Getting-started docs and the web build hosted | partial | 4 |
+| Getting-started docs hosted | partial | 4 |
 | **Total** | | **≈ 50** |
 
 ## Where we are
@@ -51,7 +51,7 @@ A person can do real 2D drafting work in CADCraft and trust it with their files:
 | **Estimated overall feature parity (weighted by how much each area matters)** | **≈ 29%** |
 | Performance | 200k entities: pick 0.001 ms, pick after an edit ≈ 4 ms (incremental R-tree), GPU canvas ≈ 4 ms per frame |
 | Tests | geometry, colour, document, fonts, render, DXF/DWG round trips, constraints solver, engine (commands, prompts, snaps, selection, undo, scripts, hostile input), MCP agent tasks, xtask |
-| Gates | `cargo xtask ci`: fmt, clippy -D warnings, tests, asset attribution, layering, wasm — green |
+| Gates | `cargo xtask ci`: fmt, clippy -D warnings, tests, asset attribution, layering — green |
 
 Menu breadth counts menu items that exist; the weighted parity estimate also counts depth (options,
 edge cases, dialogs), which is why it is lower.
@@ -60,7 +60,7 @@ edge cases, dialogs), which is why it is lower.
 
 | # | Milestone | Status | Estimate (Opus 5.5 wall-clock hours) |
 |---|---|---|---|
-| M0 | Skeleton + vertical slice: workspace, AutoCAD-style UI, command line, draw/modify basics, DXF, CLI, MCP, web | **done** | — |
+| M0 | Skeleton + vertical slice: workspace, AutoCAD-style UI, command line, draw/modify basics, DXF, CLI, MCP | **done** | — |
 | M1 | Drafting core: every Draw-menu 2D command and option, dynamic input fields, object snap tracking, temporary snap overrides | ~85% (all 2D Draw items exist) | 8 |
 | M2 | Modify: grips (stretch/move/rotate/scale/mirror, multifunctional), PEDIT, SPLINEDIT, LENGTHEN, BLEND, ALIGN, associative arrays, trim/extend for all curve types, MATCHPROP UI, Quick Properties | ~65% (PEDIT, LENGTHEN, ALIGN, BLEND, grips API, TRIM on splines) | 18 |
 | M3 | Layers & properties: full Layer Properties Manager (filters, VP overrides, states), linetype manager, lineweight display, transparency, QSELECT dialog, Properties for every object type | ~75% (Layer Properties Manager with VP overrides/states/filters, QSELECT, Quick Properties) | 10 |
@@ -77,7 +77,7 @@ edge cases, dialogs), which is why it is lower.
 | | **Remaining total** | | **≈ 570 hours** |
 
 At roughly 570 more hours of Opus 5.5 wall-clock work (with parallel agents this compresses to
-about 150–190 hours of elapsed time), CADCraft would reach broad AutoCAD parity. 2D drafting parity
+about 150–190 hours of elapsed time), Redrob CAD would reach broad AutoCAD parity. 2D drafting parity
 (M1–M8) is the first ≈ 250 hours.
 
 ## Current focus

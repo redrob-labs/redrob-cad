@@ -1,24 +1,27 @@
 //! DXF data shared by the reader and the writer beyond plain entity geometry:
 //! dimension-variable group codes (DIMSTYLE records and the `ACAD` "DSTYLE" override xdata,
 //! both per the DXF Reference), arrowhead block names, extended-data helpers and the
-//! CADCraft-owned payloads (exact associativity, table flags, parametric constraints).
+//! Redrob CAD-owned payloads (exact associativity, table flags, parametric constraints).
 //!
-//! CADCraft's own data lives under the registered application `CADCRAFT` (xdata) and the
+//! Redrob CAD's own data lives under the legacy registered application `CADCRAFT` (xdata) and the
 //! named-object-dictionary entry `CADCRAFT_CONSTRAINTS` (an XRECORD). Other readers keep or
 //! ignore both.
 
 use std::collections::HashMap;
 
-use cadcraft_color::Color;
-use cadcraft_doc::{AssocSnap, Constraint, DimAssoc, DimStyle, Handle, Parametric};
-use cadcraft_dxf::Tag;
-use cadcraft_render::Arrowhead;
+use redrob_cad_color::Color;
+use redrob_cad_doc::{AssocSnap, Constraint, DimAssoc, DimStyle, Handle, Parametric};
+use redrob_cad_dxf::Tag;
+use redrob_cad_render::Arrowhead;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-/// Registered application name of CADCraft's extended data.
+/// Registered application name of Redrob CAD's extended data.
+// legacy: registered application name in saved DXF/DWG files; renaming it would orphan the
+// associativity, table and constraint data of every drawing saved so far.
 pub(crate) const APP: &str = "CADCRAFT";
 /// Named-object-dictionary key of the constraint XRECORD.
+// legacy: named-object-dictionary key in saved DXF/DWG files (see APP).
 pub(crate) const CONSTRAINTS_KEY: &str = "CADCRAFT_CONSTRAINTS";
 
 /// Caps for hostile input.
@@ -272,7 +275,7 @@ pub(crate) fn read_dstyle(tags: &[Tag], styles: &HashMap<String, String>, blocks
     out
 }
 
-/// Snap kinds in CADCraft's ASSOC xdata.
+/// Snap kinds in Redrob CAD's ASSOC xdata.
 fn snap_code(s: &AssocSnap) -> i64 {
     match s {
         AssocSnap::Start => 0,
@@ -285,7 +288,7 @@ fn snap_code(s: &AssocSnap) -> i64 {
     }
 }
 
-/// Exact associativity as CADCraft xdata groups: per link `1000 point`, `1005 object`,
+/// Exact associativity as Redrob CAD xdata groups: per link `1000 point`, `1005 object`,
 /// `1070 snap` and the snap's argument (`1040 angle`, `1005 other object`, `1071 vertex`).
 pub(crate) fn assoc_xdata(assoc: &[DimAssoc]) -> Vec<Tag> {
     let mut v = vec![Tag::s(1000, "ASSOC"), Tag::s(1002, "{")];
@@ -308,7 +311,7 @@ pub(crate) fn assoc_xdata(assoc: &[DimAssoc]) -> Vec<Tag> {
 
 const POINT_NAMES: [&str; 5] = ["defpt", "p13", "p14", "p15", "p16"];
 
-/// Associativity links from CADCraft xdata; malformed links are skipped.
+/// Associativity links from Redrob CAD xdata; malformed links are skipped.
 pub(crate) fn read_assoc(tags: &[Tag]) -> Vec<DimAssoc> {
     let list = xdata_list(xdata(tags, APP), "ASSOC");
     let mut out = Vec::new();
@@ -409,7 +412,7 @@ mod tests {
 
     #[test]
     fn every_dimvar_has_a_code() {
-        for (_, field) in cadcraft_doc::DIMVARS {
+        for (_, field) in redrob_cad_doc::DIMVARS {
             assert!(dim_code(field).is_some(), "{field} has no DXF group code");
         }
     }
