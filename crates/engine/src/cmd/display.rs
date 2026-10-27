@@ -1,7 +1,7 @@
 //! Display order and visibility: DRAWORDER (Above/Under objects, Front/Back), TEXTTOFRONT,
 //! HATCHTOBACK, ISOLATEOBJECTS / HIDEOBJECTS / UNISOLATEOBJECTS; and TXT2MTXT.
 
-use cadcraft_doc::{EntityKind, Handle, MText};
+use redrob_cad_doc::{EntityKind, Handle, MText};
 use serde_json::{Value, json};
 
 use super::machines::{SelOutcome, SelectPhase};
@@ -215,7 +215,7 @@ fn run_unisolate(s: &mut Session, _p: &Value) -> Result<Value> {
 fn run_txt2mtxt(s: &mut Session, p: &Value) -> Result<Value> {
     let hs = targets(s, p)?;
     let d = s.doc()?;
-    let mut texts: Vec<(Handle, cadcraft_doc::Text, cadcraft_doc::Common)> = hs
+    let mut texts: Vec<(Handle, redrob_cad_doc::Text, redrob_cad_doc::Common)> = hs
         .iter()
         .filter_map(|h| {
             let e = d.entity(*h)?;
@@ -231,7 +231,7 @@ fn run_txt2mtxt(s: &mut Session, p: &Value) -> Result<Value> {
     // Reading order: top to bottom, then left to right.
     texts.sort_by(|a, b| b.1.insert.y.total_cmp(&a.1.insert.y).then(a.1.insert.x.total_cmp(&b.1.insert.x)));
     let combine = bool_or(p, "combine", true);
-    let make = |ts: &[&(Handle, cadcraft_doc::Text, cadcraft_doc::Common)]| -> Option<EntityKind> {
+    let make = |ts: &[&(Handle, redrob_cad_doc::Text, redrob_cad_doc::Common)]| -> Option<EntityKind> {
         let first = ts.first()?;
         let h = first.1.height.max(1e-9);
         let x0 = ts.iter().map(|t| t.1.insert.x).fold(f64::INFINITY, f64::min);
@@ -243,7 +243,7 @@ fn run_txt2mtxt(s: &mut Session, p: &Value) -> Result<Value> {
             1.0
         };
         Some(EntityKind::MText(MText {
-            insert: cadcraft_geom::Vec3::new(x0, first.1.insert.y + h, 0.0),
+            insert: redrob_cad_geom::Vec3::new(x0, first.1.insert.y + h, 0.0),
             height: h,
             width: 0.0,
             attach: 1,
@@ -253,7 +253,7 @@ fn run_txt2mtxt(s: &mut Session, p: &Value) -> Result<Value> {
             line_spacing: spacing,
         }))
     };
-    let groups: Vec<Vec<&(Handle, cadcraft_doc::Text, cadcraft_doc::Common)>> =
+    let groups: Vec<Vec<&(Handle, redrob_cad_doc::Text, redrob_cad_doc::Common)>> =
         if combine { vec![texts.iter().collect()] } else { texts.iter().map(|t| vec![t]).collect() };
     let space = s.space();
     let mut out = Vec::new();
@@ -266,7 +266,7 @@ fn run_txt2mtxt(s: &mut Session, p: &Value) -> Result<Value> {
         }
         let nh = d.new_handle();
         if let Some(st) = d.space_mut(&space) {
-            st.push(cadcraft_doc::Entity { handle: nh, common, kind });
+            st.push(redrob_cad_doc::Entity { handle: nh, common, kind });
         }
         out.push(nh.hex());
     }

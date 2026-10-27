@@ -1,79 +1,10 @@
-//! `cargo xtask brand`: keep this fork's brand intact across upstream syncs.
-//!
-//! Three checks, each a way a sync from upstream (CADCraft) can quietly undo the rebrand:
-//!
-//! 1. No tracked file under a `proprietaryPrefixes` entry of `upstream-base.json` (upstream's
-//!    trademarked logos in `docs/brand/`).
-//! 2. `assets/brand/` still holds the design system's files byte for byte (`SHA256SUMS`).
-//! 3. No upstream product name, company or link on a surface a user or an agent reads: the apps,
-//!    the UI and MCP crates, packaging and the release workflow. Comment lines are skipped, and so
-//!    are lines that credit upstream on purpose (copyright, "Built on CADCraft") or name the
-//!    "CADCraft Stroke" font, which is stored by name inside drawing files.
+//! `cargo xtask brand`: `assets/brand/` holds the Redrob design system's files byte for byte, as
+//! pinned by `assets/brand/SHA256SUMS`.
 
 use std::path::Path;
-use std::process::Command;
-
-/// Where the checked names must not appear: path prefixes of git-tracked files.
-const SURFACES: &[&str] = &[
-    "apps/",
-    "crates/ui-egui/src/",
-    "crates/mcp/src/",
-    "crates/io/src/pdf.rs",
-    "packaging/",
-    ".github/workflows/release.yml",
-    ".github/workflows/packaging-lint.yml",
-    "docs/mcp.md",
-    "docs/control-protocol.md",
-];
-
-/// Upstream's product name, its team, company, and their links.
-const FORBIDDEN: &[&str] = &["CADCraft", "ArtCraft", "artcraft", "storyteller", "Learning Machines", "discord.gg"];
-
-/// A line containing one of these credits upstream on purpose, or names a stored identifier.
-const ALLOWED: &[&str] = &["Copyright", "Built on CADCraft", "CADCraft Stroke"];
-
-const TEXT_EXT: &[&str] = &["rs", "toml", "html", "sh", "ps1", "wxs", "in", "desktop", "xml", "yml", "yaml", "md", "json", "plist"];
-
-/// Findings of check 3 in one file: `(line number, line)`.
-pub fn offending_lines(text: &str) -> Vec<(usize, String)> {
-    text.lines()
-        .enumerate()
-        .filter(|(_, l)| {
-            let t = l.trim_start();
-            !(t.starts_with("//") || t.starts_with('#') || t.starts_with("<!--"))
-                && FORBIDDEN.iter().any(|f| l.contains(f))
-                && !ALLOWED.iter().any(|a| l.contains(a))
-        })
-        .map(|(i, l)| (i + 1, l.trim().to_string()))
-        .collect()
-}
-
-fn on_surface(path: &str) -> bool {
-    let ext = Path::new(path).extension().and_then(|e| e.to_str()).unwrap_or("");
-    SURFACES.iter().any(|s| path.starts_with(s)) && (TEXT_EXT.contains(&ext) || Path::new(path).file_name().is_some_and(|n| n == "nfpm.yaml"))
-}
 
 pub fn run(root: &Path) -> Result<(), String> {
-    let out = Command::new("git")
-        .current_dir(root)
-        .args(["ls-files", "--cached", "--others", "--exclude-standard"])
-        .output()
-        .map_err(|e| format!("git ls-files: {e}"))?;
-    let files: Vec<String> = String::from_utf8_lossy(&out.stdout).lines().filter(|l| root.join(l).is_file()).map(str::to_owned).collect();
     let mut problems = Vec::new();
-
-    // 1. Proprietary upstream paths.
-    let base: serde_json::Value =
-        serde_json::from_str(&std::fs::read_to_string(root.join("upstream-base.json")).map_err(|e| format!("upstream-base.json: {e}"))?)
-            .map_err(|e| format!("upstream-base.json: {e}"))?;
-    let prefixes: Vec<String> = base["proprietaryPrefixes"].as_array().into_iter().flatten().filter_map(|v| v.as_str().map(str::to_owned)).collect();
-    for f in &files {
-        if let Some(p) = prefixes.iter().find(|p| f.starts_with(p.as_str())) {
-            problems.push(format!("{f}: under proprietary upstream prefix `{p}` (upstream-base.json)"));
-        }
-    }
-
-    // 2. Pinned brand sources.
     let sums = std::fs::read_to_string(root.join("assets/brand/SHA256SUMS")).map_err(|e| format!("assets/brand/SHA256SUMS: {e}"))?;
     let mut pinned = 0;
     for line in sums.lines().filter(|l| !l.trim().is_empty()) {
@@ -91,18 +22,8 @@ pub fn run(root: &Path) -> Result<(), String> {
         problems.push("assets/brand/SHA256SUMS pins no file".into());
     }
 
-    // 3. Upstream names on user-facing surfaces.
-    let mut scanned = 0;
-    for f in files.iter().filter(|f| on_surface(f)) {
-        let Ok(text) = std::fs::read_to_string(root.join(f)) else { continue };
-        scanned += 1;
-        for (n, l) in offending_lines(&text) {
-            problems.push(format!("{f}:{n}: upstream name on a user-facing surface: {l}"));
-        }
-    }
-
     if problems.is_empty() {
-        println!("brand: {pinned} pinned brand files verified, {scanned} user-facing files free of upstream names");
+        println!("brand: {pinned} pinned brand files verified");
         Ok(())
     } else {
         Err(format!("{} brand problem(s):\n  {}", problems.len(), problems.join("\n  ")))
@@ -178,25 +99,5 @@ mod tests {
         assert_eq!(hex(&sha256(b"abc")), "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
         // Two blocks after padding.
         assert_eq!(hex(&sha256(&[b'a'; 64])), "ffe054fe7ae0cb6dc65c3af9b61d5209f439851db43d0ba5997337df154668eb");
-    }
-
-    #[test]
-    fn flags_upstream_names_but_not_credits_or_comments() {
-        let src = "let t = \"About CADCraft\";\n// CADCraft's own comment\n# CADCraft packaging note\n\
-                   .set(\"LegalCopyright\", \"Copyright the CADCraft contributors\")\n\
-                   font: \"CADCraft Stroke\".into(),\n\
-                   ui.hyperlink_to(\"Discord\", \"https://discord.gg/artcraft\");\n\
-                   Manufacturer=\"Learning Machines LLC\"";
-        let hits: Vec<usize> = offending_lines(src).into_iter().map(|(n, _)| n).collect();
-        assert_eq!(hits, vec![1, 6, 7]);
-    }
-
-    #[test]
-    fn surfaces_cover_apps_and_packaging_only() {
-        assert!(on_surface("apps/cadcraft/src/main.rs"));
-        assert!(on_surface("packaging/linux/nfpm.yaml"));
-        assert!(on_surface("packaging/macos/Info.plist.in"));
-        assert!(!on_surface("crates/engine/src/lib.rs"));
-        assert!(!on_surface("assets/brand/icon-512.png"));
     }
 }

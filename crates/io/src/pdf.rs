@@ -7,10 +7,10 @@
 
 use std::fmt::Write as _;
 
-use cadcraft_color::{Rgb, display_rgb};
-use cadcraft_doc::{Drawing, PageSetup, Space};
-use cadcraft_geom::{Bounds2, Vec2};
-use cadcraft_render::{Kind, Sheet, clip, paper};
+use redrob_cad_color::{Rgb, display_rgb};
+use redrob_cad_doc::{Drawing, PageSetup, Space};
+use redrob_cad_geom::{Bounds2, Vec2};
+use redrob_cad_render::{Kind, Sheet, clip, paper};
 use serde_json::Value;
 
 use crate::{IoError, Result};
@@ -24,7 +24,7 @@ const MAX_SHEET_MM: f64 = 5080.0;
 /// model space).
 #[derive(Clone, Debug, Default)]
 pub struct PdfOptions {
-    /// Paper name from [`cadcraft_render::PAPER_SIZES`] (`"A4"`, `"Letter"`, `"ANSI B"`…).
+    /// Paper name from [`redrob_cad_render::PAPER_SIZES`] (`"A4"`, `"Letter"`, `"ANSI B"`…).
     pub paper: Option<String>,
     /// Custom paper size in millimetres (portrait width, height).
     pub paper_mm: Option<(f64, f64)>,
@@ -150,7 +150,7 @@ pub fn pdf(d: &Drawing, space: &Space, o: &PdfOptions) -> Result<Vec<u8>> {
         Space::Paper(_) => page.lineweights,
         Space::Model => true,
     });
-    let ropts = cadcraft_render::Options { tolerance: 0.001, min_dash: 0.0, text: true, fill: true, lineweights };
+    let ropts = redrob_cad_render::Options { tolerance: 0.001, min_dash: 0.0, text: true, fill: true, lineweights };
     let k = unit_mm * PT_PER_MM;
     let fit = o.fit.unwrap_or(matches!(space, Space::Model));
     // Chord tolerance: about 0.05 mm on paper.
@@ -158,7 +158,7 @@ pub fn pdf(d: &Drawing, space: &Space, o: &PdfOptions) -> Result<Vec<u8>> {
     let est = plot_scale(&window.unwrap_or_else(|| d.extents(space)), &sheet, fit, o.scale);
     let tol = 0.05 / unit_mm / est.max(1e-300);
     let tolerance = if tol.is_finite() && tol > 0.0 { tol } else { ropts.tolerance };
-    let list = cadcraft_render::build_plot(d, space, &cadcraft_render::Options { tolerance, ..ropts });
+    let list = redrob_cad_render::build_plot(d, space, &redrob_cad_render::Options { tolerance, ..ropts });
     let b = window.unwrap_or(list.bounds);
     let s = plot_scale(&b, &sheet, fit, o.scale);
     let centered = o.center.unwrap_or(true);
@@ -245,7 +245,7 @@ fn color(out: &mut String, c: Rgb, op: &str) {
     out.push('\n');
 }
 
-fn content_stream(list: &cadcraft_render::DisplayList, map: &Map, clip_pt: &Bounds2) -> String {
+fn content_stream(list: &redrob_cad_render::DisplayList, map: &Map, clip_pt: &Bounds2) -> String {
     let white = Rgb(255, 255, 255);
     let mut c = String::new();
     c.push_str("q\n1 J 1 j\n");

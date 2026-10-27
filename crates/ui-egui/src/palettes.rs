@@ -1,9 +1,9 @@
 //! Tool Sets (left) and the Layers / Properties palettes (right).
 
 use crate::i18n::{tr, trf};
-use cadcraft_color::Color;
-use cadcraft_doc::EntityKind;
 use egui::{Color32, Rect, Sense, Stroke, pos2, vec2};
+use redrob_cad_color::Color;
+use redrob_cad_doc::EntityKind;
 use serde_json::{Value, json};
 
 use crate::CadApp;
@@ -117,7 +117,7 @@ pub const DRAFTING: &[(&str, &[Tool], &[Tool])] = &[
 ];
 
 fn command_known(id: &str) -> bool {
-    cadcraft_engine::find_command(id).is_some() || crate::menus::is_ui_command(id)
+    redrob_cad_engine::find_command(id).is_some() || crate::menus::is_ui_command(id)
 }
 
 pub fn toolsets(app: &mut CadApp, ui: &mut egui::Ui) {
@@ -514,7 +514,7 @@ fn properties_section(app: &mut CadApp, ui: &mut egui::Ui) {
             ("Layer", h.str("CLAYER", "0"), true),
             ("Linetype", h.str("CELTYPE", "ByLayer"), true),
             ("Linetype scale", format!("{:.4}", h.f64("CELTSCALE", 1.0)), true),
-            ("Lineweight", cadcraft_doc::Lineweight::from_dxf(h.i64("CELWEIGHT", -1) as i16).name(), true),
+            ("Lineweight", redrob_cad_doc::Lineweight::from_dxf(h.i64("CELWEIGHT", -1) as i16).name(), true),
             ("Transparency", "ByLayer".into(), true),
             ("Thickness", format!("{:.4}", h.f64("THICKNESS", 0.0)), true),
             ("Text style", h.str("TEXTSTYLE", "Standard"), true),
@@ -589,7 +589,7 @@ fn properties_section(app: &mut CadApp, ui: &mut egui::Ui) {
     // Selected objects: common + geometry for a single object.
     let first = sel.first().and_then(|h| d.entity(*h)).map(|e| (**e).clone());
     let Some(e) = first else { return };
-    let same = |f: &dyn Fn(&cadcraft_doc::Entity) -> String| -> String {
+    let same = |f: &dyn Fn(&redrob_cad_doc::Entity) -> String| -> String {
         let vals: Vec<String> = sel.iter().filter_map(|h| d.entity(*h)).map(|e| f(e)).collect();
         match vals.first() {
             Some(v0) if vals.iter().all(|v| v == v0) => v0.clone(),
@@ -669,7 +669,7 @@ fn properties_section(app: &mut CadApp, ui: &mut egui::Ui) {
                 set = Some(json!({ "handles": ids, "lineweight": "ByLayer" }));
                 ui.close();
             }
-            for v in cadcraft_doc::Lineweight::STANDARD {
+            for v in redrob_cad_doc::Lineweight::STANDARD {
                 if ui.button(format!("{:.2} mm", f64::from(v) / 100.0)).clicked() {
                     set = Some(json!({ "handles": ids, "lineweight": f64::from(v) / 100.0 }));
                     ui.close();
@@ -780,7 +780,7 @@ fn properties_section(app: &mut CadApp, ui: &mut egui::Ui) {
             }
             EntityKind::LwPolyline(pl) => {
                 num(ui, "Global width", "width", pl.const_width, &mut set, &ids);
-                let g = cadcraft_geom::Polyline { vertices: pl.vertices.clone(), closed: pl.closed };
+                let g = redrob_cad_geom::Polyline { vertices: pl.vertices.clone(), closed: pl.closed };
                 prop_row(ui, "Length", |ui| {
                     value_box(ui, &format!("{:.4}", g.len()), false, true);
                 });
@@ -800,7 +800,7 @@ fn properties_section(app: &mut CadApp, ui: &mut egui::Ui) {
             EntityKind::Hatch(hh) => {
                 prop_row(ui, "Pattern", |ui| {
                     ui.menu_button(hh.pattern.clone(), |ui| {
-                        for pat in cadcraft_doc::library::standard_patterns() {
+                        for pat in redrob_cad_doc::library::standard_patterns() {
                             if ui.button(pat.name).clicked() {
                                 set = Some(json!({ "handles": ids, "pattern": pat.name }));
                                 ui.close();

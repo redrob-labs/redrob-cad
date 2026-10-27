@@ -2,10 +2,10 @@
 
 use std::collections::HashMap;
 
-use cadcraft_color::Color;
-use cadcraft_doc::*;
-use cadcraft_dxf::Tag;
-use cadcraft_geom::{Vec2, Vec3};
+use redrob_cad_color::Color;
+use redrob_cad_doc::*;
+use redrob_cad_dxf::Tag;
+use redrob_cad_geom::{Vec2, Vec3};
 
 use crate::dxf_ext::{self, DimVal, K};
 
@@ -267,7 +267,7 @@ fn common_x(w: &mut W, e: &Entity, owner: &str, paper: bool, subclass: &str, ass
     match e.common.color {
         Color::ByLayer => {}
         Color::True(rgb) => {
-            w.i(62, i64::from(cadcraft_color::nearest_aci(rgb)));
+            w.i(62, i64::from(redrob_cad_color::nearest_aci(rgb)));
             w.i(420, i64::from(rgb.to_u32()));
         }
         c => w.i(62, i64::from(c.to_aci())),
@@ -529,7 +529,7 @@ fn entity(w: &mut W, d: &Drawing, e: &Entity, owner: &str, paper: bool, cx: &Ctx
             w.s(2, bname);
             w.p(10, dm.defpt);
             let style = d.dim_style(&dm.style).cloned().unwrap_or_default();
-            let g = cadcraft_render::dimension_geometry(dm, &style, d.header.f64("DIMSCALE", 1.0));
+            let g = redrob_cad_render::dimension_geometry(dm, &style, d.header.f64("DIMSCALE", 1.0));
             w.p(11, if dm.user_text_pos { dm.text_mid } else { g.text_pos.to3(0.0) });
             let ty: i64 = match dm.kind {
                 DimKind::Linear { .. } => 0,
@@ -615,7 +615,7 @@ fn entity(w: &mut W, d: &Drawing, e: &Entity, owner: &str, paper: bool, cx: &Ctx
             for c in t.col_widths.iter().take(cols) {
                 w.f(142, *c);
             }
-            let cov = cadcraft_render::table_covered(t);
+            let cov = redrob_cad_render::table_covered(t);
             let span = |v: u32| i64::from(v.min(i16::MAX as u32));
             for r in 0..rows {
                 for c in 0..cols {
@@ -660,7 +660,7 @@ fn entity(w: &mut W, d: &Drawing, e: &Entity, owner: &str, paper: bool, cx: &Ctx
                 let le = Entity {
                     handle: Handle(u64::from_str_radix(&w.h(), 16).unwrap_or(0)),
                     common: e.common.clone(),
-                    kind: EntityKind::Leader(cadcraft_doc::Leader { vertices, arrow: true, spline: false, style: m.style.clone() }),
+                    kind: EntityKind::Leader(redrob_cad_doc::Leader { vertices, arrow: true, spline: false, style: m.style.clone() }),
                 };
                 entity(w, d, &le, owner, paper, cx);
             }
@@ -731,7 +731,7 @@ fn entity(w: &mut W, d: &Drawing, e: &Entity, owner: &str, paper: bool, cx: &Ctx
                 w.f(52, h.angle.to_degrees());
                 w.f(41, h.scale);
                 w.i(77, 0);
-                let pat = cadcraft_doc::library::pattern(&h.pattern);
+                let pat = redrob_cad_doc::library::pattern(&h.pattern);
                 let lines = pat.map(|p| p.lines).unwrap_or_default();
                 w.i(78, lines.len() as i64);
                 for pl in lines {
@@ -787,7 +787,7 @@ fn entity(w: &mut W, d: &Drawing, e: &Entity, owner: &str, paper: bool, cx: &Ctx
 /// Anonymous dimension blocks (`*D1`…) with the rendered geometry, as consumers expect.
 fn dim_block_entities(d: &Drawing, dm: &Dimension, layer: &str) -> Vec<Entity> {
     let style = d.dim_style(&dm.style).cloned().unwrap_or_default();
-    let g = cadcraft_render::dimension_geometry(dm, &style, d.header.f64("DIMSCALE", 1.0));
+    let g = redrob_cad_render::dimension_geometry(dm, &style, d.header.f64("DIMSCALE", 1.0));
     let mut out = Vec::new();
     let c = Common { layer: layer.into(), color: Color::ByBlock, ..Common::default() };
     for l in &g.lines {
@@ -845,7 +845,7 @@ fn table_block_entities(d: &Drawing, t: &Table, layer: &str) -> Vec<Entity> {
     let x_at = |c: usize| xs.get(c).copied().unwrap_or(0.0);
     let y_at = |r: usize| ys.get(r).copied().unwrap_or(0.0);
     let p = |x: f64, y: f64| Vec3::new(x, -y, 0.0);
-    let cov = cadcraft_render::table_covered(t);
+    let cov = redrob_cad_render::table_covered(t);
     let margin = d.table_styles.iter().find(|s| s.name.eq_ignore_ascii_case(&t.style)).map(|s| s.margin).unwrap_or(0.06).max(0.0);
     let c = Common { layer: layer.into(), color: Color::ByBlock, ..Common::default() };
     let mut out = Vec::new();
@@ -893,8 +893,8 @@ fn table_block_entities(d: &Drawing, t: &Table, layer: &str) -> Vec<Entity> {
 }
 
 /// Our own geometry for an arrowhead block: unit size, tip at the origin, pointing along +X.
-fn arrow_block_entities(kind: cadcraft_render::Arrowhead) -> Vec<Entity> {
-    let g = cadcraft_render::arrowhead(kind, Vec2::ZERO, Vec2::X, 1.0);
+fn arrow_block_entities(kind: redrob_cad_render::Arrowhead) -> Vec<Entity> {
+    let g = redrob_cad_render::arrowhead(kind, Vec2::ZERO, Vec2::X, 1.0);
     let c = Common { layer: "0".into(), color: Color::ByBlock, ..Common::default() };
     let mut out = Vec::new();
     for l in &g.lines {
@@ -918,7 +918,7 @@ fn arrow_block_entities(kind: cadcraft_render::Arrowhead) -> Vec<Entity> {
 
 /// Standard DIMASSOC point references of an associative dimension: the extension-line
 /// origins of linear/aligned dimensions and the feature point of ordinate dimensions, linked
-/// to objects that exist. CADCraft's exact links travel in xdata as well.
+/// to objects that exist. Redrob CAD's exact links travel in xdata as well.
 fn std_assoc_refs(d: &Drawing, dm: &Dimension) -> (i64, Vec<OsnapRef>) {
     let slots: &[&str] = match dm.kind {
         DimKind::Linear { .. } | DimKind::Aligned => &["p13", "p14"],
@@ -1178,7 +1178,7 @@ pub fn write(d: &Drawing) -> String {
         w.s(2, &l.name);
         w.i(70, i64::from(l.frozen) | if l.vp_freeze_new { 2 } else { 0 } | if l.locked { 4 } else { 0 });
         let aci = match l.color {
-            Color::True(rgb) => i64::from(cadcraft_color::nearest_aci(rgb)),
+            Color::True(rgb) => i64::from(redrob_cad_color::nearest_aci(rgb)),
             c => i64::from(c.to_aci()).clamp(1, 255),
         };
         w.i(62, if l.on { aci } else { -aci });
@@ -1205,7 +1205,8 @@ pub fn write(d: &Drawing) -> String {
         w.f(50, s.oblique.to_degrees());
         w.i(71, if s.backwards { 2 } else { 0 } | if s.upside_down { 4 } else { 0 });
         w.f(42, 0.2);
-        w.s(3, if s.font == cadcraft_fonts_name() { "txt" } else { s.font.as_str() });
+        // legacy: "CADCraft Stroke" is the built-in font's name before the rename.
+        w.s(3, if s.font == redrob_cad_fonts_name() || s.font == "CADCraft Stroke" { "txt" } else { s.font.as_str() });
         w.s(4, &s.big_font);
         if s.annotative {
             annotative_xdata(&mut w);
@@ -1390,7 +1391,7 @@ pub fn write(d: &Drawing) -> String {
     for (s, (_, h)) in table_styles.iter().zip(&cx.table_styles) {
         table_style_obj(&mut w, s, h, &table_style_dict);
     }
-    // Parametric constraints and parameters (CADCraft data).
+    // Parametric constraints and parameters (Redrob CAD data).
     if let Some(chunks) = &constraint_chunks {
         w.s(0, "XRECORD");
         w.s(5, constraints_xrec.clone());
@@ -1517,7 +1518,7 @@ pub fn write(d: &Drawing) -> String {
     if let Some(t) = w.t.get_mut(seed_pos + 1) {
         *t = Tag::s(5, seed);
     }
-    cadcraft_dxf::write_ascii(&w.t)
+    redrob_cad_dxf::write_ascii(&w.t)
 }
 
 /// A TABLESTYLE object (DXF Reference, OBJECTS: TABLESTYLE): margins, title/header
@@ -1555,6 +1556,6 @@ fn table_style_obj(w: &mut W, s: &TableStyle, h: &str, dict: &str) {
     }
 }
 
-fn cadcraft_fonts_name() -> &'static str {
-    "CADCraft Stroke"
+fn redrob_cad_fonts_name() -> &'static str {
+    "Redrob CAD Stroke"
 }

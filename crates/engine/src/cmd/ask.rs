@@ -3,7 +3,7 @@
 //! AutoCAD asks instead, so this does too: it reads which parameter the command wants, prompts
 //! for it (or for objects), and runs the command again with the answer.
 
-use cadcraft_doc::Handle;
+use redrob_cad_doc::Handle;
 use serde_json::{Map, Value, json};
 
 use super::machines::{SelOutcome, SelectPhase};
@@ -263,7 +263,7 @@ fn dim_field(name: &str) -> Option<&'static str> {
     if name == "DIMSCALE" {
         return None;
     }
-    cadcraft_doc::DIMVARS.iter().find(|(v, _)| *v == name).map(|(_, f)| *f)
+    redrob_cad_doc::DIMVARS.iter().find(|(v, _)| *v == name).map(|(_, f)| *f)
 }
 
 fn current_dimstyle(s: &Session) -> String {

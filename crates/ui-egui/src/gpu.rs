@@ -15,11 +15,11 @@
 
 use std::sync::{Arc, Mutex};
 
-use cadcraft_color::{Rgb, display_rgb};
-use cadcraft_geom::{Bounds2, Vec2};
-use cadcraft_render::{DisplayList, Kind};
 use egui_wgpu::wgpu;
 use egui_wgpu::wgpu::util::DeviceExt;
+use redrob_cad_color::{Rgb, display_rgb};
+use redrob_cad_geom::{Bounds2, Vec2};
+use redrob_cad_render::{DisplayList, Kind};
 
 /// Line/triangle vertex: position (2 × f32, relative to the origin) + sRGB colour (4 × u8).
 const VERTEX_SIZE: usize = 12;
@@ -420,8 +420,8 @@ impl egui_wgpu::CallbackTrait for CanvasCallback {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cadcraft_doc::Handle;
-    use cadcraft_render::DPrim;
+    use redrob_cad_doc::Handle;
+    use redrob_cad_render::DPrim;
 
     fn list() -> DisplayList {
         let mut l = DisplayList {

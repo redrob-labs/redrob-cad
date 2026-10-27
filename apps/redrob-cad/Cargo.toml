@@ -1,5 +1,5 @@
 [package]
-name = "cadcraft"
+name = "redrob-cad"
 description = "Redrob CAD desktop app"
 version.workspace = true
 edition.workspace = true
@@ -15,10 +15,10 @@ name = "redrob-cad"
 path = "src/main.rs"
 
 [dependencies]
-cadcraft-engine = { workspace = true }
-cadcraft-ui-egui = { workspace = true }
-cadcraft-io = { workspace = true }
-cadcraft-mcp = { workspace = true }
+redrob-cad-engine = { workspace = true }
+redrob-cad-ui-egui = { workspace = true }
+redrob-cad-io = { workspace = true }
+redrob-cad-mcp = { workspace = true }
 eframe = { workspace = true, features = ["default_fonts", "wgpu", "accesskit", "wayland", "x11", "links"] }
 egui = { workspace = true }
 serde_json = { workspace = true }

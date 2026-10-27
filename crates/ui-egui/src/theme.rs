@@ -1,5 +1,5 @@
 //! Design tokens. Colours were measured from the reference look (dark slate chrome, near-black
-//! navy model space) and are CADCraft's own values; every widget reads them from here.
+//! navy model space) and are Redrob CAD's own values; every widget reads them from here.
 
 use egui::{Color32, FontFamily, FontId, Visuals};
 

@@ -3,14 +3,14 @@
 
 use std::sync::OnceLock;
 
-use cadcraft_doc::Drawing;
+use redrob_cad_doc::Drawing;
 use serde_json::{Value, json};
 
 use super::*;
 use crate::{Result, Session};
 
 /// Plot a space to PDF bytes with JSON options (`{paper?, landscape?, fit?, lineweights?, …}`).
-pub type PlotHook = fn(&Drawing, &cadcraft_doc::Space, &Value) -> std::result::Result<Vec<u8>, String>;
+pub type PlotHook = fn(&Drawing, &redrob_cad_doc::Space, &Value) -> std::result::Result<Vec<u8>, String>;
 
 /// File format hooks (installed by the app so the engine stays I/O-agnostic and wasm-safe).
 pub struct IoHooks {
@@ -117,7 +117,7 @@ pub(crate) fn save_to(s: &mut Session, path: &str) -> Result<usize> {
     let bytes = (hooks.write)(s.doc()?, path).map_err(|e| bad("save", e))?;
     #[cfg(not(target_arch = "wasm32"))]
     {
-        let tmp = format!("{path}.cadcraft-tmp");
+        let tmp = format!("{path}.redrob-cad-tmp");
         std::fs::write(&tmp, &bytes).map_err(|e| bad("save", format!("{path}: {e}")))?;
         std::fs::rename(&tmp, path).map_err(|e| bad("save", format!("{path}: {e}")))?;
     }

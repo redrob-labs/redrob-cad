@@ -33,7 +33,7 @@ env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
   RUST_BACKTRACE: 1
-  CADCRAFT_BUILD_SHA: ${{ github.sha }}
+  REDROB_CAD_BUILD_SHA: ${{ github.sha }}
   INPUT_VERSION: ${{ inputs.version }}
 
 jobs:
@@ -88,8 +88,8 @@ jobs:
     runs-on: macos-latest
     environment: release
     env:
-      CADCRAFT_VERSION: ${{ needs.version.outputs.version }}
-      CADCRAFT_BUILD_DATE: ${{ needs.version.outputs.date }}
+      REDROB_CAD_VERSION: ${{ needs.version.outputs.version }}
+      REDROB_CAD_BUILD_DATE: ${{ needs.version.outputs.date }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -100,7 +100,7 @@ jobs:
           key: release-macos-universal
       - name: Apply version override
         if: inputs.version != ''
-        run: cargo xtask version set "$CADCRAFT_VERSION"
+        run: cargo xtask version set "$REDROB_CAD_VERSION"
       - name: Import signing certificate
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CODESIGN_CERT_P12_BASE64 }}
@@ -151,8 +151,8 @@ jobs:
           # Windows on ARM: cross-compiled on the x64 runner, so signing and WiX run as above.
           - { arch: arm64, target: aarch64-pc-windows-msvc }
     env:
-      CADCRAFT_VERSION: ${{ needs.version.outputs.version }}
-      CADCRAFT_BUILD_DATE: ${{ needs.version.outputs.date }}
+      REDROB_CAD_VERSION: ${{ needs.version.outputs.version }}
+      REDROB_CAD_BUILD_DATE: ${{ needs.version.outputs.date }}
       # Plain IDs (not credentials); here so the login step can be skipped when signing is not set up.
       AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
     steps:
@@ -166,7 +166,7 @@ jobs:
       - name: Apply version override
         if: inputs.version != ''
         shell: bash
-        run: cargo xtask version set "$CADCRAFT_VERSION"
+        run: cargo xtask version set "$REDROB_CAD_VERSION"
       - name: Install WiX
         shell: pwsh
         run: dotnet tool install --global wix --version 5.0.2
@@ -261,8 +261,8 @@ jobs:
           - { arch: x86_64, runner: ubuntu-22.04, deb: amd64 }
           - { arch: aarch64, runner: ubuntu-22.04-arm, deb: arm64 }
     env:
-      CADCRAFT_VERSION: ${{ needs.version.outputs.version }}
-      CADCRAFT_BUILD_DATE: ${{ needs.version.outputs.date }}
+      REDROB_CAD_VERSION: ${{ needs.version.outputs.version }}
+      REDROB_CAD_BUILD_DATE: ${{ needs.version.outputs.date }}
       NFPM_VERSION: 2.47.0
     steps:
       - uses: actions/checkout@v4
@@ -281,7 +281,7 @@ jobs:
           key: release-linux-${{ matrix.arch }}
       - name: Apply version override
         if: inputs.version != ''
-        run: cargo xtask version set "$CADCRAFT_VERSION"
+        run: cargo xtask version set "$REDROB_CAD_VERSION"
       - name: Build and package (AppImage, deb, rpm, tar.gz)
         run: packaging/linux/package.sh
       - name: Check the packages

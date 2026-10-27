@@ -1,5 +1,5 @@
-use cadcraft_doc::EntityKind;
-use cadcraft_geom::Vec2;
+use redrob_cad_doc::EntityKind;
+use redrob_cad_geom::Vec2;
 use serde_json::json;
 
 use crate::*;
@@ -185,7 +185,7 @@ fn offset_circle_and_polyline() {
     let last = d.model.last().unwrap();
     match &last.kind {
         EntityKind::LwPolyline(p) => {
-            let b = cadcraft_geom::Bounds2::from_points(p.vertices.iter().map(|v| v.p));
+            let b = redrob_cad_geom::Bounds2::from_points(p.vertices.iter().map(|v| v.p));
             assert!(b.min.near(Vec2::new(1.0, 1.0), 1e-9), "{b:?}");
             assert!(b.max.near(Vec2::new(9.0, 9.0), 1e-9));
         }
@@ -202,7 +202,7 @@ fn copy_rotate_scale_mirror() {
     assert_eq!(s.doc().unwrap().model.len(), 4);
     s.execute("rotate", &json!({"handles": [h], "base": [0, 0], "angle": 90})).unwrap();
     s.execute("scale", &json!({"handles": [h], "base": [0, 0], "factor": 3})).unwrap();
-    let hh = cadcraft_doc::Handle::parse_hex(h.as_str().unwrap()).unwrap();
+    let hh = redrob_cad_doc::Handle::parse_hex(h.as_str().unwrap()).unwrap();
     let g = s.doc().unwrap().entity(hh).unwrap().kind.grips();
     assert!(g[2].near(Vec2::new(0.0, 3.0), 1e-9));
     s.execute("mirror", &json!({"handles": [h], "p1": [-1, 0], "p2": [-1, 1]})).unwrap();
@@ -214,12 +214,12 @@ fn layers_and_properties() {
     let mut s = Session::new();
     s.execute("layer.new", &json!({"name": "Walls", "color": "red", "current": true})).unwrap();
     let c = s.execute("circle", &json!({"center": [0, 0], "radius": 1})).unwrap();
-    let h = cadcraft_doc::Handle::parse_hex(c["handle"].as_str().unwrap()).unwrap();
+    let h = redrob_cad_doc::Handle::parse_hex(c["handle"].as_str().unwrap()).unwrap();
     assert_eq!(s.doc().unwrap().entity(h).unwrap().common.layer, "Walls");
     assert!(s.execute("layer.set", &json!({"name": "Walls", "frozen": true})).is_err());
     s.execute("properties.set", &json!({"handles": [h.hex()], "color": 3, "radius": 4})).unwrap();
     let e = s.doc().unwrap().entity(h).unwrap();
-    assert_eq!(e.common.color, cadcraft_color::Color::Index(3));
+    assert_eq!(e.common.color, redrob_cad_color::Color::Index(3));
     assert!(matches!(&e.kind, EntityKind::Circle(c) if c.radius == 4.0));
     assert!(s.execute("layer.new", &json!({"name": "bad/name"})).is_err());
 }
@@ -310,7 +310,7 @@ fn every_interactive_command_starts_and_cancels() {
 fn sample_drawing_builds() {
     let d = sample::bracket();
     assert!(d.model.len() > 30);
-    let l = cadcraft_render::build(&d, &cadcraft_doc::Space::Model, &cadcraft_render::Options::default());
+    let l = redrob_cad_render::build(&d, &redrob_cad_doc::Space::Model, &redrob_cad_render::Options::default());
     assert!(l.prims.len() > 100);
 }
 
@@ -346,8 +346,8 @@ fn dim_auto_vertical_and_radius() {
     s.execute("dimradius", &json!({"handle": c["handle"], "at": [23, 1]})).unwrap();
     let d = s.doc().unwrap();
     let kinds: Vec<_> = d.model.iter().filter_map(|e| if let EntityKind::Dimension(d) = &e.kind { Some(d.kind) } else { None }).collect();
-    assert!(matches!(kinds[0], cadcraft_doc::DimKind::Linear { rotation } if (rotation - std::f64::consts::FRAC_PI_2).abs() < 1e-12));
-    assert!(matches!(kinds[1], cadcraft_doc::DimKind::Radius));
+    assert!(matches!(kinds[0], redrob_cad_doc::DimKind::Linear { rotation } if (rotation - std::f64::consts::FRAC_PI_2).abs() < 1e-12));
+    assert!(matches!(kinds[1], redrob_cad_doc::DimKind::Radius));
 }
 
 #[test]

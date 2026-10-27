@@ -62,7 +62,7 @@ fn gcd(a: i64, b: i64) -> i64 {
 /// 4 surveyor's) and AUPREC.
 pub fn format_angle(a: f64, aunits: i64, auprec: i64) -> String {
     let prec = auprec.clamp(0, 8) as usize;
-    let deg = cadcraft_geom::norm_angle(a).to_degrees();
+    let deg = redrob_cad_geom::norm_angle(a).to_degrees();
     match aunits {
         1 => {
             let d = deg.floor();
@@ -71,7 +71,7 @@ pub fn format_angle(a: f64, aunits: i64, auprec: i64) -> String {
             format!("{}d{}'{:.*}\"", d as i64, m as i64, prec.saturating_sub(4), s)
         }
         2 => format!("{:.*}g", prec, deg / 0.9),
-        3 => format!("{:.*}r", prec, cadcraft_geom::norm_angle(a)),
+        3 => format!("{:.*}r", prec, redrob_cad_geom::norm_angle(a)),
         4 => {
             // N/S <angle from N/S toward E/W> E/W
             let (ns, ew, ang) = if deg <= 90.0 {

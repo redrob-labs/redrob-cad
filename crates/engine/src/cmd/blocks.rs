@@ -2,8 +2,8 @@
 
 use std::sync::Arc;
 
-use cadcraft_doc::{Attrib, Block, Entity, EntityKind, HAlign, Handle, Insert, Text, VAlign};
-use cadcraft_geom::{Mat3, Vec2, Vec3};
+use redrob_cad_doc::{Attrib, Block, Entity, EntityKind, HAlign, Handle, Insert, Text, VAlign};
+use redrob_cad_geom::{Mat3, Vec2, Vec3};
 use serde_json::{Value, json};
 
 use super::helpers::v3;
@@ -207,7 +207,7 @@ fn run_attedit(s: &mut Session, p: &Value) -> Result<Value> {
 fn run_wblock(s: &mut Session, p: &Value) -> Result<Value> {
     let path = str_param(p, "path").ok_or_else(|| bad("wblock", "`path` is required"))?.to_string();
     let src = s.doc()?;
-    let mut d = cadcraft_doc::Drawing::new_imperial();
+    let mut d = redrob_cad_doc::Drawing::new_imperial();
     d.layers = src.layers.clone();
     d.linetypes = src.linetypes.clone();
     d.text_styles = src.text_styles.clone();
@@ -250,7 +250,7 @@ fn run_wblock(s: &mut Session, p: &Value) -> Result<Value> {
 
 fn run_base(s: &mut Session, p: &Value) -> Result<Value> {
     let at = point_req("base", p, "at")?;
-    s.doc_mut()?.header.set("INSBASE", cadcraft_doc::HVal::Point(v3(at)));
+    s.doc_mut()?.header.set("INSBASE", redrob_cad_doc::HVal::Point(v3(at)));
     ok()
 }
 
@@ -604,7 +604,7 @@ pub(crate) fn block_from_file(s: &mut Session, path: &str, xref: bool) -> Result
         let hooks = super::file::io().ok_or_else(|| bad("insert", "file formats are not available in this build"))?;
         let src = (hooks.read)(&bytes, path).map_err(|e| bad("insert", e))?;
         let base = match src.header.get("INSBASE") {
-            Some(cadcraft_doc::HVal::Point(p)) => *p,
+            Some(redrob_cad_doc::HVal::Point(p)) => *p,
             _ => Vec3::ZERO,
         };
         let doc = s.doc_mut()?;

@@ -4,7 +4,7 @@
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
-use cadcraft_ui_egui::i18n::{self, Lang, placeholders, tr, tr_keyword, tr_label, tr_log, tr_runtime};
+use redrob_cad_ui_egui::i18n::{self, Lang, placeholders, tr, tr_keyword, tr_label, tr_log, tr_runtime};
 
 fn root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
@@ -104,7 +104,7 @@ fn bracketed_keyword_options_stay_english() {
 #[test]
 fn every_literal_passed_to_tr_has_korean() {
     let mut missing = BTreeSet::new();
-    for dir in ["crates/ui-egui/src", "apps/cadcraft/src"] {
+    for dir in ["crates/ui-egui/src", "apps/redrob-cad/src"] {
         for (path, src) in sources(&root().join(dir)) {
             if path.ends_with("i18n.rs") {
                 continue;
@@ -155,10 +155,10 @@ fn no_display_call_takes_a_raw_literal() {
 
 #[test]
 fn every_menu_entry_and_command_label_has_korean() {
-    let app = cadcraft_ui_egui::CadApp::new(cadcraft_engine::Session::empty(), cadcraft_ui_egui::Services::default());
+    let app = redrob_cad_ui_egui::CadApp::new(redrob_cad_engine::Session::empty(), redrob_cad_ui_egui::Services::default());
     let mut missing = BTreeSet::new();
-    fn walk(e: &cadcraft_ui_egui::menus::Entry, missing: &mut BTreeSet<String>) {
-        use cadcraft_ui_egui::menus::Entry;
+    fn walk(e: &redrob_cad_ui_egui::menus::Entry, missing: &mut BTreeSet<String>) {
+        use redrob_cad_ui_egui::menus::Entry;
         let label = match e {
             Entry::Item { label, .. } | Entry::Sub { label, .. } => label,
         };
@@ -172,7 +172,7 @@ fn every_menu_entry_and_command_label_has_korean() {
             }
         }
     }
-    for (top, entries) in cadcraft_ui_egui::menus::tree(&app) {
+    for (top, entries) in redrob_cad_ui_egui::menus::tree(&app) {
         if !ko_has(&top) {
             missing.insert(top);
         }
@@ -180,7 +180,7 @@ fn every_menu_entry_and_command_label_has_korean() {
             walk(e, &mut missing);
         }
     }
-    for c in cadcraft_engine::command_specs() {
+    for c in redrob_cad_engine::command_specs() {
         if !ko_has(c.label) && !ko_has(c.label.trim_end_matches("...")) {
             missing.insert(format!("command {}: {}", c.id, c.label));
         }

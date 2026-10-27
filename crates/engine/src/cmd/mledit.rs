@@ -3,8 +3,8 @@
 //! run beside it. Tools: Closed/Open/Merged Cross, Closed/Open/Merged Tee, Corner Joint,
 //! Cut Single, Cut All.
 
-use cadcraft_doc::{EntityKind, Handle, LwPolyline};
-use cadcraft_geom::{Vec2, line_line_infinite};
+use redrob_cad_doc::{EntityKind, Handle, LwPolyline};
+use redrob_cad_geom::{Vec2, line_line_infinite};
 use serde_json::{Value, json};
 
 use super::*;

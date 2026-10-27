@@ -2,13 +2,13 @@
 //! markers, crosshair cursor, ViewCube, UCS icon and mouse handling.
 
 use crate::i18n::tr;
-use cadcraft_color::{Rgb, display_rgb};
-use cadcraft_doc::Handle;
-use cadcraft_engine::Input;
-use cadcraft_engine::snap::{self, SnapHit};
-use cadcraft_geom::{Bounds2, Vec2};
-use cadcraft_render::{DisplayList, Kind};
 use egui::{Color32, Pos2, Rect, Sense, Shape, Stroke, pos2, vec2};
+use redrob_cad_color::{Rgb, display_rgb};
+use redrob_cad_doc::Handle;
+use redrob_cad_engine::Input;
+use redrob_cad_engine::snap::{self, SnapHit};
+use redrob_cad_geom::{Bounds2, Vec2};
+use redrob_cad_render::{DisplayList, Kind};
 
 use crate::CadApp;
 use crate::theme::Tokens;
@@ -41,12 +41,12 @@ pub struct HotGrip {
     pub handle: Handle,
     pub index: usize,
     pub base: Vec2,
-    pub mode: cadcraft_engine::grips::GripMode,
+    pub mode: redrob_cad_engine::grips::GripMode,
 }
 
 impl HotGrip {
     pub fn label(&self) -> &'static str {
-        use cadcraft_engine::grips::GripMode::*;
+        use redrob_cad_engine::grips::GripMode::*;
         match self.mode {
             Stretch => tr("** STRETCH ** Specify stretch point or [Base point/Copy/Undo/eXit]:"),
             Move => tr("** MOVE ** Specify move point or [Base point/Copy/Undo/eXit]:"),
@@ -56,7 +56,7 @@ impl HotGrip {
         }
     }
     pub fn next_mode(&mut self) {
-        use cadcraft_engine::grips::GripMode::*;
+        use redrob_cad_engine::grips::GripMode::*;
         self.mode = match self.mode {
             Stretch => Move,
             Move => Rotate,
@@ -126,16 +126,16 @@ fn ensure_list(app: &mut CadApp, px: f64) {
         return;
     }
     let t0 = crate::now_ms();
-    let opts = cadcraft_render::Options {
+    let opts = redrob_cad_render::Options {
         tolerance: px * 0.5 * 2f64.powi(band) / px.max(1e-300) * px.min(1.0e300),
         min_dash: px * 2.0,
         text: true,
         fill: true,
         lineweights: app.session.settings.lwdisplay,
     };
-    let opts = cadcraft_render::Options { tolerance: 2f64.powi(band) * 0.5, ..opts };
+    let opts = redrob_cad_render::Options { tolerance: 2f64.powi(band) * 0.5, ..opts };
     let space = st.space.clone();
-    app.canvas.list = Some(cadcraft_render::build(&st.doc, &space, &opts));
+    app.canvas.list = Some(redrob_cad_render::build(&st.doc, &space, &opts));
     app.canvas.key = key;
     app.canvas.build_ms = crate::now_ms() - t0;
 }
@@ -522,7 +522,7 @@ pub fn show(app: &mut CadApp, ui: &mut egui::Ui) {
             let d = hp - last;
             if let Ok(st) = app.session.state_mut() {
                 let v = st.view();
-                st.set_view_quiet(cadcraft_engine::View {
+                st.set_view_quiet(redrob_cad_engine::View {
                     center: v.center - Vec2::new(f64::from(d.x) / scale, -f64::from(d.y) / scale),
                     height: v.height,
                 });
@@ -553,7 +553,7 @@ pub fn show(app: &mut CadApp, ui: &mut egui::Ui) {
     if inside
         && dbl_primary
         && app.session.running.is_none()
-        && matches!(app.session.layout_space(), cadcraft_doc::Space::Paper(_))
+        && matches!(app.session.layout_space(), redrob_cad_doc::Space::Paper(_))
         && let Some(hp) = hover_pos
     {
         let pp = xf_paper.to_world(hp);
@@ -636,7 +636,7 @@ pub fn show(app: &mut CadApp, ui: &mut egui::Ui) {
         if hover_pos != app.canvas.hover_at
             && let (Some(w), Ok(st)) = (raw_world, app.session.state())
         {
-            app.canvas.hover = cadcraft_engine::select::pick(&st.doc, &st.edit_space(), w, app.session.settings.pickbox.max(1.0) * 1.5 / scale);
+            app.canvas.hover = redrob_cad_engine::select::pick(&st.doc, &st.edit_space(), w, app.session.settings.pickbox.max(1.0) * 1.5 / scale);
             app.canvas.hover_at = hover_pos;
         }
     } else {
@@ -692,7 +692,8 @@ pub fn show(app: &mut CadApp, ui: &mut egui::Ui) {
             hs.extend(app.canvas.hover.filter(|h| !sel.contains(h)));
             let ents: Vec<_> = hs.iter().filter_map(|h| st.doc.model.get(*h)).map(|e| e.as_ref()).collect();
             if !ents.is_empty() {
-                let list = cadcraft_render::build_entities(&st.doc, ents, &cadcraft_render::Options { tolerance: 0.5 / scale, ..Default::default() });
+                let list =
+                    redrob_cad_render::build_entities(&st.doc, ents, &redrob_cad_render::Options { tolerance: 0.5 / scale, ..Default::default() });
                 let clipped = painter.with_clip_rect(r.intersect(rect));
                 if let Some(h) = app.canvas.hover
                     && !sel.contains(&h)
@@ -758,21 +759,21 @@ pub fn show(app: &mut CadApp, ui: &mut egui::Ui) {
     if let (Some(g), Some(c), Ok(st)) = (app.canvas.hot_grip, app.canvas.cursor, app.session.state())
         && let Some(e) = st.doc.entity(g.handle)
     {
-        let k = match cadcraft_engine::grips::mode_matrix(g.mode, g.base, c) {
+        let k = match redrob_cad_engine::grips::mode_matrix(g.mode, g.base, c) {
             Some(m) => {
                 let mut k = e.kind.clone();
                 k.transform(&m);
                 Some(k)
             }
-            None if g.mode == cadcraft_engine::grips::GripMode::Stretch => cadcraft_engine::grips::stretch_grip(&e.kind, g.index, c),
+            None if g.mode == redrob_cad_engine::grips::GripMode::Stretch => redrob_cad_engine::grips::stretch_grip(&e.kind, g.index, c),
             None => None,
         };
         if let Some(k) = k {
-            let ent = cadcraft_doc::Entity { handle: Handle(0), common: e.common.clone(), kind: k };
-            let list = cadcraft_render::build_entities(
+            let ent = redrob_cad_doc::Entity { handle: Handle(0), common: e.common.clone(), kind: k };
+            let list = redrob_cad_render::build_entities(
                 &st.doc,
                 std::iter::once(&ent),
-                &cadcraft_render::Options { tolerance: 0.5 / scale, min_dash: 2.0 / scale, ..Default::default() },
+                &redrob_cad_render::Options { tolerance: 0.5 / scale, min_dash: 2.0 / scale, ..Default::default() },
             );
             draw_list(&painter, &xf, &list, bg, false);
         }
@@ -784,10 +785,10 @@ pub fn show(app: &mut CadApp, ui: &mut egui::Ui) {
         if !ents.is_empty()
             && let Ok(st) = app.session.state()
         {
-            let list = cadcraft_render::build_entities(
+            let list = redrob_cad_render::build_entities(
                 &st.doc,
                 ents.iter(),
-                &cadcraft_render::Options { tolerance: 0.5 / scale, min_dash: 2.0 / scale, ..Default::default() },
+                &redrob_cad_render::Options { tolerance: 0.5 / scale, min_dash: 2.0 / scale, ..Default::default() },
             );
             draw_list(&painter, &xf, &list, bg, false);
         }
@@ -812,7 +813,8 @@ pub fn show(app: &mut CadApp, ui: &mut egui::Ui) {
         let far = base + Vec2::from_angle(a) * (view.height * 4.0);
         let pts = [xf.to_screen(base), xf.to_screen(far)];
         painter.extend(Shape::dashed_line(&pts, Stroke::new(1.0, Color32::from_rgb(0x4c, 0xd1, 0x37)), 3.0, 3.0));
-        let tip = format!("{}: {} < {}°", tr("Polar"), cadcraft_engine::units::format_distance(base.dist(c), 2, 4), (a.to_degrees().round() as i64));
+        let tip =
+            format!("{}: {} < {}°", tr("Polar"), redrob_cad_engine::units::format_distance(base.dist(c), 2, 4), (a.to_degrees().round() as i64));
         tooltip(&painter, xf.to_screen(c) + vec2(16.0, 18.0), &tip);
     }
     if let (Some(hit), Some(_)) = (app.canvas.snap, app.canvas.cursor) {
@@ -880,15 +882,15 @@ fn dynamic_input(app: &CadApp, p: &egui::Painter, at: Pos2) {
         text = format!(
             "{}   {}  <  {}°",
             prompt.message,
-            cadcraft_engine::units::format_distance(base.dist(c), 2, 4),
+            redrob_cad_engine::units::format_distance(base.dist(c), 2, 4),
             (base.angle_to(c).to_degrees() * 10.0).round() / 10.0
         );
     } else if let Some(c) = app.canvas.cursor {
         text = format!(
             "{}   {}, {}",
             prompt.message,
-            cadcraft_engine::units::format_distance(c.x, 2, 4),
-            cadcraft_engine::units::format_distance(c.y, 2, 4)
+            redrob_cad_engine::units::format_distance(c.x, 2, 4),
+            redrob_cad_engine::units::format_distance(c.y, 2, 4)
         );
     }
     let galley = p.layout_no_wrap(text, crate::theme::small(), Color32::from_rgb(0x15, 0x15, 0x15));
@@ -956,7 +958,7 @@ fn grip_at(app: &CadApp, xf: &Xf, hover: Option<Pos2>) -> Option<HotGrip> {
         for (i, g) in e.kind.grips().into_iter().enumerate() {
             let sp = xf.to_screen(g);
             if (sp.x - hp.x).abs() <= gs && (sp.y - hp.y).abs() <= gs {
-                return Some(HotGrip { handle: *h, index: i, base: g, mode: cadcraft_engine::grips::GripMode::Stretch });
+                return Some(HotGrip { handle: *h, index: i, base: g, mode: redrob_cad_engine::grips::GripMode::Stretch });
             }
         }
     }

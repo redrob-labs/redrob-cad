@@ -12,7 +12,7 @@ version_schema: semver
 release: 1
 section: graphics
 priority: optional
-maintainer: ${CADCRAFT_MAINTAINER}
+maintainer: ${REDROB_CAD_MAINTAINER}
 vendor: Redrob
 homepage: https://github.com/redrob-labs/redrob-cad
 license: MIT OR Apache-2.0

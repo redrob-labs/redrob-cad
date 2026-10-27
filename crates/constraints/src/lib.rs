@@ -1,4 +1,4 @@
-//! CADCraft parametric solver.
+//! Redrob CAD parametric solver.
 //!
 //! Maps constrained lines, arcs, circles, points and polyline vertices to a parameter vector
 //! ([`model`]), turns each [`Constraint`] into residual equations ([`residual`]), and drives the
@@ -25,8 +25,8 @@ mod residual;
 
 use std::collections::{BTreeMap, HashMap};
 
-use cadcraft_doc::{Constraint, ConstraintKind, Drawing, GeomRef, Handle};
-use cadcraft_geom::Vec2;
+use redrob_cad_doc::{Constraint, ConstraintKind, Drawing, GeomRef, Handle};
+use redrob_cad_geom::Vec2;
 use serde::Serialize;
 
 pub use auto::{InferOptions, autoconstrain, infer};
@@ -523,7 +523,7 @@ pub fn set_parameter(d: &mut Drawing, name: &str, expr_text: &str, opts: &SolveO
     } else if let Some(p) = trial.parametric.parameters.iter_mut().find(|p| p.name == name) {
         p.expr = expr_text.trim().to_string();
     } else {
-        trial.parametric.parameters.push(cadcraft_doc::Parameter { name: name.into(), expr: expr_text.trim().into(), description: String::new() });
+        trial.parametric.parameters.push(redrob_cad_doc::Parameter { name: name.into(), expr: expr_text.trim().into(), description: String::new() });
     }
     // Every expression must still evaluate.
     for row in parameter_table(&trial) {

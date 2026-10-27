@@ -2,7 +2,7 @@
 
 use std::collections::BTreeMap;
 
-use cadcraft_geom::Vec3;
+use redrob_cad_geom::Vec3;
 use serde::{Deserialize, Serialize};
 
 /// A header variable value.

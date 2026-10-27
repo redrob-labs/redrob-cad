@@ -15,7 +15,7 @@ use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use cadcraft_ui_egui::account::{Account, AccountService, ConnectState, PendingConnect};
+use redrob_cad_ui_egui::account::{Account, AccountService, ConnectState, PendingConnect};
 use serde_json::{Value, json};
 
 pub const CONSOLE_API: &str = "https://console.redrob.ai/api/backend/v1";

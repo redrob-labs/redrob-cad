@@ -1,6 +1,8 @@
-# The gate every pull request into develop and main must pass: upstream's own `cargo xtask ci`
-# (fmt, clippy -D warnings, workspace tests, asset attribution, crate layering, wasm check).
-# Upstream ships no PR workflow, so this file is ours; it runs the same command a contributor runs.
+# The gate every pull request into develop and main must pass. On a pull request it compiles
+# once: `cargo clippy --workspace --locked -D warnings` without test targets, plus the
+# attribution, brand and layering checks. A by-hand run (workflow_dispatch) runs the full
+# `cargo xtask ci` (fmt, clippy --all-targets, workspace tests, assets, brand, layers).
+# It runs the same command a contributor runs.
 #
 # Runs on pull requests only (a push to develop/main is the merge of a PR that already passed).
 # A docs-only or version-only PR, and a release/* PR into main (its code passed on develop),
@@ -59,12 +61,24 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-          targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
       - name: System libraries for the desktop app
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             libxkbcommon-dev libwayland-dev libx11-dev libxrandr-dev libxi-dev libgl1-mesa-dev
+      # A pull request compiles the workspace once (no test code) and runs the seconds-long
+      # attribution, brand and layering checks. The release build compiles again on every target.
+      - name: cargo clippy (compile once)
+        if: github.event_name == 'pull_request'
+        run: cargo clippy --workspace --locked -- -D warnings
+      - name: assets, brand, layers
+        if: github.event_name == 'pull_request'
+        run: |
+          cargo xtask assets
+          cargo xtask brand
+          cargo xtask layers
+      # fmt, clippy --all-targets and tests: by-hand runs only.
       - name: cargo xtask ci
+        if: github.event_name != 'pull_request'
         run: cargo xtask ci

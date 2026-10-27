@@ -1,4 +1,4 @@
-//! CADCraft file formats: DXF read/write, SVG, PNG and PDF export (plotting).
+//! Redrob CAD file formats: DXF read/write, SVG, PNG and PDF export (plotting).
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 #![forbid(unsafe_code)]
 
@@ -8,7 +8,7 @@ mod dxf_write;
 pub mod pdf;
 pub mod svg;
 
-use cadcraft_doc::{Drawing, Space};
+use redrob_cad_doc::{Drawing, Space};
 
 pub use pdf::{PdfOptions, pdf, plot};
 
@@ -28,8 +28,8 @@ fn ext(name: &str) -> String {
 
 /// Read a drawing; the format comes from the content (DXF ASCII/binary) or the name.
 pub fn read(bytes: &[u8], name: &str) -> Result<Drawing> {
-    if cadcraft_dwg::is_dwg(bytes) {
-        let dxf = cadcraft_dwg::dwg_to_dxf(bytes).map_err(IoError::Format)?;
+    if redrob_cad_dwg::is_dwg(bytes) {
+        let dxf = redrob_cad_dwg::dwg_to_dxf(bytes).map_err(IoError::Format)?;
         return dxf_read::read(&dxf);
     }
     match ext(name).as_str() {
@@ -43,7 +43,7 @@ pub fn read(bytes: &[u8], name: &str) -> Result<Drawing> {
 pub fn write(d: &Drawing, name: &str) -> Result<Vec<u8>> {
     match ext(name).as_str() {
         "dxf" | "" => Ok(dxf_write::write(d).into_bytes()),
-        "dwg" => cadcraft_dwg::dxf_to_dwg(dxf_write::write(d).as_bytes()).map_err(IoError::Format),
+        "dwg" => redrob_cad_dwg::dxf_to_dwg(dxf_write::write(d).as_bytes()).map_err(IoError::Format),
         "svg" => Ok(svg::export(d, &Space::Model).into_bytes()),
         "png" => png(d, &Space::Model, 2400, 1600),
         "pdf" => pdf::pdf(d, &Space::Model, &PdfOptions { compress: true, ..PdfOptions::default() }),
@@ -53,9 +53,9 @@ pub fn write(d: &Drawing, name: &str) -> Result<Vec<u8>> {
 
 /// Render a space to PNG, fitted to its extents.
 pub fn png(d: &Drawing, space: &Space, width: u32, height: u32) -> Result<Vec<u8>> {
-    let list = cadcraft_render::build(d, space, &cadcraft_render::Options::default());
-    let view = cadcraft_render::raster::View::fit(&list.bounds, width, height, 0.05);
-    cadcraft_render::raster::render_png(&list, &view, &cadcraft_render::raster::RasterOptions::default())
+    let list = redrob_cad_render::build(d, space, &redrob_cad_render::Options::default());
+    let view = redrob_cad_render::raster::View::fit(&list.bounds, width, height, 0.05);
+    redrob_cad_render::raster::render_png(&list, &view, &redrob_cad_render::raster::RasterOptions::default())
         .ok_or_else(|| IoError::Format("render failed".into()))
 }
 

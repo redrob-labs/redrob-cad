@@ -8,8 +8,8 @@
 
 use std::collections::HashMap;
 
-use cadcraft_doc::{Drawing, EntityKind, GeomRef, Handle, Sub};
-use cadcraft_geom::{Vec2, ccw_sweep};
+use redrob_cad_doc::{Drawing, EntityKind, GeomRef, Handle, Sub};
+use redrob_cad_geom::{Vec2, ccw_sweep};
 
 /// Most parameters one solve may have.
 pub const MAX_PARAMS: usize = 4000;
@@ -232,8 +232,8 @@ impl Model {
                         a.center.x = *cx;
                         a.center.y = *cy;
                         a.radius = r.abs().max(1e-12);
-                        a.start = cadcraft_geom::norm_angle(*s0);
-                        a.end = cadcraft_geom::norm_angle(*s1);
+                        a.start = redrob_cad_geom::norm_angle(*s0);
+                        a.end = redrob_cad_geom::norm_angle(*s1);
                     }
                 }
                 (EntityKind::LwPolyline(p), Shape::Poly { n, .. }) if p.vertices.len() == n => {

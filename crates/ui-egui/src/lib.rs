@@ -1,6 +1,6 @@
-//! The CADCraft egui front end.
+//! The Redrob CAD egui front end.
 //!
-//! A thin shell over [`cadcraft_engine::Session`]: panels read engine state and act through
+//! A thin shell over [`redrob_cad_engine::Session`]: panels read engine state and act through
 //! commands (`app.run(id, params)`) or the command line (`app.cmdline(text)`). Nothing here owns
 //! drawing data. The layout follows the familiar CAD desktop: title and tool bar, file tabs,
 //! Tool Sets on the left, the drawing area with its command line, Layers and Properties on the
@@ -30,7 +30,7 @@ pub mod theme;
 
 use std::sync::mpsc::Receiver;
 
-use cadcraft_engine::Session;
+use redrob_cad_engine::Session;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
