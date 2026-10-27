@@ -2782,7 +2782,7 @@ dependencies = [
 
 [[package]]
 name = "redrob-cad"
-version = "0.0.8"
+version = "0.0.9"
 dependencies = [
  "eframe",
  "egui",
@@ -2801,7 +2801,7 @@ dependencies = [
 
 [[package]]
 name = "redrob-cad-cli"
-version = "0.0.8"
+version = "0.0.9"
 dependencies = [
  "redrob-cad-engine",
  "redrob-cad-io",
@@ -2812,14 +2812,14 @@ dependencies = [
 
 [[package]]
 name = "redrob-cad-color"
-version = "0.0.8"
+version = "0.0.9"
 dependencies = [
  "serde",
 ]
 
 [[package]]
 name = "redrob-cad-constraints"
-version = "0.0.8"
+version = "0.0.9"
 dependencies = [
  "redrob-cad-doc",
  "redrob-cad-geom",
@@ -2829,7 +2829,7 @@ dependencies = [
 
 [[package]]
 name = "redrob-cad-doc"
-version = "0.0.8"
+version = "0.0.9"
 dependencies = [
  "redrob-cad-color",
  "redrob-cad-geom",
@@ -2840,21 +2840,21 @@ dependencies = [
 
 [[package]]
 name = "redrob-cad-dwg"
-version = "0.0.8"
+version = "0.0.9"
 dependencies = [
  "acadrust",
 ]
 
 [[package]]
 name = "redrob-cad-dxf"
-version = "0.0.8"
+version = "0.0.9"
 dependencies = [
  "thiserror 2.0.21",
 ]
 
 [[package]]
 name = "redrob-cad-engine"
-version = "0.0.8"
+version = "0.0.9"
 dependencies = [
  "log",
  "redrob-cad-color",
@@ -2871,7 +2871,7 @@ dependencies = [
 
 [[package]]
 name = "redrob-cad-fonts"
-version = "0.0.8"
+version = "0.0.9"
 dependencies = [
  "redrob-cad-geom",
  "skrifa 0.47.0",
@@ -2879,14 +2879,14 @@ dependencies = [
 
 [[package]]
 name = "redrob-cad-geom"
-version = "0.0.8"
+version = "0.0.9"
 dependencies = [
  "serde",
 ]
 
 [[package]]
 name = "redrob-cad-io"
-version = "0.0.8"
+version = "0.0.9"
 dependencies = [
  "miniz_oxide 0.8.9",
  "redrob-cad-color",
@@ -2902,7 +2902,7 @@ dependencies = [
 
 [[package]]
 name = "redrob-cad-mcp"
-version = "0.0.8"
+version = "0.0.9"
 dependencies = [
  "log",
  "redrob-cad-engine",
@@ -2913,7 +2913,7 @@ dependencies = [
 
 [[package]]
 name = "redrob-cad-render"
-version = "0.0.8"
+version = "0.0.9"
 dependencies = [
  "redrob-cad-color",
  "redrob-cad-doc",
@@ -2925,7 +2925,7 @@ dependencies = [
 
 [[package]]
 name = "redrob-cad-ui-egui"
-version = "0.0.8"
+version = "0.0.9"
 dependencies = [
  "egui",
  "egui-wgpu",
@@ -4653,7 +4653,7 @@ checksum = "e450f9b2ed1dff33c94c12589a87338689467b9c4f5d8a5710bd09a847d2c8a7"
 
 [[package]]
 name = "xtask"
-version = "0.0.8"
+version = "0.0.9"
 dependencies = [
  "serde_json",
 ]
