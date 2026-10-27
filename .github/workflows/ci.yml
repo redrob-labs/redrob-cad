@@ -1,8 +1,8 @@
 # The gate every pull request into develop and main must pass. On a pull request it compiles
 # once: `cargo clippy --workspace --locked -D warnings` without test targets, plus the
 # attribution, brand and layering checks. A by-hand run (workflow_dispatch) runs the full
-# `cargo xtask ci` (fmt, clippy --all-targets, workspace tests, assets, brand, layers, wasm).
-# Upstream ships no PR workflow, so this file is ours; it runs the same command a contributor runs.
+# `cargo xtask ci` (fmt, clippy --all-targets, workspace tests, assets, brand, layers).
+# It runs the same command a contributor runs.
 #
 # Runs on pull requests only (a push to develop/main is the merge of a PR that already passed).
 # A docs-only or version-only PR, and a release/* PR into main (its code passed on develop),
@@ -61,7 +61,6 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-          targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
       - name: System libraries for the desktop app
         run: |
@@ -79,7 +78,7 @@ jobs:
           cargo xtask assets
           cargo xtask brand
           cargo xtask layers
-      # fmt, clippy --all-targets, tests and the wasm check: by-hand runs only.
+      # fmt, clippy --all-targets and tests: by-hand runs only.
       - name: cargo xtask ci
         if: github.event_name != 'pull_request'
         run: cargo xtask ci

@@ -5,15 +5,13 @@ drawings for you.
 
 한국어: [README.ko.md](./README.ko.md)
 
-It is a hard fork of [CADCraft](https://github.com/storytold/cadcraft), written in Rust. It runs natively
-on macOS, Windows and Linux, and in the browser via WebAssembly. Agents drive it over MCP
+It is written in Rust and runs natively on macOS, Windows and Linux. Agents drive it over MCP
 (`crates/mcp`, see [docs/mcp.md](./docs/mcp.md)).
 
 ## Status
 
-Early. The tree is CADCraft `v0.3.0` with our fork files added, rebranded to Redrob CAD (name, app id
-`ai.redrob.cad`, binaries `redrob-cad` and `redrob-cad-cli`, the Redrob mark; upstream trademarks
-removed). Planned next, one pull request each:
+Early. App id `ai.redrob.cad`, binaries `redrob-cad` and `redrob-cad-cli`. Planned next, one pull
+request each:
 
 1. Redrob Code as the built-in agent, talking to the app over MCP.
 2. Connect device, so the app signs in to a Redrob workspace.
@@ -32,11 +30,10 @@ cargo xtask ci                    # the gate CI runs
 
 ## Documents
 
-- Fork point, absorbing upstream, what this fork does not own: [UPSTREAM.md](./UPSTREAM.md)
-- Attribution: [NOTICE](./NOTICE)
-- Contribution rules: CONTRIBUTING.md and FORKS.md in [redrob-labs/.github](https://github.com/redrob-labs/.github)
+- Code origin and attribution: [NOTICE](./NOTICE)
+- Contribution rules: CONTRIBUTING.md in [redrob-labs/.github](https://github.com/redrob-labs/.github)
 
 ## License
 
-MIT OR Apache-2.0, at your option, as upstream. See [LICENSE-MIT](./LICENSE-MIT),
+MIT OR Apache-2.0, at your option. See [LICENSE-MIT](./LICENSE-MIT),
 [LICENSE-APACHE](./LICENSE-APACHE) and [NOTICE](./NOTICE).

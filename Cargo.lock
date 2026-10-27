@@ -701,22 +701,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cadcraft-web"
-version = "0.0.8"
-dependencies = [
- "cadcraft-engine",
- "cadcraft-io",
- "cadcraft-ui-egui",
- "eframe",
- "egui",
- "log",
- "serde_json",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
-]
-
-[[package]]
 name = "calloop"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

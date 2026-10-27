@@ -1,6 +1,6 @@
 # Releasing Redrob CAD
 
-The canonical recipe is craftrules' [`release/playbook.md`](https://github.com/storytold/craftrules/blob/main/release/playbook.md); this file covers only what's Redrob CAD-specific.
+How Redrob CAD is versioned, packaged and released.
 
 - **Version:** `[workspace.package] version` in the root `Cargo.toml` is the single source. `cargo xtask version` prints it; `cargo xtask version set X.Y.Z[-pre]` changes it. The app shows it in About, `redrob-cad --version` and `redrob-cad-cli --version`; release builds also embed the commit (`CADCRAFT_BUILD_SHA`).
 - **Cut a release:** cut `release/X.Y.Z` from `develop`, run `cargo xtask version set X.Y.Z` there, open a pull request to `main` and merge it with a merge commit. Tag the merge commit `vX.Y.Z` on `main` and push only the tag; the shared gitflow workflow (`.github/workflows/gitflow.yml`, calling `redrob-labs/.github`) opens the back-merge pull request `main` -> `develop` on its own -- merge it with a merge commit. The tag runs `.github/workflows/release.yml`, which fails if the tag is not the Cargo.toml version, and publishes the GitHub Release `Redrob CAD vX.Y.Z` through the shared `redrob-labs/.github` release-publish workflow (`SHA256SUMS.txt`, `redrob-launcher.json`, published as latest; a version with a pre-release suffix is marked pre-release). Pushing the same tag again is refused once the release is published: bump and tag again. A `workflow_dispatch` run (optionally with `version: X.Y.Z-rc.N`) is a dry run: every job builds and signs and nothing is published.

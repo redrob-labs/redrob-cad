@@ -19,10 +19,9 @@ usage: cargo xtask <command>
 
 commands:
   assets          check that every icon/image/font/asset is attributed in ATTRIBUTION.md
-  brand           upstream brand gone, Redrob mark pinned, no upstream names on user-facing surfaces
+  brand           the Redrob mark in assets/brand/ matches its pinned SHA256SUMS
   layers          enforce the crate dependency layering (plan/architecture.md §3)
-  wasm            cargo check --target wasm32-unknown-unknown for the wasm-safe crates
-  ci              fmt --check, clippy -D warnings, test, assets, brand, layers, wasm (stops at first failure)
+  ci              fmt --check, clippy -D warnings, test, assets, brand, layers (stops at first failure)
   corpus [--download]
                   show where test corpora live; --download fetches PngSuite into corpus/pngsuite
   stats [--exact] count tests and lines per crate (--exact: ask the test harness via `-- --list`)
@@ -38,7 +37,6 @@ fn main() -> ExitCode {
         Some("assets") => assets::run(&root()),
         Some("brand") => brand::run(&root()),
         Some("layers") => cmd_layers(),
-        Some("wasm") => cmd_wasm(),
         Some("ci") => cmd_ci(),
         Some("corpus") => cmd_corpus(rest.contains(&"--download")),
         Some("stats") => stats::run(&root(), rest.contains(&"--exact")),
@@ -119,38 +117,6 @@ fn cmd_layers() -> Result<(), String> {
     }
 }
 
-/// Workspace packages that must build for wasm32: all L0–L5 crates plus
-/// the egui shell.
-fn wasm_set() -> Result<Vec<String>, String> {
-    let crates = layers::from_metadata(&metadata()?)?;
-    Ok(crates
-        .into_iter()
-        .filter(|c| match layers::classify(&c.name) {
-            Some(layers::Class::Layer(l)) => l <= 4 || layers::short_name(&c.name) == "ui-egui",
-            Some(layers::Class::Standalone) => true,
-            _ => false,
-        })
-        .map(|c| c.name)
-        .collect())
-}
-
-fn cmd_wasm() -> Result<(), String> {
-    let set = wasm_set()?;
-    let mut results = Vec::new();
-    for pkg in &set {
-        let mut c = cargo();
-        c.args(["check", "--target", "wasm32-unknown-unknown", "-p", pkg]);
-        let ok = run(c, &format!("cargo check --target wasm32-unknown-unknown -p {pkg}")).is_ok();
-        results.push((pkg.clone(), ok));
-    }
-    println!("\nwasm32-unknown-unknown check:");
-    for (p, ok) in &results {
-        println!("  {:<6} {p}", if *ok { "ok" } else { "FAIL" });
-    }
-    let failed = results.iter().filter(|r| !r.1).count();
-    if failed == 0 { Ok(()) } else { Err(format!("{failed} crate(s) failed the wasm check")) }
-}
-
 fn cmd_ci() -> Result<(), String> {
     type Step = (&'static str, Box<dyn Fn() -> Result<(), String>>);
     let steps: Vec<Step> = vec![
@@ -181,7 +147,6 @@ fn cmd_ci() -> Result<(), String> {
         ("assets", Box::new(|| assets::run(&root()))),
         ("brand", Box::new(|| brand::run(&root()))),
         ("layers", Box::new(cmd_layers)),
-        ("wasm", Box::new(cmd_wasm)),
     ];
     let mut done = Vec::new();
     for (name, f) in &steps {
@@ -204,6 +169,6 @@ fn cmd_ci() -> Result<(), String> {
 }
 
 fn cmd_corpus(_download: bool) -> Result<(), String> {
-    println!("Test corpora live in storytold/cadcraft-corpus (planned); never commit large binaries here.");
+    println!("Test corpora live in separate repositories; never commit large binaries here.");
     Ok(())
 }
