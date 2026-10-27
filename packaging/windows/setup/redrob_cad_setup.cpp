@@ -266,7 +266,7 @@ std::wstring StatusText(Stage s) {
 
 // Whether Redrob Code is already on this PC: its installer's folder (%LOCALAPPDATA%\Redrob\bin), the
 // install.sh location (%USERPROFILE%\.redrob\bin), or anywhere on PATH. The same places Redrob CAD's
-// agent lookup tries (apps/cadcraft/src/acp.rs), so "already installed" here means the agent finds it.
+// agent lookup tries (apps/redrob-cad/src/acp.rs), so "already installed" here means the agent finds it.
 static bool RedrobCodePresent() {
   auto exists = [](const std::wstring& p) { return GetFileAttributesW(p.c_str()) != INVALID_FILE_ATTRIBUTES; };
   wchar_t dir[MAX_PATH];
@@ -1092,7 +1092,7 @@ static void DeleteTree(const std::wstring& dir) {
 }
 
 // msiexec /x removes the files, shortcuts and the Settings > Apps entry. The settings folder is the app's
-// own (apps/cadcraft/src/device.rs config_dir), so only the opt-in deletes it.
+// own (apps/redrob-cad/src/device.rs config_dir), so only the opt-in deletes it.
 DWORD SetupApp::RunUninstall() {
   if (demo_) {
     Sleep(4500);

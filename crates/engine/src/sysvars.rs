@@ -55,8 +55,8 @@ pub fn get(s: &Session, name: &str) -> Option<Value> {
         "CTAB" => json!(
             s.state()
                 .map(|d| match &d.space {
-                    cadcraft_doc::Space::Model => "Model".to_string(),
-                    cadcraft_doc::Space::Paper(n) => n.clone(),
+                    redrob_cad_doc::Space::Model => "Model".to_string(),
+                    redrob_cad_doc::Space::Paper(n) => n.clone(),
                 })
                 .unwrap_or_default()
         ),
@@ -89,8 +89,8 @@ fn as_i(v: &Value) -> Option<i64> {
 fn as_f64(v: &Value) -> Option<f64> {
     v.as_f64().or_else(|| v.as_str().and_then(crate::units::parse_distance)).filter(|f| f.is_finite())
 }
-fn as_pt(v: &Value) -> Option<cadcraft_geom::Vec2> {
-    crate::cmd::point_value(v).or_else(|| as_f64(v).map(|f| cadcraft_geom::Vec2::new(f, f)))
+fn as_pt(v: &Value) -> Option<redrob_cad_geom::Vec2> {
+    crate::cmd::point_value(v).or_else(|| as_f64(v).map(|f| redrob_cad_geom::Vec2::new(f, f)))
 }
 
 pub fn set(s: &mut Session, name: &str, v: &Value) -> Result<()> {
@@ -119,22 +119,22 @@ pub fn set(s: &mut Session, name: &str, v: &Value) -> Result<()> {
         _ => {
             let d = s.doc_mut()?;
             let val = match v {
-                Value::Number(x) if x.is_i64() => cadcraft_doc::HVal::Int(x.as_i64().unwrap_or(0)),
-                Value::Number(x) => cadcraft_doc::HVal::Real(x.as_f64().filter(|f| f.is_finite()).ok_or_else(bad)?),
+                Value::Number(x) if x.is_i64() => redrob_cad_doc::HVal::Int(x.as_i64().unwrap_or(0)),
+                Value::Number(x) => redrob_cad_doc::HVal::Real(x.as_f64().filter(|f| f.is_finite()).ok_or_else(bad)?),
                 Value::String(t) => match t.trim().parse::<i64>() {
-                    Ok(i) => cadcraft_doc::HVal::Int(i),
+                    Ok(i) => redrob_cad_doc::HVal::Int(i),
                     Err(_) => match t.trim().parse::<f64>() {
-                        Ok(f) if f.is_finite() => cadcraft_doc::HVal::Real(f),
-                        _ => cadcraft_doc::HVal::Str(t.clone()),
+                        Ok(f) if f.is_finite() => redrob_cad_doc::HVal::Real(f),
+                        _ => redrob_cad_doc::HVal::Str(t.clone()),
                     },
                 },
-                Value::Bool(b) => cadcraft_doc::HVal::Int(i64::from(*b)),
-                Value::Array(_) => cadcraft_doc::HVal::Point(as_pt(v).ok_or_else(bad)?.to3(0.0)),
+                Value::Bool(b) => redrob_cad_doc::HVal::Int(i64::from(*b)),
+                Value::Array(_) => redrob_cad_doc::HVal::Point(as_pt(v).ok_or_else(bad)?.to3(0.0)),
                 _ => return Err(bad()),
             };
             // Keep the header type stable for known numeric vars.
             if let Some(old) = d.header.get(&n)
-                && matches!(old, cadcraft_doc::HVal::Real(_))
+                && matches!(old, redrob_cad_doc::HVal::Real(_))
                 && let Some(f) = val.as_f64()
             {
                 d.header.set_f64(&n, f);
@@ -155,7 +155,7 @@ pub fn list(s: &Session) -> Value {
     }
     if let Ok(d) = s.doc() {
         for (k, v) in &d.header.vars {
-            if !k.starts_with("CADCRAFT_") {
+            if !k.starts_with("REDROB_CAD_") {
                 m.insert(k.clone(), serde_json::to_value(v).unwrap_or(Value::Null));
             }
         }

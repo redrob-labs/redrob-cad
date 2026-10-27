@@ -4,8 +4,8 @@
 //! `linetype`).
 
 use crate::i18n::{tr, trf};
-use cadcraft_color::{Color, aci_rgb};
-use cadcraft_doc::{Handle, Layer, Lineweight};
+use redrob_cad_color::{Color, aci_rgb};
+use redrob_cad_doc::{Handle, Layer, Lineweight};
 use egui::{Color32, Rect, RichText, Sense, Stroke, pos2, vec2};
 use serde_json::{Value, json};
 
@@ -146,7 +146,7 @@ pub fn color_palette(ui: &mut egui::Ui, id: egui::Id, current: Color, by: bool) 
         });
         ui.data_mut(|d| d.insert_temp(rid, c));
         if ui.button(tr("Apply true color")).clicked() {
-            out = Some(Color::True(cadcraft_color::Rgb(c[0], c[1], c[2])));
+            out = Some(Color::True(redrob_cad_color::Rgb(c[0], c[1], c[2])));
             ui.data_mut(|d| d.remove::<[u8; 3]>(rid));
         }
     }
@@ -163,7 +163,7 @@ fn lw_sample(p: &egui::Painter, r: Rect, lw: Lineweight, c: Color32) {
 }
 
 /// A linetype preview drawn from its own dash pattern.
-fn lt_sample(p: &egui::Painter, r: Rect, lt: Option<&cadcraft_doc::Linetype>, c: Color32) {
+fn lt_sample(p: &egui::Painter, r: Rect, lt: Option<&redrob_cad_doc::Linetype>, c: Color32) {
     let y = r.center().y;
     let Some(lt) = lt.filter(|l| !l.pattern.is_empty() && l.pattern.iter().any(|e| e.length.abs() > 1e-9)) else {
         p.line_segment([pos2(r.left(), y), pos2(r.right(), y)], Stroke::new(1.0, c));
@@ -223,9 +223,9 @@ pub fn dialog(app: &mut CadApp, ctx: &egui::Context, open: &mut bool) {
     let d = &dst.doc;
     let cur = d.header.str("CLAYER", "0");
     let used = used_layers(d);
-    let vp: Option<(Handle, cadcraft_doc::Viewport)> = dst.active_viewport();
-    let linetypes: Vec<cadcraft_doc::Linetype> = d.linetypes.clone();
-    let library: Vec<String> = cadcraft_doc::library::standard_linetypes().into_iter().map(|l| l.name).filter(|n| d.linetype(n).is_none()).collect();
+    let vp: Option<(Handle, redrob_cad_doc::Viewport)> = dst.active_viewport();
+    let linetypes: Vec<redrob_cad_doc::Linetype> = d.linetypes.clone();
+    let library: Vec<String> = redrob_cad_doc::library::standard_linetypes().into_iter().map(|l| l.name).filter(|n| d.linetype(n).is_none()).collect();
     let states: Vec<String> = d.layer_states.iter().map(|s| s.name.clone()).collect();
     let mut layers: Vec<Layer> = d.layers.clone();
     layers.sort_by_key(|l| natural_lower(&l.name));
@@ -393,8 +393,8 @@ fn row(
     l: &Layer,
     cur: &str,
     used: &std::collections::HashSet<String>,
-    vp: Option<&(Handle, cadcraft_doc::Viewport)>,
-    linetypes: &[cadcraft_doc::Linetype],
+    vp: Option<&(Handle, redrob_cad_doc::Viewport)>,
+    linetypes: &[redrob_cad_doc::Linetype],
     library: &[String],
     st: &mut LpmState,
     actions: &mut Vec<(&'static str, Value)>,
@@ -649,7 +649,7 @@ fn row(
 }
 
 /// Lower-case names of layers with objects on them.
-fn used_layers(d: &cadcraft_doc::Drawing) -> std::collections::HashSet<String> {
+fn used_layers(d: &redrob_cad_doc::Drawing) -> std::collections::HashSet<String> {
     let mut set = std::collections::HashSet::new();
     let ents = d.model.iter().chain(d.layouts.iter().flat_map(|l| l.entities.iter())).chain(d.blocks.values().flat_map(|b| b.entities.iter()));
     for e in ents.take(5_000_000) {

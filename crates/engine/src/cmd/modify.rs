@@ -1,8 +1,8 @@
 //! Modify commands: ERASE, MOVE, COPY, ROTATE, SCALE, MIRROR, OFFSET, TRIM, EXTEND, FILLET,
 //! CHAMFER, EXPLODE, STRETCH, ARRAY, DRAWORDER, BREAK, JOIN.
 
-use cadcraft_doc::{Entity, EntityKind, Handle, Prim};
-use cadcraft_geom::{
+use redrob_cad_doc::{Entity, EntityKind, Handle, Prim};
+use redrob_cad_geom::{
     Arc, Circle, Line, Mat3, PolyVertex, Polyline, Segment, TAU, Vec2, angle_in_sweep, ccw_sweep, intersect_ext, line_line_infinite, norm_angle,
 };
 use serde_json::{Value, json};
@@ -222,8 +222,8 @@ fn run_mirror(s: &mut Session, p: &Value) -> Result<Value> {
 }
 
 /// Move the vertices of `e` that lie inside `bx` by `d` (STRETCH).
-fn stretch_entity(e: &mut Entity, bx: &cadcraft_geom::Bounds2, d: Vec2) {
-    let mv = |p: &mut cadcraft_geom::Vec3| {
+fn stretch_entity(e: &mut Entity, bx: &redrob_cad_geom::Bounds2, d: Vec2) {
+    let mv = |p: &mut redrob_cad_geom::Vec3| {
         if bx.contains(p.xy()) {
             p.x += d.x;
             p.y += d.y;
@@ -267,7 +267,7 @@ fn stretch_entity(e: &mut Entity, bx: &cadcraft_geom::Bounds2, d: Vec2) {
 fn run_stretch(s: &mut Session, p: &Value) -> Result<Value> {
     let w = points_param(p, "window").ok_or_else(|| bad("stretch", "`window` [[x,y],[x,y]] is required"))?;
     let (Some(a), Some(b)) = (w.first(), w.get(1)) else { return Err(bad("stretch", "window needs 2 corners")) };
-    let bx = cadcraft_geom::Bounds2::new(*a, *b);
+    let bx = redrob_cad_geom::Bounds2::new(*a, *b);
     let d = delta_of("stretch", p)?;
     let space = s.space();
     let hs = crate::select::select_window(s.doc()?, &space, bx, true);
@@ -299,11 +299,11 @@ pub(crate) fn offset_kind(k: &EntityKind, dist: f64, side: Vec2) -> Option<Entit
         }
         EntityKind::Ellipse(e) => {
             // Approximate with a polyline offset of the tessellation.
-            let ge = cadcraft_geom::Ellipse { center: e.center.xy(), major: e.major.xy(), ratio: e.ratio, start: e.start, end: e.end };
+            let ge = redrob_cad_geom::Ellipse { center: e.center.xy(), major: e.major.xy(), ratio: e.ratio, start: e.start, end: e.end };
             let inside = {
                 let mut pts = Vec::new();
                 ge.tessellate(e.major.xy().len() * 1e-3, &mut pts);
-                cadcraft_geom::point_in_polygon(&pts, side)
+                redrob_cad_geom::point_in_polygon(&pts, side)
             };
             let mut pts = Vec::new();
             ge.tessellate(e.major.xy().len() * 1e-3, &mut pts);
@@ -334,13 +334,13 @@ pub(crate) fn offset_kind(k: &EntityKind, dist: f64, side: Vec2) -> Option<Entit
             let next = pts.get((n / 2 + 1).min(n.saturating_sub(1))).copied()?;
             let left = (next - mid).cross(side - mid) > 0.0;
             let off = offset_points(&pts, if left { dist } else { -dist }, sp.closed);
-            Some(EntityKind::Spline(cadcraft_geom::Spline::from_fit_points(&decimate(&off, 40))))
+            Some(EntityKind::Spline(redrob_cad_geom::Spline::from_fit_points(&decimate(&off, 40))))
         }
         EntityKind::XLine(r) | EntityKind::Ray(r) => {
             let ln = Line::new(r.base.xy(), r.base.xy() + r.dir.xy());
             let sgn = if ln.side(side) >= 0.0 { 1.0 } else { -1.0 };
             let o = ln.offset(dist * sgn);
-            let rl = cadcraft_doc::RayLine { base: v3(o.a), dir: r.dir };
+            let rl = redrob_cad_doc::RayLine { base: v3(o.a), dir: r.dir };
             Some(if matches!(k, EntityKind::XLine(_)) { EntityKind::XLine(rl) } else { EntityKind::Ray(rl) })
         }
         _ => None,
@@ -409,7 +409,7 @@ pub(crate) fn offset_polyline(pl: &Polyline, d: f64) -> Option<Vec<PolyVertex>> 
             Segment::Line(_) => 0.0,
             Segment::Arc { arc, ccw } => {
                 let sw = arc.sweep();
-                cadcraft_geom::arc_to_bulge(if *ccw { sw } else { -sw })
+                redrob_cad_geom::arc_to_bulge(if *ccw { sw } else { -sw })
             }
         };
         verts.push(PolyVertex { p: start, bulge, start_width: 0.0, end_width: 0.0 });
@@ -597,7 +597,7 @@ fn sub_polyline(segs: &[Segment], a: f64, b: f64) -> Vec<PolyVertex> {
             Segment::Line(_) => 0.0,
             Segment::Arc { arc, ccw } => {
                 let sw = arc.sweep() * (t1 - t0);
-                cadcraft_geom::arc_to_bulge(if *ccw { sw } else { -sw })
+                redrob_cad_geom::arc_to_bulge(if *ccw { sw } else { -sw })
             }
         };
         if out.last().is_none_or(|l| !l.p.near(p0, 1e-9)) {
@@ -610,7 +610,7 @@ fn sub_polyline(segs: &[Segment], a: f64, b: f64) -> Vec<PolyVertex> {
     out
 }
 
-fn trim_polyline(p: &cadcraft_doc::LwPolyline, cut: &[Segment], pick: Vec2) -> Result<Vec<EntityKind>> {
+fn trim_polyline(p: &redrob_cad_doc::LwPolyline, cut: &[Segment], pick: Vec2) -> Result<Vec<EntityKind>> {
     let pl = Polyline { vertices: p.vertices.clone(), closed: p.closed };
     let segs = pl.segments();
     let total: f64 = segs.iter().map(Segment::len).sum();
@@ -863,7 +863,7 @@ fn run_chamfer(s: &mut Session, p: &Value) -> Result<Value> {
 
 // ---------------- explode / array / order / break / join ----------------
 
-pub(crate) fn explode_kind(d: &cadcraft_doc::Drawing, e: &Entity) -> Option<Vec<Entity>> {
+pub(crate) fn explode_kind(d: &redrob_cad_doc::Drawing, e: &Entity) -> Option<Vec<Entity>> {
     match &e.kind {
         EntityKind::LwPolyline(p) => {
             let pl = Polyline { vertices: p.vertices.clone(), closed: p.closed };
@@ -892,7 +892,7 @@ pub(crate) fn explode_kind(d: &cadcraft_doc::Drawing, e: &Entity) -> Option<Vec<
                         if ne.common.layer == "0" {
                             ne.common.layer = e.common.layer.clone();
                         }
-                        if ne.common.color == cadcraft_color::Color::ByBlock {
+                        if ne.common.color == redrob_cad_color::Color::ByBlock {
                             ne.common.color = e.common.color;
                         }
                         ne
@@ -907,7 +907,7 @@ pub(crate) fn explode_kind(d: &cadcraft_doc::Drawing, e: &Entity) -> Option<Vec<
                 .collect(),
         ),
         EntityKind::MText(m) => Some(
-            cadcraft_fonts::plain_mtext(&m.contents)
+            redrob_cad_fonts::plain_mtext(&m.contents)
                 .split('\n')
                 .enumerate()
                 .map(|(i, l)| {
@@ -915,7 +915,7 @@ pub(crate) fn explode_kind(d: &cadcraft_doc::Drawing, e: &Entity) -> Option<Vec<
                     Entity {
                         handle: Handle(0),
                         common: e.common.clone(),
-                        kind: EntityKind::Text(cadcraft_doc::Text {
+                        kind: EntityKind::Text(redrob_cad_doc::Text {
                             insert: v3(at),
                             align_pt: None,
                             height: m.height,
@@ -933,7 +933,7 @@ pub(crate) fn explode_kind(d: &cadcraft_doc::Drawing, e: &Entity) -> Option<Vec<
         ),
         EntityKind::Dimension(dm) => {
             let style = d.dim_style(&dm.style).cloned().unwrap_or_default();
-            let g = cadcraft_render::dimension_geometry(dm, &style, d.header.f64("DIMSCALE", 1.0));
+            let g = redrob_cad_render::dimension_geometry(dm, &style, d.header.f64("DIMSCALE", 1.0));
             let mut v: Vec<Entity> = g
                 .lines
                 .iter()
@@ -954,7 +954,7 @@ pub(crate) fn explode_kind(d: &cadcraft_doc::Drawing, e: &Entity) -> Option<Vec<
                     v.push(Entity {
                         handle: Handle(0),
                         common: e.common.clone(),
-                        kind: EntityKind::Solid(cadcraft_doc::Solid { corners: [v3(*a), v3(*b), v3(*c), v3(*c)] }),
+                        kind: EntityKind::Solid(redrob_cad_doc::Solid { corners: [v3(*a), v3(*b), v3(*c), v3(*c)] }),
                     });
                 }
             }
@@ -962,7 +962,7 @@ pub(crate) fn explode_kind(d: &cadcraft_doc::Drawing, e: &Entity) -> Option<Vec<
             v.push(Entity {
                 handle: Handle(0),
                 common: e.common.clone(),
-                kind: EntityKind::MText(cadcraft_doc::MText {
+                kind: EntityKind::MText(redrob_cad_doc::MText {
                     insert: v3(g.text_pos),
                     height: th,
                     width: 0.0,
@@ -1038,7 +1038,7 @@ fn run_arraypolar(s: &mut Session, p: &Value) -> Result<Value> {
         } else {
             // Translate only: move the reference point around the circle.
             let d = s.doc()?;
-            let r = hs.first().and_then(|h| d.entity(*h)).map(|e| cadcraft_doc::entity_bounds(d, e, 0).center()).unwrap_or(c);
+            let r = hs.first().and_then(|h| d.entity(*h)).map(|e| redrob_cad_doc::entity_bounds(d, e, 0).center()).unwrap_or(c);
             Mat3::translate(r.rotate_about(c, a) - r)
         };
         out.extend(transform_entities(s, &hs, &m, true)?);
@@ -1253,7 +1253,7 @@ pub(crate) fn join(s: &mut Session, hs: &[Handle]) -> Result<Option<Handle>> {
             p: s.start(),
             bulge: match s {
                 Segment::Line(_) => 0.0,
-                Segment::Arc { arc, ccw } => cadcraft_geom::arc_to_bulge(if *ccw { arc.sweep() } else { -arc.sweep() }),
+                Segment::Arc { arc, ccw } => redrob_cad_geom::arc_to_bulge(if *ccw { arc.sweep() } else { -arc.sweep() }),
             },
             ..Default::default()
         })
@@ -1329,7 +1329,7 @@ struct SelectThen {
     /// STRETCH: still at "Select objects:" after the crossing window.
     stretch_more: bool,
     copy_mode: bool,
-    window: Option<cadcraft_geom::Bounds2>,
+    window: Option<redrob_cad_geom::Bounds2>,
     ask_erase: bool,
 }
 
@@ -1428,8 +1428,8 @@ impl SelectThen {
                 let d = s.doc()?;
                 let b = objs
                     .iter()
-                    .filter_map(|h| d.entity(*h).map(|e| cadcraft_doc::entity_bounds(d, e, 0)))
-                    .fold(cadcraft_geom::Bounds2::EMPTY, |a, b| a.union(&b));
+                    .filter_map(|h| d.entity(*h).map(|e| redrob_cad_doc::entity_bounds(d, e, 0)))
+                    .fold(redrob_cad_geom::Bounds2::EMPTY, |a, b| a.union(&b));
                 let cs = b.width() * 1.5 + 1e-9;
                 let rs = b.height() * 1.5 + 1e-9;
                 run_arrayrect(
@@ -1521,7 +1521,7 @@ impl Interactive for SelectThen {
             if let Input::Point(p) = i {
                 self.pts.push(p);
                 if self.pts.len() == 2 {
-                    let bx = cadcraft_geom::Bounds2::new(self.pts[0], self.pts[1]);
+                    let bx = redrob_cad_geom::Bounds2::new(self.pts[0], self.pts[1]);
                     self.window = Some(bx);
                     let space = s.space();
                     self.objs = crate::select::select_window(s.doc()?, &space, bx, true);

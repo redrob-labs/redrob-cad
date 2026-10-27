@@ -2,10 +2,10 @@
 
 use std::collections::HashMap;
 
-use cadcraft_color::{Color, Rgb};
-use cadcraft_doc::*;
-use cadcraft_dxf::{Tag, records, sections};
-use cadcraft_geom::{PolyVertex, Spline, Vec2, Vec3};
+use redrob_cad_color::{Color, Rgb};
+use redrob_cad_doc::*;
+use redrob_cad_dxf::{Tag, records, sections};
+use redrob_cad_geom::{PolyVertex, Spline, Vec2, Vec3};
 
 use crate::{IoError, Result};
 
@@ -69,7 +69,7 @@ fn ocs(c: &Common, p: Vec3) -> Vec3 {
     if (c.extrusion.z - 1.0).abs() < 1e-12 && c.extrusion.x.abs() < 1e-12 && c.extrusion.y.abs() < 1e-12 {
         p
     } else {
-        cadcraft_geom::Mat4::ocs(c.extrusion).apply(p)
+        redrob_cad_geom::Mat4::ocs(c.extrusion).apply(p)
     }
 }
 
@@ -117,8 +117,8 @@ fn entity(kind: &str, tags: &[Tag]) -> Option<(Common, EntityKind)> {
             if c.extrusion.z < 0.0 {
                 // Mirrored OCS: angles run the other way.
                 let (s, e) = (std::f64::consts::PI - a.end, std::f64::consts::PI - a.start);
-                a.start = cadcraft_geom::norm_angle(s);
-                a.end = cadcraft_geom::norm_angle(e);
+                a.start = redrob_cad_geom::norm_angle(s);
+                a.end = redrob_cad_geom::norm_angle(e);
             }
             EntityKind::Arc(a)
         }
@@ -318,7 +318,7 @@ fn entity(kind: &str, tags: &[Tag]) -> Option<(Common, EntityKind)> {
     Some((c, k))
 }
 
-/// An ACAD_TABLE entity: sizes, cell texts and merges (DXF Reference), plus CADCraft's
+/// An ACAD_TABLE entity: sizes, cell texts and merges (DXF Reference), plus Redrob CAD's
 /// title/header flags, text height and style name from xdata when present.
 fn acad_table(tags: &[Tag]) -> Table {
     const MAX_CELLS: usize = 1_000_000;
@@ -454,12 +454,12 @@ fn hatch(tags: &[Tag], t: &T) -> Option<EntityKind> {
                         let (s, e) = if ccw { (sa, ea) } else { (-sa, -ea) };
                         let p0 = Vec2::polar(c, r, s);
                         let p1 = Vec2::polar(c, r, e);
-                        let sweep = if ccw { cadcraft_geom::ccw_sweep(s, e) } else { -cadcraft_geom::ccw_sweep(e, s) };
+                        let sweep = if ccw { redrob_cad_geom::ccw_sweep(s, e) } else { -redrob_cad_geom::ccw_sweep(e, s) };
                         if verts.last().is_none_or(|l| !l.p.near(p0, 1e-9)) {
                             verts.push(PolyVertex::new(p0));
                         }
                         if let Some(l) = verts.last_mut() {
-                            l.bulge = cadcraft_geom::arc_to_bulge(sweep);
+                            l.bulge = redrob_cad_geom::arc_to_bulge(sweep);
                         }
                         verts.push(PolyVertex::new(p1));
                     }
@@ -471,7 +471,7 @@ fn hatch(tags: &[Tag], t: &T) -> Option<EntityKind> {
                         let sa = f(i + 5).to_radians();
                         let ea = f(i + 6).to_radians();
                         i += 8;
-                        let e = cadcraft_geom::Ellipse { center: c, major: m, ratio, start: sa, end: ea };
+                        let e = redrob_cad_geom::Ellipse { center: c, major: m, ratio, start: sa, end: ea };
                         let mut pts = Vec::new();
                         e.tessellate(m.len() * 1e-3, &mut pts);
                         verts.extend(pts.into_iter().map(PolyVertex::new));
@@ -674,9 +674,9 @@ fn header(tags: &[Tag], d: &mut Drawing) {
                 [x, y, z] if x.code == 10 => HVal::Point(Vec3::new(x.f64(), y.f64(), z.f64())),
                 [x, y] if x.code == 10 => HVal::Point(Vec3::new(x.f64(), y.f64(), 0.0)),
                 [v] => match &v.value {
-                    cadcraft_dxf::Value::Real(r) => HVal::Real(*r),
-                    cadcraft_dxf::Value::Int(n) => HVal::Int(*n),
-                    cadcraft_dxf::Value::Bool(b) => HVal::Int(i64::from(*b)),
+                    redrob_cad_dxf::Value::Real(r) => HVal::Real(*r),
+                    redrob_cad_dxf::Value::Int(n) => HVal::Int(*n),
+                    redrob_cad_dxf::Value::Bool(b) => HVal::Int(i64::from(*b)),
                     other => HVal::Str(other.as_str()),
                 },
                 _ => continue,
@@ -800,7 +800,7 @@ fn tables(tags: &[Tag], d: &mut Drawing, rx: &mut Rx) {
 
 /// Read a DXF file into a drawing.
 pub fn read(bytes: &[u8]) -> Result<Drawing> {
-    let tags = cadcraft_dxf::parse(bytes).map_err(|e| IoError::Format(e.to_string()))?;
+    let tags = redrob_cad_dxf::parse(bytes).map_err(|e| IoError::Format(e.to_string()))?;
     let secs = sections(&tags);
     if secs.is_empty() {
         return Err(IoError::Format("no sections found".into()));
@@ -1021,7 +1021,7 @@ impl Objects {
                 d.parametric = p;
             }
         }
-        // Standard associativity, for dimensions without CADCraft's exact links.
+        // Standard associativity, for dimensions without Redrob CAD's exact links.
         for tags in &self.dimassocs {
             dimassoc(d, tags);
         }
@@ -1067,7 +1067,7 @@ fn dimassoc(d: &mut Drawing, tags: &[Tag]) {
     }
 }
 
-/// A CADCraft snap from a DIMASSOC object snap type and point.
+/// A Redrob CAD snap from a DIMASSOC object snap type and point.
 fn infer_snap(d: &Drawing, osnap: i64, main: Handle, other: Option<Handle>, at: Vec2) -> Option<AssocSnap> {
     let e = d.entity(main)?;
     Some(match osnap {
@@ -1080,7 +1080,7 @@ fn infer_snap(d: &Drawing, osnap: i64, main: Handle, other: Option<Handle>, at: 
                 }
             }
             EntityKind::Arc(a) => {
-                let g = cadcraft_geom::Arc::new(a.center.xy(), a.radius, a.start, a.end);
+                let g = redrob_cad_geom::Arc::new(a.center.xy(), a.radius, a.start, a.end);
                 if osnap == 13 || g.start_point().dist(at) <= g.end_point().dist(at) { AssocSnap::Start } else { AssocSnap::End }
             }
             EntityKind::LwPolyline(p) => {

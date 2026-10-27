@@ -1,7 +1,7 @@
 //! AUTOCONSTRAIN: infer constraints from geometry that already nearly satisfies them.
 
-use cadcraft_doc::{Constraint, ConstraintKind, Drawing, EntityKind, GeomRef, Handle, Sub};
-use cadcraft_geom::{Line, Vec2};
+use redrob_cad_doc::{Constraint, ConstraintKind, Drawing, EntityKind, GeomRef, Handle, Sub};
+use redrob_cad_geom::{Line, Vec2};
 
 /// Most objects considered at once.
 pub const MAX_OBJECTS: usize = 200;
@@ -44,7 +44,7 @@ fn collect(d: &Drawing, handles: &[Handle]) -> Geo {
                 }
             }
             EntityKind::Arc(a) => {
-                let ga = cadcraft_geom::Arc::new(a.center.xy(), a.radius, a.start, a.end);
+                let ga = redrob_cad_geom::Arc::new(a.center.xy(), a.radius, a.start, a.end);
                 if ga.center.is_finite() && a.radius.is_finite() {
                     g.points.push((GeomRef::new(h, Sub::Start), ga.start_point()));
                     g.points.push((GeomRef::new(h, Sub::End), ga.end_point()));

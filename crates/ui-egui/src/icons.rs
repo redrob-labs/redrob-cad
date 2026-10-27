@@ -1,4 +1,4 @@
-//! CADCraft's icon set, drawn in code (original work, MIT OR Apache-2.0 with the codebase).
+//! Redrob CAD's icon set, drawn in code (original work, MIT OR Apache-2.0 with the codebase).
 //!
 //! Icons are line drawings on a 24×24 design grid: light strokes for existing geometry, blue for
 //! the geometry a command creates and orange dots for picked points.

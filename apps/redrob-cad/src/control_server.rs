@@ -1,5 +1,5 @@
 //! Loopback JSON-lines control server: one request per line, one reply per line.
-//! This is the transport the MCP server (`cadcraft-cli mcp --connect`) wraps.
+//! This is the transport the MCP server (`redrob-cad-cli mcp --connect`) wraps.
 //!
 //! With a token, every request must carry `"token": "<token>"` or it is refused. The built-in
 //! agent's server always has one: it listens on an ephemeral port that any local process could
@@ -11,7 +11,7 @@ use std::net::{TcpListener, TcpStream};
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::time::Duration;
 
-use cadcraft_ui_egui::ControlRequest;
+use redrob_cad_ui_egui::ControlRequest;
 use serde_json::{Value, json};
 
 /// Start the server on `127.0.0.1:port` (`0` picks a free port). Returns the request stream and

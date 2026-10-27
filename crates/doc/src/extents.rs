@@ -1,6 +1,6 @@
 //! Approximate entity bounds (used for extents, zoom and selection pre-filtering).
 
-use cadcraft_geom::{Bounds2, Polyline, Vec2};
+use redrob_cad_geom::{Bounds2, Polyline, Vec2};
 
 use crate::{Drawing, Entity, EntityKind, Prim};
 

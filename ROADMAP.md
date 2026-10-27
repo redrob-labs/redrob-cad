@@ -1,6 +1,6 @@
-# CADCraft roadmap
+# Redrob CAD roadmap
 
-Status as of **2026-10-07**. CADCraft targets full parity with AutoCAD (2D drafting first, then
+Status as of **2026-10-07**. Redrob CAD targets full parity with AutoCAD (2D drafting first, then
 annotation, layouts and plotting, DWG, parametrics and 3D), plus things AutoCAD doesn't have:
 agent control over MCP, a scriptable CLI and a free licence.
 
@@ -15,10 +15,10 @@ agent control over MCP, a scriptable CLI and a free licence.
 
 ### What "alpha" means here
 
-A person can do real 2D drafting work in CADCraft and trust it with their files:
+A person can do real 2D drafting work in Redrob CAD and trust it with their files:
 
 - Installable, signed builds for macOS, Windows and Linux from the release pipeline.
-- Drawings from AutoCAD open correctly, and CADCraft's DXF/DWG files open cleanly in AutoCAD and other readers.
+- Drawings from AutoCAD open correctly, and Redrob CAD's DXF/DWG files open cleanly in AutoCAD and other readers.
 - Every common 2D draw, modify, annotate, layer, block, layout and plot command works, both with the mouse and at the command line.
 - No crashes and no lost work: autosave and recovery, plus undo that always works.
 
@@ -77,7 +77,7 @@ edge cases, dialogs), which is why it is lower.
 | | **Remaining total** | | **≈ 570 hours** |
 
 At roughly 570 more hours of Opus 5.5 wall-clock work (with parallel agents this compresses to
-about 150–190 hours of elapsed time), CADCraft would reach broad AutoCAD parity. 2D drafting parity
+about 150–190 hours of elapsed time), Redrob CAD would reach broad AutoCAD parity. 2D drafting parity
 (M1–M8) is the first ≈ 250 hours.
 
 ## Current focus

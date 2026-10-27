@@ -32,8 +32,8 @@ pub mod curves;
 pub mod helpers;
 pub mod machines;
 
-use cadcraft_doc::Handle;
-use cadcraft_geom::Vec2;
+use redrob_cad_doc::Handle;
+use redrob_cad_geom::Vec2;
 use serde::Serialize;
 use serde_json::Value;
 

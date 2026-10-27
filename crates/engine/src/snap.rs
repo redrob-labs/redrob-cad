@@ -1,7 +1,7 @@
 //! Object snaps (OSNAP), polar tracking and ortho.
 
-use cadcraft_doc::{Drawing, EntityKind, Prim, Space};
-use cadcraft_geom::{Bounds2, Circle, PI, Segment, Vec2, intersect_ext};
+use redrob_cad_doc::{Drawing, EntityKind, Prim, Space};
+use redrob_cad_geom::{Bounds2, Circle, PI, Segment, Vec2, intersect_ext};
 use serde::Serialize;
 
 /// OSMODE bits.
@@ -55,20 +55,20 @@ fn name_of(m: u32) -> &'static str {
 fn prim_segments(p: &Prim) -> Vec<Segment> {
     match p {
         Prim::Seg(s) => vec![*s],
-        Prim::Circle(c) => vec![Segment::Arc { arc: cadcraft_geom::Arc::new(c.center, c.radius, 0.0, 0.0), ccw: true }],
-        Prim::Infinite { base, dir, .. } => vec![Segment::Line(cadcraft_geom::Line::new(*base - *dir * 1e7, *base + *dir * 1e7))],
+        Prim::Circle(c) => vec![Segment::Arc { arc: redrob_cad_geom::Arc::new(c.center, c.radius, 0.0, 0.0), ccw: true }],
+        Prim::Infinite { base, dir, .. } => vec![Segment::Line(redrob_cad_geom::Line::new(*base - *dir * 1e7, *base + *dir * 1e7))],
         Prim::Ellipse(e) => {
             let mut pts = Vec::new();
             e.tessellate(e.major.len() * 1e-3, &mut pts);
-            pts.windows(2).filter_map(|w| Some(Segment::Line(cadcraft_geom::Line::new(*w.first()?, *w.get(1)?)))).collect()
+            pts.windows(2).filter_map(|w| Some(Segment::Line(redrob_cad_geom::Line::new(*w.first()?, *w.get(1)?)))).collect()
         }
         Prim::Spline(s) => {
             let pts = s.tessellate(1e-3);
-            pts.windows(2).filter_map(|w| Some(Segment::Line(cadcraft_geom::Line::new(*w.first()?, *w.get(1)?)))).collect()
+            pts.windows(2).filter_map(|w| Some(Segment::Line(redrob_cad_geom::Line::new(*w.first()?, *w.get(1)?)))).collect()
         }
         Prim::Fill(f) => {
             let n = f.len();
-            (0..n).filter_map(|i| Some(Segment::Line(cadcraft_geom::Line::new(*f.get(i)?, *f.get((i + 1) % n)?)))).collect()
+            (0..n).filter_map(|i| Some(Segment::Line(redrob_cad_geom::Line::new(*f.get(i)?, *f.get((i + 1) % n)?)))).collect()
         }
         Prim::Point(_) => Vec::new(),
     }
@@ -197,7 +197,7 @@ pub(crate) fn osnap_with(
             && let EntityKind::LwPolyline(pl) = &e.kind
             && pl.closed
         {
-            let pts = cadcraft_geom::Polyline { vertices: pl.vertices.clone(), closed: true }.tessellate(aperture / 10.0);
+            let pts = redrob_cad_geom::Polyline { vertices: pl.vertices.clone(), closed: true }.tessellate(aperture / 10.0);
             if let Some(c) = centroid(&pts) {
                 cands.push((mode::GCEN, c));
             }
@@ -281,7 +281,7 @@ pub(crate) fn osnap_with(
 fn fix_circle(s: &Segment) -> Segment {
     match *s {
         Segment::Arc { arc, ccw } if (arc.start - arc.end).abs() < 1e-15 => {
-            Segment::Arc { arc: cadcraft_geom::Arc { start: 0.0, end: cadcraft_geom::TAU - 1e-12, ..arc }, ccw }
+            Segment::Arc { arc: redrob_cad_geom::Arc { start: 0.0, end: redrob_cad_geom::TAU - 1e-12, ..arc }, ccw }
         }
         other => other,
     }
@@ -325,7 +325,7 @@ pub fn polar(base: Vec2, p: Vec2, inc: f64, tol: f64) -> Option<(Vec2, f64)> {
     let snapped = k * inc;
     if (a - snapped).abs() <= tol {
         let dir = Vec2::from_angle(snapped);
-        Some((base + dir * d.dot(dir), cadcraft_geom::norm_angle(snapped)))
+        Some((base + dir * d.dot(dir), redrob_cad_geom::norm_angle(snapped)))
     } else {
         None
     }
@@ -341,15 +341,15 @@ pub fn grid_snap(p: Vec2, unit: Vec2, origin: Vec2) -> Vec2 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cadcraft_doc::{Common, Line};
-    use cadcraft_geom::Vec3;
+    use redrob_cad_doc::{Common, Line};
+    use redrob_cad_geom::Vec3;
 
     fn drawing() -> Drawing {
         let mut d = Drawing::new_imperial();
         let l = |a: (f64, f64), b: (f64, f64)| EntityKind::Line(Line { a: Vec3::new(a.0, a.1, 0.0), b: Vec3::new(b.0, b.1, 0.0) });
         d.add(&Space::Model, Common::default(), l((0.0, 0.0), (10.0, 0.0))).unwrap();
         d.add(&Space::Model, Common::default(), l((5.0, -5.0), (5.0, 5.0))).unwrap();
-        d.add(&Space::Model, Common::default(), EntityKind::Circle(cadcraft_doc::Circle { center: Vec3::new(20.0, 0.0, 0.0), radius: 2.0 })).unwrap();
+        d.add(&Space::Model, Common::default(), EntityKind::Circle(redrob_cad_doc::Circle { center: Vec3::new(20.0, 0.0, 0.0), radius: 2.0 })).unwrap();
         d
     }
 

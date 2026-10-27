@@ -109,7 +109,7 @@ pub fn run_ui_command(app: &mut CadApp, id: &str, params: &Value) -> Option<Resu
             Ok(Value::Null)
         }
         "ui.sample" => {
-            let d = cadcraft_engine::sample::default_sample();
+            let d = redrob_cad_engine::sample::default_sample();
             app.session.open_drawing(d, "Bracket", None);
             app.canvas.zoom_pending = true;
             app.ui.start_tab = false;
@@ -253,7 +253,7 @@ pub fn tree(app: &CadApp) -> Vec<(String, Vec<Entry>)> {
             }
         }
     };
-    for c in cadcraft_engine::command_specs() {
+    for c in redrob_cad_engine::command_specs() {
         if !c.menu.is_empty() {
             add(c.menu, c.label, c.id, c.shortcut, (c.enabled)(&app.session).is_ok());
         }

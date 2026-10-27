@@ -2,14 +2,14 @@
 //! AUTOCONSTRAIN, DELCONSTRAINT, PARAMETERS, CONSTRAINTBAR, DCDISPLAY, CONSTRAINTSETTINGS and
 //! `constraints.inspect`, plus the post-command re-solve hook ([`after_command`]).
 //!
-//! The solver lives in `cadcraft-constraints`; this module turns picks and JSON parameters into
+//! The solver lives in `redrob-cad-constraints`; this module turns picks and JSON parameters into
 //! constraint references and keeps the drawing's constraints satisfied after edits.
 
 use std::sync::Arc;
 
-use cadcraft_constraints as cs;
-use cadcraft_doc::{Constraint, ConstraintKind as K, DistAxis, Drawing, EntityKind, GeomRef, Handle, Sub};
-use cadcraft_geom::{Line, Vec2};
+use redrob_cad_constraints as cs;
+use redrob_cad_doc::{Constraint, ConstraintKind as K, DistAxis, Drawing, EntityKind, GeomRef, Handle, Sub};
+use redrob_cad_geom::{Line, Vec2};
 use serde_json::{Value, json};
 
 use super::machines::{SelOutcome, SelectPhase};
@@ -146,7 +146,7 @@ fn char_points(kind: &EntityKind) -> Vec<(Sub, Vec2)> {
     match kind {
         EntityKind::Line(l) => vec![(Sub::Start, l.a.xy()), (Sub::End, l.b.xy()), (Sub::Mid, l.a.xy().mid(l.b.xy()))],
         EntityKind::Arc(a) => {
-            let g = cadcraft_geom::Arc::new(a.center.xy(), a.radius, a.start, a.end);
+            let g = redrob_cad_geom::Arc::new(a.center.xy(), a.radius, a.start, a.end);
             vec![(Sub::Start, g.start_point()), (Sub::End, g.end_point()), (Sub::Mid, g.mid_point()), (Sub::Center, g.center)]
         }
         EntityKind::Circle(c) => vec![(Sub::Center, c.center.xy())],

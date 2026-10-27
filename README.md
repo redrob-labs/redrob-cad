@@ -24,7 +24,7 @@ Requirements: Rust stable (1.90 or newer). On Linux, the X11/Wayland development
 ```sh
 git clone https://github.com/redrob-labs/redrob-cad.git
 cd redrob-cad
-cargo run -p cadcraft --release   # the desktop app
+cargo run -p redrob-cad --release   # the desktop app
 cargo xtask ci                    # the gate CI runs
 ```
 

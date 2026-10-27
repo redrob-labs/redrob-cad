@@ -2,9 +2,9 @@
 //! ellipses and splines. The result replaces the inputs as closed polylines; arcs stay arcs and
 //! a hole is a separate closed polyline inside its outline.
 
-use cadcraft_doc::{Entity, EntityKind, Handle};
-use cadcraft_geom::boolean::{BoolOp, Loop, boolean};
-use cadcraft_geom::{Arc, Line, PI, PolyVertex, Polyline, Segment, Vec2, arc_to_bulge};
+use redrob_cad_doc::{Entity, EntityKind, Handle};
+use redrob_cad_geom::boolean::{BoolOp, Loop, boolean};
+use redrob_cad_geom::{Arc, Line, PI, PolyVertex, Polyline, Segment, Vec2, arc_to_bulge};
 use serde_json::{Value, json};
 
 use super::helpers::lwpoly;
@@ -45,7 +45,7 @@ fn entity_loop(e: &Entity, tol: f64) -> Option<Loop> {
             Some(vec![Segment::Arc { arc: Arc::new(ctr, r, 0.0, PI), ccw: true }, Segment::Arc { arc: Arc::new(ctr, r, PI, 0.0), ccw: true }])
         }
         EntityKind::Ellipse(el) => {
-            let g = cadcraft_geom::Ellipse { center: el.center.xy(), major: el.major.xy(), ratio: el.ratio, start: el.start, end: el.end };
+            let g = redrob_cad_geom::Ellipse { center: el.center.xy(), major: el.major.xy(), ratio: el.ratio, start: el.start, end: el.end };
             if !g.is_full() {
                 return None;
             }
@@ -87,8 +87,8 @@ fn tolerance(s: &Session, hs: &[Handle]) -> f64 {
         .doc()
         .map(|d| {
             hs.iter()
-                .filter_map(|h| d.entity(*h).map(|e| cadcraft_doc::entity_bounds(d, e, 0)))
-                .fold(cadcraft_geom::Bounds2::EMPTY, |a, b| a.union(&b))
+                .filter_map(|h| d.entity(*h).map(|e| redrob_cad_doc::entity_bounds(d, e, 0)))
+                .fold(redrob_cad_geom::Bounds2::EMPTY, |a, b| a.union(&b))
         })
         .map(|b| if b.is_empty() { 1.0 } else { b.width().max(b.height()) })
         .unwrap_or(1.0);

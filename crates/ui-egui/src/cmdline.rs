@@ -2,7 +2,7 @@
 //! (keyboard focus stays on the drawing — typing anywhere goes here) and AutoComplete.
 
 use crate::i18n::tr;
-use cadcraft_engine::Input;
+use redrob_cad_engine::Input;
 use egui::{Color32, Key, Pos2, Rect, Sense, Stroke, pos2, vec2};
 
 use crate::CadApp;
@@ -22,7 +22,7 @@ fn suggestions(prefix: &str) -> Vec<(String, &'static str)> {
         return Vec::new();
     }
     let p = prefix.to_ascii_lowercase();
-    let mut v: Vec<(String, &'static str)> = cadcraft_engine::command_specs()
+    let mut v: Vec<(String, &'static str)> = redrob_cad_engine::command_specs()
         .iter()
         .filter(|c| !c.id.contains('.') && (c.id.starts_with(&p) || c.aliases.iter().any(|a| *a == p)))
         .map(|c| (c.id.to_ascii_uppercase(), c.label))
@@ -61,7 +61,7 @@ pub fn keyboard(app: &mut CadApp, ctx: &egui::Context) {
                         }
                     } else {
                         let base = app.canvas.hot_grip.map(|g| g.base).unwrap_or_default();
-                        match cadcraft_engine::prompt::parse_point(&typed, base) {
+                        match redrob_cad_engine::prompt::parse_point(&typed, base) {
                             Some(p) => crate::canvas::apply_hot_grip(app, p),
                             None => app.session.echo("Requires a point (x,y, @dx,dy or @d<a)."),
                         }

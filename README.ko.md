@@ -23,7 +23,7 @@ Rust로 작성했고 macOS, Windows, Linux에서 네이티브로 돈다. 에이�
 ```sh
 git clone https://github.com/redrob-labs/redrob-cad.git
 cd redrob-cad
-cargo run -p cadcraft --release   # 데스크톱 앱
+cargo run -p redrob-cad --release   # 데스크톱 앱
 cargo xtask ci                    # CI가 돌리는 게이트
 ```
 

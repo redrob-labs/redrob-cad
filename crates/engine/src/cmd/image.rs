@@ -2,8 +2,8 @@
 //! the file path and the frame; the UI paints the pixels. ATTACH picks image or drawing reference
 //! by the file's extension.
 
-use cadcraft_doc::{EntityKind, Image};
-use cadcraft_geom::{Vec2, Vec3};
+use redrob_cad_doc::{EntityKind, Image};
+use redrob_cad_geom::{Vec2, Vec3};
 use serde_json::{Value, json};
 
 use super::*;

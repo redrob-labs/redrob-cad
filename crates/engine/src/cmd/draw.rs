@@ -1,8 +1,8 @@
 //! Draw commands: LINE, PLINE, CIRCLE, ARC, RECTANG, POLYGON, ELLIPSE, POINT, XLINE, RAY,
 //! SPLINE, DONUT, TEXT, MTEXT. Each has a JSON form and an interactive prompt sequence.
 
-use cadcraft_doc::{EntityKind, HAlign, MText, Point, RayLine, Text, VAlign};
-use cadcraft_geom::{Arc, Circle, Ellipse, PolyVertex, Polyline, Spline, Vec2, Vec3, arc_to_bulge, bulge_to_arc};
+use redrob_cad_doc::{EntityKind, HAlign, MText, Point, RayLine, Text, VAlign};
+use redrob_cad_geom::{Arc, Circle, Ellipse, PolyVertex, Polyline, Spline, Vec2, Vec3, arc_to_bulge, bulge_to_arc};
 use serde_json::{Value, json};
 
 use super::helpers::*;
@@ -88,7 +88,7 @@ pub fn specs() -> Vec<CommandSpec> {
     ]
 }
 
-fn added(h: cadcraft_doc::Handle) -> Result<Value> {
+fn added(h: redrob_cad_doc::Handle) -> Result<Value> {
     Ok(json!({ "handle": h.hex() }))
 }
 
@@ -207,7 +207,7 @@ fn run_ellipse(s: &mut Session, p: &Value) -> Result<Value> {
     }
     let start = f64_or(p, "start", 0.0).to_radians();
     let end = f64_or(p, "end", 360.0).to_radians();
-    added(s.add_entity(EntityKind::Ellipse(cadcraft_doc::Ellipse { center: v3(c), major: v3(m), ratio, start, end }))?)
+    added(s.add_entity(EntityKind::Ellipse(redrob_cad_doc::Ellipse { center: v3(c), major: v3(m), ratio, start, end }))?)
 }
 
 fn run_point(s: &mut Session, p: &Value) -> Result<Value> {
@@ -339,7 +339,7 @@ fn run_mtext(s: &mut Session, p: &Value) -> Result<Value> {
 #[derive(Default)]
 struct LineM {
     pts: Vec<Vec2>,
-    handles: Vec<cadcraft_doc::Handle>,
+    handles: Vec<redrob_cad_doc::Handle>,
 }
 
 impl Interactive for LineM {
@@ -392,7 +392,7 @@ struct PlineM {
     verts: Vec<PolyVertex>,
     arc_mode: bool,
     width: f64,
-    handle: Option<cadcraft_doc::Handle>,
+    handle: Option<redrob_cad_doc::Handle>,
     asking_width: u8,
 }
 
@@ -818,7 +818,7 @@ impl Interactive for EllipseM {
         if let Some(e) = self.ellipse {
             let ang = match i {
                 Input::Point(p) => {
-                    let ge = Ellipse { start: 0.0, end: cadcraft_geom::TAU, ..e };
+                    let ge = Ellipse { start: 0.0, end: redrob_cad_geom::TAU, ..e };
                     ge.param_of(p)
                 }
                 Input::Text(t) => {
@@ -832,7 +832,7 @@ impl Interactive for EllipseM {
                     return Ok(Step::Continue);
                 }
                 Some(st) => {
-                    s.add_entity(EntityKind::Ellipse(cadcraft_doc::Ellipse {
+                    s.add_entity(EntityKind::Ellipse(redrob_cad_doc::Ellipse {
                         center: v3(e.center),
                         major: v3(e.major),
                         ratio: e.ratio,
@@ -854,12 +854,12 @@ impl Interactive for EllipseM {
                         self.ellipse = Some(e);
                         return Ok(Step::Continue);
                     }
-                    s.add_entity(EntityKind::Ellipse(cadcraft_doc::Ellipse {
+                    s.add_entity(EntityKind::Ellipse(redrob_cad_doc::Ellipse {
                         center: v3(e.center),
                         major: v3(e.major),
                         ratio: e.ratio,
                         start: 0.0,
-                        end: cadcraft_geom::TAU,
+                        end: redrob_cad_geom::TAU,
                     }))?;
                     return Ok(Step::Done);
                 }
@@ -873,12 +873,12 @@ impl Interactive for EllipseM {
                         self.ellipse = Some(e);
                         return Ok(Step::Continue);
                     }
-                    s.add_entity(EntityKind::Ellipse(cadcraft_doc::Ellipse {
+                    s.add_entity(EntityKind::Ellipse(redrob_cad_doc::Ellipse {
                         center: v3(e.center),
                         major: v3(e.major),
                         ratio: e.ratio,
                         start: 0.0,
-                        end: cadcraft_geom::TAU,
+                        end: redrob_cad_geom::TAU,
                     }))?;
                     return Ok(Step::Done);
                 }
@@ -894,12 +894,12 @@ impl Interactive for EllipseM {
         }
         self.build(c)
             .map(|e| {
-                vec![EntityKind::Ellipse(cadcraft_doc::Ellipse {
+                vec![EntityKind::Ellipse(redrob_cad_doc::Ellipse {
                     center: v3(e.center),
                     major: v3(e.major),
                     ratio: e.ratio,
                     start: 0.0,
-                    end: cadcraft_geom::TAU,
+                    end: redrob_cad_geom::TAU,
                 })]
             })
             .unwrap_or_default()

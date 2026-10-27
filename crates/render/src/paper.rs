@@ -3,8 +3,8 @@
 //! Paper-space units are millimetres in metric drawings (`MEASUREMENT` = 1) and inches
 //! otherwise. The sheet's lower-left corner is the paper-space origin.
 
-use cadcraft_doc::{Drawing, PageSetup};
-use cadcraft_geom::{Bounds2, Vec2};
+use redrob_cad_doc::{Drawing, PageSetup};
+use redrob_cad_geom::{Bounds2, Vec2};
 
 /// A standard paper size (portrait: `width_mm <= height_mm`).
 #[derive(Clone, Copy, Debug, PartialEq)]

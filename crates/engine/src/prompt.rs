@@ -1,7 +1,7 @@
 //! Interactive commands: prompts, inputs and the command-line coordinate grammar.
 
-use cadcraft_doc::{EntityKind, Handle};
-use cadcraft_geom::Vec2;
+use redrob_cad_doc::{EntityKind, Handle};
+use redrob_cad_geom::Vec2;
 use serde::Serialize;
 
 use crate::{Result, Session};

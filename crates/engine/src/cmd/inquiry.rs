@@ -1,7 +1,7 @@
 //! Inquiry: DIST, ID, LIST, AREA, drawing inspection for agents.
 
-use cadcraft_doc::{EntityKind, Handle};
-use cadcraft_geom::{Polyline, Vec2};
+use redrob_cad_doc::{EntityKind, Handle};
+use redrob_cad_geom::{Polyline, Vec2};
 use serde_json::{Value, json};
 
 use super::*;
@@ -111,8 +111,8 @@ fn list_text(s: &Session, h: Handle) -> String {
                 fmt_d(s, c.center.y),
                 fmt_d(s, 0.0),
                 fmt_d(s, c.radius),
-                fmt_d(s, c.radius * cadcraft_geom::TAU),
-                fmt_d(s, c.radius * c.radius * cadcraft_geom::PI)
+                fmt_d(s, c.radius * redrob_cad_geom::TAU),
+                fmt_d(s, c.radius * c.radius * redrob_cad_geom::PI)
             ));
         }
         EntityKind::Arc(a) => {
@@ -165,7 +165,7 @@ fn run_list(s: &mut Session, p: &Value) -> Result<Value> {
 }
 
 fn area_of(pts: &[Vec2]) -> (f64, f64) {
-    let a = cadcraft_geom::shoelace(pts).abs();
+    let a = redrob_cad_geom::shoelace(pts).abs();
     let n = pts.len();
     let per: f64 = (0..n).filter_map(|i| Some(pts.get(i)?.dist(*pts.get((i + 1) % n)?))).sum();
     (a, per)
@@ -179,7 +179,7 @@ fn run_area(s: &mut Session, p: &Value) -> Result<Value> {
         let d = s.doc()?;
         let e = d.entity(h).ok_or_else(|| bad("area", "no such object"))?;
         match &e.kind {
-            EntityKind::Circle(c) => (c.radius * c.radius * cadcraft_geom::PI, c.radius * cadcraft_geom::TAU),
+            EntityKind::Circle(c) => (c.radius * c.radius * redrob_cad_geom::PI, c.radius * redrob_cad_geom::TAU),
             EntityKind::LwPolyline(pl) => {
                 let g = Polyline { vertices: pl.vertices.clone(), closed: true };
                 (g.area().abs(), g.len())
@@ -187,7 +187,7 @@ fn run_area(s: &mut Session, p: &Value) -> Result<Value> {
             EntityKind::Ellipse(el) => {
                 let a = el.major.xy().len();
                 let b = a * el.ratio;
-                (cadcraft_geom::PI * a * b, cadcraft_geom::PI * (3.0 * (a + b) - ((3.0 * a + b) * (a + 3.0 * b)).sqrt()))
+                (redrob_cad_geom::PI * a * b, redrob_cad_geom::PI * (3.0 * (a + b) - ((3.0 * a + b) * (a + 3.0 * b)).sqrt()))
             }
             EntityKind::Hatch(hh) => hh.loops.iter().fold((0.0, 0.0), |acc, l| {
                 let g = Polyline { vertices: l.vertices.clone(), closed: true };
@@ -206,7 +206,7 @@ fn run_time(s: &mut Session, _p: &Value) -> Result<Value> {
 
 fn run_status(s: &mut Session, _p: &Value) -> Result<Value> {
     let d = s.doc()?;
-    let ext = d.extents(&cadcraft_doc::Space::Model);
+    let ext = d.extents(&redrob_cad_doc::Space::Model);
     let msg = format!(
         "{} objects in {}\nModel space limits are X: {}  Y: {}  (Off)\nModel space uses X: {}  Y: {}\n                 X: {}  Y: {}\nCurrent layer: {}\nCurrent color: {}\nCurrent linetype: {}",
         d.entity_count(),
@@ -218,13 +218,13 @@ fn run_status(s: &mut Session, _p: &Value) -> Result<Value> {
         fmt_d(s, ext.max.x),
         fmt_d(s, ext.max.y),
         d.header.str("CLAYER", "0"),
-        cadcraft_color::Color::from_aci(d.header.i64("CECOLOR", 256) as i16).name(),
+        redrob_cad_color::Color::from_aci(d.header.i64("CECOLOR", 256) as i16).name(),
         d.header.str("CELTYPE", "ByLayer"),
     );
     Ok(json!({ "message": msg }))
 }
 
-fn entity_summary(e: &cadcraft_doc::Entity) -> Value {
+fn entity_summary(e: &redrob_cad_doc::Entity) -> Value {
     json!({ "handle": e.handle.hex(), "type": e.kind.type_name(), "layer": e.common.layer, "color": e.common.color.name(), "geometry": e.kind })
 }
 
@@ -244,7 +244,7 @@ fn run_inspect(s: &mut Session, p: &Value) -> Result<Value> {
         "title": st.title,
         "path": st.path,
         "dirty": st.is_dirty(),
-        "space": match &space { cadcraft_doc::Space::Model => "Model".to_string(), cadcraft_doc::Space::Paper(n) => n.clone() },
+        "space": match &space { redrob_cad_doc::Space::Model => "Model".to_string(), redrob_cad_doc::Space::Paper(n) => n.clone() },
         "entityCount": d.entity_count(),
         "counts": counts,
         "extents": if ext.is_empty() { Value::Null } else { json!([[ext.min.x, ext.min.y], [ext.max.x, ext.max.y]]) },
@@ -272,7 +272,7 @@ fn run_entities(s: &mut Session, p: &Value) -> Result<Value> {
     let d = &st.doc;
     let ty = str_param(p, "type").map(str::to_ascii_lowercase);
     let layer = str_param(p, "layer").map(str::to_ascii_lowercase);
-    let window = points_param(p, "window").and_then(|w| Some(cadcraft_geom::Bounds2::new(*w.first()?, *w.get(1)?)));
+    let window = points_param(p, "window").and_then(|w| Some(redrob_cad_geom::Bounds2::new(*w.first()?, *w.get(1)?)));
     let limit = p.get("limit").and_then(Value::as_u64).unwrap_or(500) as usize;
     let offset = p.get("offset").and_then(Value::as_u64).unwrap_or(0) as usize;
     let Some(store) = d.space(&st.space) else { return Ok(json!({ "entities": [] })) };
@@ -280,7 +280,7 @@ fn run_entities(s: &mut Session, p: &Value) -> Result<Value> {
         .iter()
         .filter(|e| ty.as_ref().is_none_or(|t| e.kind.type_name().to_ascii_lowercase() == *t || e.kind.dxf_name().to_ascii_lowercase() == *t))
         .filter(|e| layer.as_ref().is_none_or(|l| e.common.layer.to_ascii_lowercase() == *l))
-        .filter(|e| window.is_none_or(|w| w.intersects(&cadcraft_doc::entity_bounds(d, e, 0))))
+        .filter(|e| window.is_none_or(|w| w.intersects(&redrob_cad_doc::entity_bounds(d, e, 0))))
         .skip(offset)
         .take(limit)
         .map(|e| entity_summary(e))
@@ -443,8 +443,8 @@ impl Interactive for AreaM {
         if self.pts.is_empty() {
             return Vec::new();
         }
-        let mut v: Vec<cadcraft_geom::PolyVertex> = self.pts.iter().map(|p| cadcraft_geom::PolyVertex::new(*p)).collect();
-        v.push(cadcraft_geom::PolyVertex::new(c));
+        let mut v: Vec<redrob_cad_geom::PolyVertex> = self.pts.iter().map(|p| redrob_cad_geom::PolyVertex::new(*p)).collect();
+        v.push(redrob_cad_geom::PolyVertex::new(c));
         vec![super::helpers::lwpoly(v, true)]
     }
 }

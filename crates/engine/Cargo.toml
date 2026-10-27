@@ -1,6 +1,6 @@
 [package]
-name = "cadcraft-engine"
-description = "CADCraft engine: sessions, commands, the command line and prompts, snaps, selection, undo"
+name = "redrob-cad-engine"
+description = "Redrob CAD engine: sessions, commands, the command line and prompts, snaps, selection, undo"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -9,12 +9,12 @@ license.workspace = true
 workspace = true
 
 [dependencies]
-cadcraft-geom = { workspace = true }
-cadcraft-color = { workspace = true }
-cadcraft-doc = { workspace = true }
-cadcraft-constraints = { workspace = true }
-cadcraft-fonts = { workspace = true }
-cadcraft-render = { workspace = true }
+redrob-cad-geom = { workspace = true }
+redrob-cad-color = { workspace = true }
+redrob-cad-doc = { workspace = true }
+redrob-cad-constraints = { workspace = true }
+redrob-cad-fonts = { workspace = true }
+redrob-cad-render = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }

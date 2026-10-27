@@ -1,9 +1,9 @@
 //! Pattern hatch line generation: each pattern line family is swept across the boundary
 //! (even-odd clipped), then dashed.
 
-use cadcraft_doc::Hatch;
-use cadcraft_doc::library::{HatchPattern, pattern};
-use cadcraft_geom::{Bounds2, Polyline, Vec2};
+use redrob_cad_doc::Hatch;
+use redrob_cad_doc::library::{HatchPattern, pattern};
+use redrob_cad_geom::{Bounds2, Polyline, Vec2};
 
 /// Hatch line runs in world coordinates (single-point runs are dots).
 pub fn pattern_lines(h: &Hatch, tol: f64) -> Vec<Vec<Vec2>> {

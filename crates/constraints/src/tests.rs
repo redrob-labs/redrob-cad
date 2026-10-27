@@ -1,5 +1,5 @@
-use cadcraft_doc::{Arc as DArc, Circle as DCircle, Common, DistAxis, EntityKind, Line as DLine, LwPolyline, Point as DPoint, Space, Sub};
-use cadcraft_geom::{PolyVertex, Vec3};
+use redrob_cad_doc::{Arc as DArc, Circle as DCircle, Common, DistAxis, EntityKind, Line as DLine, LwPolyline, Point as DPoint, Space, Sub};
+use redrob_cad_geom::{PolyVertex, Vec3};
 
 use super::*;
 
@@ -304,7 +304,7 @@ fn invalid_references_and_purge() {
     let c = circle(&mut d, (0.0, 5.0), 1.0);
     let t = add_e(
         &mut d,
-        EntityKind::Text(cadcraft_doc::Text {
+        EntityKind::Text(redrob_cad_doc::Text {
             insert: v(0.0, 0.0),
             align_pt: None,
             height: 1.0,

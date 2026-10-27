@@ -20,8 +20,8 @@
 
 use std::sync::mpsc::Sender;
 
-use cadcraft_engine::Input;
-use cadcraft_geom::Vec2;
+use redrob_cad_engine::Input;
+use redrob_cad_geom::Vec2;
 use serde_json::{Value, json};
 
 use crate::CadApp;
@@ -60,7 +60,7 @@ fn wrap(r: Result<Value, String>) -> Outcome {
 }
 
 pub fn all_commands(app: &CadApp) -> Value {
-    let mut v: Vec<Value> = cadcraft_engine::command_specs().iter().map(|c| serde_json::to_value(c.info(&app.session)).unwrap_or_default()).collect();
+    let mut v: Vec<Value> = redrob_cad_engine::command_specs().iter().map(|c| serde_json::to_value(c.info(&app.session)).unwrap_or_default()).collect();
     for (id, label, menu, sc) in crate::menus::UI_COMMANDS {
         v.push(json!({"id": id, "label": label, "menu": menu, "shortcut": sc, "enabled": true, "ui": true}));
     }
@@ -250,10 +250,10 @@ pub fn handle(app: &mut CadApp, ctx: &egui::Context, req: &ControlRequest) -> Ou
             let w = f("width").unwrap_or(1600.0).clamp(16.0, 8192.0) as u32;
             let h = f("height").unwrap_or(1000.0).clamp(16.0, 8192.0) as u32;
             let Ok(st) = app.session.state() else { return err("no drawing") };
-            let list = cadcraft_render::build(&st.doc, &st.space, &cadcraft_render::Options::default());
+            let list = redrob_cad_render::build(&st.doc, &st.space, &redrob_cad_render::Options::default());
             let v = st.view();
-            let view = cadcraft_render::raster::View { center: v.center, scale: f64::from(h) / v.height.max(1e-12), width: w, height: h };
-            let Some(png) = cadcraft_render::raster::render_png(&list, &view, &cadcraft_render::raster::RasterOptions::default()) else {
+            let view = redrob_cad_render::raster::View { center: v.center, scale: f64::from(h) / v.height.max(1e-12), width: w, height: h };
+            let Some(png) = redrob_cad_render::raster::render_png(&list, &view, &redrob_cad_render::raster::RasterOptions::default()) else {
                 return err("render failed");
             };
             #[cfg(not(target_arch = "wasm32"))]

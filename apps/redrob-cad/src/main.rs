@@ -1,10 +1,10 @@
-//! CADCraft desktop app.
+//! Redrob CAD desktop app.
 //!
-//! Usage: `cadcraft [--control <port>] [--sample] [files…]`
+//! Usage: `redrob-cad [--control <port>] [--sample] [files…]`
 //!
-//! `--control <port>` (or `CADCRAFT_CONTROL_PORT`) starts a localhost JSON-lines control server:
+//! `--control <port>` (or `REDROB_CAD_CONTROL_PORT`) starts a localhost JSON-lines control server:
 //! `{"id":1,"method":"cmdline.input","params":{"text":"circle 0,0 5"}}` → `{"id":1,"ok":true,…}`.
-//! See `cadcraft_ui_egui::control` for the methods.
+//! See `redrob_cad_ui_egui::control` for the methods.
 //!
 //! Without `--control`, the server still runs on a free port with a per-launch token, for the
 //! built-in agent only (see `acp`). `redrob-cad mcp --connect <addr>` is the MCP server that agent
@@ -19,18 +19,18 @@ mod device;
 mod native_menu;
 mod work_area;
 
-use cadcraft_engine::Session;
-use cadcraft_ui_egui::{CadApp, Services};
+use redrob_cad_engine::Session;
+use redrob_cad_ui_egui::{CadApp, Services};
 
-struct App(CadApp, #[cfg(target_os = "macos")] Option<(native_menu::NativeMenu, cadcraft_ui_egui::i18n::Lang)>);
+struct App(CadApp, #[cfg(target_os = "macos")] Option<(native_menu::NativeMenu, redrob_cad_ui_egui::i18n::Lang)>);
 
 impl eframe::App for App {
     fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         #[cfg(target_os = "macos")]
         {
             // (Re)built at launch and whenever the interface language changes, so its titles follow.
-            let lang = cadcraft_ui_egui::i18n::lang();
-            if self.1.as_ref().is_none_or(|(_, l)| *l != lang) && std::env::var_os("CADCRAFT_NO_NATIVE_MENU").is_none() {
+            let lang = redrob_cad_ui_egui::i18n::lang();
+            if self.1.as_ref().is_none_or(|(_, l)| *l != lang) && std::env::var_os("REDROB_CAD_NO_NATIVE_MENU").is_none() {
                 self.1 = Some((native_menu::NativeMenu::install(&mut self.0), lang));
             }
             if let Some((m, _)) = &mut self.1 {
@@ -55,8 +55,8 @@ impl eframe::App for App {
 
 /// The interface language: `REDROB_CAD_LANG`, else the one saved from the Language menu, else
 /// the platform's (POSIX locale variables, then the OS setting).
-fn startup_language() -> cadcraft_ui_egui::i18n::Lang {
-    use cadcraft_ui_egui::i18n::{self, Lang};
+fn startup_language() -> redrob_cad_ui_egui::i18n::Lang {
+    use redrob_cad_ui_egui::i18n::{self, Lang};
     if let Some(l) = std::env::var("REDROB_CAD_LANG").ok().and_then(|v| Lang::from_code(&v)) {
         return l;
     }
@@ -72,7 +72,7 @@ fn settings_path() -> Option<std::path::PathBuf> {
 }
 
 /// Writes the language into `settings.json`, keeping any other keys there.
-fn save_language(l: cadcraft_ui_egui::i18n::Lang) {
+fn save_language(l: redrob_cad_ui_egui::i18n::Lang) {
     let Some(path) = settings_path() else { return };
     let mut v =
         std::fs::read_to_string(&path).ok().and_then(|t| serde_json::from_str::<serde_json::Value>(&t).ok()).unwrap_or_else(|| serde_json::json!({}));
@@ -89,14 +89,14 @@ fn save_language(l: cadcraft_ui_egui::i18n::Lang) {
 
 /// File format hooks for the engine (it stays I/O-agnostic).
 pub fn install_io() {
-    cadcraft_engine::cmd::file::set_io(cadcraft_engine::cmd::file::IoHooks {
-        read: |b, name| cadcraft_io::read(b, name).map_err(|e| e.to_string()),
-        write: |d, name| cadcraft_io::write(d, name).map_err(|e| e.to_string()),
-        plot: Some(|d, space, opts| cadcraft_io::plot(d, space, opts).map_err(|e| e.to_string())),
+    redrob_cad_engine::cmd::file::set_io(redrob_cad_engine::cmd::file::IoHooks {
+        read: |b, name| redrob_cad_io::read(b, name).map_err(|e| e.to_string()),
+        write: |d, name| redrob_cad_io::write(d, name).map_err(|e| e.to_string()),
+        plot: Some(|d, space, opts| redrob_cad_io::plot(d, space, opts).map_err(|e| e.to_string())),
     });
 }
 
-fn services(agent: Option<cadcraft_ui_egui::agent::AgentFactory>, account: Option<Box<dyn cadcraft_ui_egui::account::AccountService>>) -> Services {
+fn services(agent: Option<redrob_cad_ui_egui::agent::AgentFactory>, account: Option<Box<dyn redrob_cad_ui_egui::account::AccountService>>) -> Services {
     Services {
         agent,
         account,
@@ -128,7 +128,7 @@ fn app_icon() -> Option<egui::IconData> {
 }
 
 fn version_string() -> String {
-    let sha = option_env!("CADCRAFT_BUILD_SHA").unwrap_or("dev");
+    let sha = option_env!("REDROB_CAD_BUILD_SHA").unwrap_or("dev");
     format!("redrob-cad {} ({sha})", env!("CARGO_PKG_VERSION"))
 }
 
@@ -184,14 +184,14 @@ fn serve_mcp(args: &[String]) -> std::process::ExitCode {
         eprintln!("usage: redrob-cad mcp --connect HOST:PORT");
         return std::process::ExitCode::FAILURE;
     };
-    let backend = match cadcraft_mcp::Remote::connect(addr) {
+    let backend = match redrob_cad_mcp::Remote::connect(addr) {
         Ok(r) => r,
         Err(e) => {
             eprintln!("redrob-cad: cannot connect to {addr}: {e}");
             return std::process::ExitCode::FAILURE;
         }
     };
-    let mut server = cadcraft_mcp::Server::new(Box::new(backend));
+    let mut server = redrob_cad_mcp::Server::new(Box::new(backend));
     match server.serve(std::io::stdin().lock(), std::io::stdout().lock()) {
         Ok(()) => std::process::ExitCode::SUCCESS,
         Err(e) => {
@@ -207,7 +207,7 @@ fn main() -> eframe::Result {
         let code = serve_mcp(&argv[1..]);
         std::process::exit(if code == std::process::ExitCode::SUCCESS { 0 } else { 1 });
     }
-    let mut control_port: Option<u16> = std::env::var("CADCRAFT_CONTROL_PORT").ok().and_then(|p| p.parse().ok());
+    let mut control_port: Option<u16> = std::env::var("REDROB_CAD_CONTROL_PORT").ok().and_then(|p| p.parse().ok());
     let mut files = Vec::new();
     let mut sample = false;
     let mut args = std::env::args().skip(1);
@@ -223,7 +223,7 @@ fn main() -> eframe::Result {
         }
     }
     install_io();
-    cadcraft_ui_egui::i18n::set_lang(startup_language());
+    redrob_cad_ui_egui::i18n::set_lang(startup_language());
     let mut options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_title("Redrob CAD")
@@ -258,7 +258,7 @@ fn main() -> eframe::Result {
                 Some(cc.egui_ctx.clone()),
             );
             let keys = account.key_source();
-            let agent: Option<cadcraft_ui_egui::agent::AgentFactory> = bound.map(|port| {
+            let agent: Option<redrob_cad_ui_egui::agent::AgentFactory> = bound.map(|port| {
                 let link = acp::McpLink { addr: format!("127.0.0.1:{port}"), token };
                 let ctx = cc.egui_ctx.clone();
                 Box::new(move || {
@@ -266,8 +266,8 @@ fn main() -> eframe::Result {
                     // The connected workspace's key, as the variable Redrob Code reads for Redrob.
                     let env: Vec<(&str, String)> = keys.current().map(|(k, _)| vec![("REDROB_API_KEY", k.api_key)]).unwrap_or_default();
                     let host = acp::AcpHost::start(&bin, &agent_cwd(), link.clone(), &env, ctx.clone())?;
-                    Ok(Box::new(host) as Box<dyn cadcraft_ui_egui::agent::AgentHost>)
-                }) as cadcraft_ui_egui::agent::AgentFactory
+                    Ok(Box::new(host) as Box<dyn redrob_cad_ui_egui::agent::AgentHost>)
+                }) as redrob_cad_ui_egui::agent::AgentFactory
             });
             let mut app = CadApp::new(Session::empty(), services(agent, Some(Box::new(account))));
             app.integrated_titlebar = cfg!(target_os = "macos");

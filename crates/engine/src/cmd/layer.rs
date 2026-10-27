@@ -1,7 +1,7 @@
 //! Layers: LAYER (programmatic sub-ids), layer tools (LAYMCUR, LAYISO, LAYOFF, LAYFRZ…).
 
-use cadcraft_color::Color;
-use cadcraft_doc::{Layer, Lineweight};
+use redrob_cad_color::Color;
+use redrob_cad_doc::{Layer, Lineweight};
 use serde_json::{Value, json};
 
 use super::*;
@@ -76,7 +76,7 @@ fn run_list(s: &mut Session, _p: &Value) -> Result<Value> {
 }
 
 /// Lower-case names of layers that have objects on them (model, layouts and block definitions).
-pub fn used_layers(d: &cadcraft_doc::Drawing) -> std::collections::HashSet<String> {
+pub fn used_layers(d: &redrob_cad_doc::Drawing) -> std::collections::HashSet<String> {
     let mut set = std::collections::HashSet::new();
     let ents = d.model.iter().chain(d.layouts.iter().flat_map(|l| l.entities.iter())).chain(d.blocks.values().flat_map(|b| b.entities.iter()));
     for e in ents.take(5_000_000) {
@@ -206,14 +206,14 @@ fn run_current(s: &mut Session, p: &Value) -> Result<Value> {
     ok()
 }
 
-fn prev_push(d: &mut cadcraft_doc::Drawing) {
+fn prev_push(d: &mut redrob_cad_doc::Drawing) {
     let snap = serde_json::to_string(&d.layers).unwrap_or_default();
-    d.header.set_str("CADCRAFT_LAYERP", &snap);
+    d.header.set_str("REDROB_CAD_LAYERP", &snap);
 }
 
 fn run_layerp(s: &mut Session, _p: &Value) -> Result<Value> {
     let d = s.doc_mut()?;
-    let snap = d.header.str("CADCRAFT_LAYERP", "");
+    let snap = d.header.str("REDROB_CAD_LAYERP", "");
     let layers: Vec<Layer> = serde_json::from_str(&snap).map_err(|_| bad("layerp", "No previous layer state."))?;
     d.layers = layers;
     Ok(json!({"message": "Restored previous layer states."}))
@@ -278,7 +278,7 @@ fn run_layiso(s: &mut Session, p: &Value) -> Result<Value> {
     }
     let d = s.doc_mut()?;
     prev_push(d);
-    d.header.set_str("CADCRAFT_LAYISO", &serde_json::to_string(&d.layers).unwrap_or_default());
+    d.header.set_str("REDROB_CAD_LAYISO", &serde_json::to_string(&d.layers).unwrap_or_default());
     for l in &mut d.layers {
         if !keep.iter().any(|k| k.eq_ignore_ascii_case(&l.name)) {
             l.on = false;
@@ -292,7 +292,7 @@ fn run_layiso(s: &mut Session, p: &Value) -> Result<Value> {
 
 fn run_layuniso(s: &mut Session, _p: &Value) -> Result<Value> {
     let d = s.doc_mut()?;
-    let snap = d.header.str("CADCRAFT_LAYISO", "");
+    let snap = d.header.str("REDROB_CAD_LAYISO", "");
     let layers: Vec<Layer> = serde_json::from_str(&snap).map_err(|_| bad("layuniso", "No isolated layers."))?;
     d.layers = layers;
     ok()
@@ -328,7 +328,7 @@ fn run_state_save(s: &mut Session, p: &Value) -> Result<Value> {
     let d = s.doc_mut()?;
     let layers = d.layers.clone();
     d.layer_states.retain(|st| st.name != name);
-    d.layer_states.push(cadcraft_doc::LayerState { name, layers });
+    d.layer_states.push(redrob_cad_doc::LayerState { name, layers });
     ok()
 }
 
@@ -397,7 +397,7 @@ mod tests {
         s.execute("layerstate.restore", &json!({ "name": "base" })).unwrap();
         let a = s.doc().unwrap().layer("A").unwrap().clone();
         assert!(a.on);
-        assert_eq!(a.color, cadcraft_color::Color::Index(1));
+        assert_eq!(a.color, redrob_cad_color::Color::Index(1));
         s.execute("layerstate.rename", &json!({ "from": "base", "to": "start" })).unwrap();
         assert!(s.execute("layerstate.delete", &json!({ "name": "base" })).is_err());
         s.execute("layerstate.delete", &json!({ "name": "start" })).unwrap();
